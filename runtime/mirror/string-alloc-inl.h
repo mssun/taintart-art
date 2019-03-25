@@ -25,6 +25,7 @@
 #include "class.h"
 #include "class_root.h"
 #include "gc/heap-inl.h"
+#include "obj_ptr.h"
 #include "runtime.h"
 #include "runtime_globals.h"
 #include "thread.h"
@@ -154,10 +155,10 @@ class SetStringCountAndValueVisitorFromString {
 };
 
 template <bool kIsInstrumented, typename PreFenceVisitor>
-inline String* String::Alloc(Thread* self,
-                             int32_t utf16_length_with_flag,
-                             gc::AllocatorType allocator_type,
-                             const PreFenceVisitor& pre_fence_visitor) {
+inline ObjPtr<String> String::Alloc(Thread* self,
+                                    int32_t utf16_length_with_flag,
+                                    gc::AllocatorType allocator_type,
+                                    const PreFenceVisitor& pre_fence_visitor) {
   constexpr size_t header_size = sizeof(String);
   const bool compressible = kUseStringCompression && String::IsCompressed(utf16_length_with_flag);
   const size_t block_size = (compressible) ? sizeof(uint8_t) : sizeof(uint16_t);
@@ -189,67 +190,64 @@ inline String* String::Alloc(Thread* self,
   }
 
   gc::Heap* heap = runtime->GetHeap();
-  return down_cast<String*>(
+  return ObjPtr<String>::DownCast(MakeObjPtr(
       heap->AllocObjectWithAllocator<kIsInstrumented, true>(self,
                                                             string_class,
                                                             alloc_size,
                                                             allocator_type,
-                                                            pre_fence_visitor));
+                                                            pre_fence_visitor)));
 }
 
 template <bool kIsInstrumented>
-inline String* String::AllocEmptyString(Thread* self, gc::AllocatorType allocator_type) {
+inline ObjPtr<String> String::AllocEmptyString(Thread* self, gc::AllocatorType allocator_type) {
   const int32_t length_with_flag = String::GetFlaggedCount(0, /* compressible= */ true);
   SetStringCountVisitor visitor(length_with_flag);
   return Alloc<kIsInstrumented>(self, length_with_flag, allocator_type, visitor);
 }
 
 template <bool kIsInstrumented>
-inline String* String::AllocFromByteArray(Thread* self,
-                                          int32_t byte_length,
-                                          Handle<ByteArray> array,
-                                          int32_t offset,
-                                          int32_t high_byte,
-                                          gc::AllocatorType allocator_type) {
+inline ObjPtr<String> String::AllocFromByteArray(Thread* self,
+                                                 int32_t byte_length,
+                                                 Handle<ByteArray> array,
+                                                 int32_t offset,
+                                                 int32_t high_byte,
+                                                 gc::AllocatorType allocator_type) {
   const uint8_t* const src = reinterpret_cast<uint8_t*>(array->GetData()) + offset;
   high_byte &= 0xff;  // Extract the relevant bits before determining `compressible`.
   const bool compressible =
       kUseStringCompression && String::AllASCII<uint8_t>(src, byte_length) && (high_byte == 0);
   const int32_t length_with_flag = String::GetFlaggedCount(byte_length, compressible);
   SetStringCountAndBytesVisitor visitor(length_with_flag, array, offset, high_byte << 8);
-  String* string = Alloc<kIsInstrumented>(self, length_with_flag, allocator_type, visitor);
-  return string;
+  return Alloc<kIsInstrumented>(self, length_with_flag, allocator_type, visitor);
 }
 
 template <bool kIsInstrumented>
-inline String* String::AllocFromCharArray(Thread* self,
-                                          int32_t count,
-                                          Handle<CharArray> array,
-                                          int32_t offset,
-                                          gc::AllocatorType allocator_type) {
+inline ObjPtr<String> String::AllocFromCharArray(Thread* self,
+                                                 int32_t count,
+                                                 Handle<CharArray> array,
+                                                 int32_t offset,
+                                                 gc::AllocatorType allocator_type) {
   // It is a caller error to have a count less than the actual array's size.
   DCHECK_GE(array->GetLength(), count);
   const bool compressible = kUseStringCompression &&
                             String::AllASCII<uint16_t>(array->GetData() + offset, count);
   const int32_t length_with_flag = String::GetFlaggedCount(count, compressible);
   SetStringCountAndValueVisitorFromCharArray visitor(length_with_flag, array, offset);
-  String* new_string = Alloc<kIsInstrumented>(self, length_with_flag, allocator_type, visitor);
-  return new_string;
+  return Alloc<kIsInstrumented>(self, length_with_flag, allocator_type, visitor);
 }
 
 template <bool kIsInstrumented>
-inline String* String::AllocFromString(Thread* self,
-                                       int32_t string_length,
-                                       Handle<String> string,
-                                       int32_t offset,
-                                       gc::AllocatorType allocator_type) {
+inline ObjPtr<String> String::AllocFromString(Thread* self,
+                                              int32_t string_length,
+                                              Handle<String> string,
+                                              int32_t offset,
+                                              gc::AllocatorType allocator_type) {
   const bool compressible = kUseStringCompression &&
       ((string->IsCompressed()) ? true : String::AllASCII<uint16_t>(string->GetValue() + offset,
                                                                     string_length));
   const int32_t length_with_flag = String::GetFlaggedCount(string_length, compressible);
   SetStringCountAndValueVisitorFromString visitor(length_with_flag, string, offset);
-  String* new_string = Alloc<kIsInstrumented>(self, length_with_flag, allocator_type, visitor);
-  return new_string;
+  return Alloc<kIsInstrumented>(self, length_with_flag, allocator_type, visitor);
 }
 
 }  // namespace mirror

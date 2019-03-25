@@ -1346,7 +1346,7 @@ JDWP::JdwpError Dbg::SetArrayElements(JDWP::ObjectId array_id, int offset, int c
 
 JDWP::JdwpError Dbg::CreateString(const std::string& str, JDWP::ObjectId* new_string_id) {
   Thread* self = Thread::Current();
-  mirror::String* new_string = mirror::String::AllocFromModifiedUtf8(self, str.c_str());
+  ObjPtr<mirror::String> new_string = mirror::String::AllocFromModifiedUtf8(self, str.c_str());
   if (new_string == nullptr) {
     DCHECK(self->IsExceptionPending());
     self->ClearException();

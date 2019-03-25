@@ -939,7 +939,7 @@ TEST_F(StubTest, AllocObject) {
 
     EXPECT_FALSE(self->IsExceptionPending());
     EXPECT_NE(reinterpret_cast<size_t>(nullptr), result);
-    mirror::Object* obj = reinterpret_cast<mirror::Object*>(result);
+    ObjPtr<mirror::Object> obj = reinterpret_cast<mirror::Object*>(result);
     EXPECT_EQ(c.Get(), obj->GetClass());
     VerifyObject(obj);
   }
@@ -951,7 +951,7 @@ TEST_F(StubTest, AllocObject) {
 
     EXPECT_FALSE(self->IsExceptionPending());
     EXPECT_NE(reinterpret_cast<size_t>(nullptr), result);
-    mirror::Object* obj = reinterpret_cast<mirror::Object*>(result);
+    ObjPtr<mirror::Object> obj = reinterpret_cast<mirror::Object*>(result);
     EXPECT_EQ(c.Get(), obj->GetClass());
     VerifyObject(obj);
   }
@@ -963,7 +963,7 @@ TEST_F(StubTest, AllocObject) {
 
     EXPECT_FALSE(self->IsExceptionPending());
     EXPECT_NE(reinterpret_cast<size_t>(nullptr), result);
-    mirror::Object* obj = reinterpret_cast<mirror::Object*>(result);
+    ObjPtr<mirror::Object> obj = reinterpret_cast<mirror::Object*>(result);
     EXPECT_EQ(c.Get(), obj->GetClass());
     VerifyObject(obj);
   }
@@ -1059,12 +1059,12 @@ TEST_F(StubTest, AllocObjectArray) {
                             self);
     EXPECT_FALSE(self->IsExceptionPending()) << mirror::Object::PrettyTypeOf(self->GetException());
     EXPECT_NE(reinterpret_cast<size_t>(nullptr), result);
-    mirror::Object* obj = reinterpret_cast<mirror::Object*>(result);
+    ObjPtr<mirror::Object> obj = reinterpret_cast<mirror::Object*>(result);
     EXPECT_TRUE(obj->IsArrayInstance());
     EXPECT_TRUE(obj->IsObjectArray());
     EXPECT_EQ(c.Get(), obj->GetClass());
     VerifyObject(obj);
-    mirror::Array* array = reinterpret_cast<mirror::Array*>(result);
+    ObjPtr<mirror::Array> array = reinterpret_cast<mirror::Array*>(result);
     EXPECT_EQ(array->GetLength(), 10);
   }
 
@@ -1514,23 +1514,29 @@ static void GetSet32Instance(Handle<mirror::Object>* obj, ArtField* f,
 #if defined(__i386__) || defined(__arm__) || defined(__aarch64__) || defined(__mips__) || \
     (defined(__x86_64__) && !defined(__APPLE__))
 
-static void set_and_check_static(uint32_t f_idx, mirror::Object* val, Thread* self,
-                                 ArtMethod* referrer, StubTest* test)
+static void set_and_check_static(uint32_t f_idx,
+                                 ObjPtr<mirror::Object> val,
+                                 Thread* self,
+                                 ArtMethod* referrer,
+                                 StubTest* test)
     REQUIRES_SHARED(Locks::mutator_lock_) {
+  StackHandleScope<1u> hs(self);
+  Handle<mirror::Object> h_val = hs.NewHandle(val);
   test->Invoke3WithReferrer(static_cast<size_t>(f_idx),
-                            reinterpret_cast<size_t>(val),
+                            reinterpret_cast<size_t>(h_val.Get()),
                             0U,
                             StubTest::GetEntrypoint(self, kQuickSetObjStatic),
                             self,
                             referrer);
 
   size_t res = test->Invoke3WithReferrer(static_cast<size_t>(f_idx),
-                                         0U, 0U,
+                                         0U,
+                                         0U,
                                          StubTest::GetEntrypoint(self, kQuickGetObjStatic),
                                          self,
                                          referrer);
 
-  EXPECT_EQ(res, reinterpret_cast<size_t>(val)) << "Value " << val;
+  EXPECT_EQ(res, reinterpret_cast<size_t>(h_val.Get())) << "Value " << h_val.Get();
 }
 #endif
 
@@ -1542,7 +1548,7 @@ static void GetSetObjStatic(ArtField* f, Thread* self, ArtMethod* referrer,
   set_and_check_static(f->GetDexFieldIndex(), nullptr, self, referrer, test);
 
   // Allocate a string object for simplicity.
-  mirror::String* str = mirror::String::AllocFromModifiedUtf8(self, "Test");
+  ObjPtr<mirror::String> str = mirror::String::AllocFromModifiedUtf8(self, "Test");
   set_and_check_static(f->GetDexFieldIndex(), str, self, referrer, test);
 
   set_and_check_static(f->GetDexFieldIndex(), nullptr, self, referrer, test);
@@ -1557,27 +1563,33 @@ static void GetSetObjStatic(ArtField* f, Thread* self, ArtMethod* referrer,
 
 #if defined(__i386__) || defined(__arm__) || defined(__aarch64__) || defined(__mips__) || \
     (defined(__x86_64__) && !defined(__APPLE__))
-static void set_and_check_instance(ArtField* f, mirror::Object* trg,
-                                   mirror::Object* val, Thread* self, ArtMethod* referrer,
+static void set_and_check_instance(ArtField* f,
+                                   ObjPtr<mirror::Object> trg,
+                                   ObjPtr<mirror::Object> val,
+                                   Thread* self,
+                                   ArtMethod* referrer,
                                    StubTest* test)
     REQUIRES_SHARED(Locks::mutator_lock_) {
+  StackHandleScope<2u> hs(self);
+  Handle<mirror::Object> h_trg = hs.NewHandle(trg);
+  Handle<mirror::Object> h_val = hs.NewHandle(val);
   test->Invoke3WithReferrer(static_cast<size_t>(f->GetDexFieldIndex()),
-                            reinterpret_cast<size_t>(trg),
-                            reinterpret_cast<size_t>(val),
+                            reinterpret_cast<size_t>(h_trg.Get()),
+                            reinterpret_cast<size_t>(h_val.Get()),
                             StubTest::GetEntrypoint(self, kQuickSetObjInstance),
                             self,
                             referrer);
 
   size_t res = test->Invoke3WithReferrer(static_cast<size_t>(f->GetDexFieldIndex()),
-                                         reinterpret_cast<size_t>(trg),
+                                         reinterpret_cast<size_t>(h_trg.Get()),
                                          0U,
                                          StubTest::GetEntrypoint(self, kQuickGetObjInstance),
                                          self,
                                          referrer);
 
-  EXPECT_EQ(res, reinterpret_cast<size_t>(val)) << "Value " << val;
+  EXPECT_EQ(res, reinterpret_cast<size_t>(h_val.Get())) << "Value " << h_val.Get();
 
-  EXPECT_OBJ_PTR_EQ(val, f->GetObj(trg));
+  EXPECT_OBJ_PTR_EQ(h_val.Get(), f->GetObj(h_trg.Get()));
 }
 #endif
 
@@ -1589,7 +1601,7 @@ static void GetSetObjInstance(Handle<mirror::Object>* obj, ArtField* f,
   set_and_check_instance(f, obj->Get(), nullptr, self, referrer, test);
 
   // Allocate a string object for simplicity.
-  mirror::String* str = mirror::String::AllocFromModifiedUtf8(self, "Test");
+  ObjPtr<mirror::String> str = mirror::String::AllocFromModifiedUtf8(self, "Test");
   set_and_check_instance(f, obj->Get(), str, self, referrer, test);
 
   set_and_check_instance(f, obj->Get(), nullptr, self, referrer, test);

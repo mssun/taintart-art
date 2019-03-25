@@ -119,7 +119,9 @@ ObjPtr<String> String::DoReplace(Thread* self, Handle<String> src, uint16_t old_
   return string;
 }
 
-String* String::AllocFromStrings(Thread* self, Handle<String> string, Handle<String> string2) {
+ObjPtr<String> String::AllocFromStrings(Thread* self,
+                                        Handle<String> string,
+                                        Handle<String> string2) {
   int32_t length = string->GetLength();
   int32_t length2 = string2->GetLength();
   gc::AllocatorType allocator_type = Runtime::Current()->GetHeap()->GetCurrentAllocator();
@@ -153,10 +155,12 @@ String* String::AllocFromStrings(Thread* self, Handle<String> string, Handle<Str
       memcpy(new_value + length, string2->GetValue(), length2 * sizeof(uint16_t));
     }
   }
-  return new_string.Ptr();
+  return new_string;
 }
 
-String* String::AllocFromUtf16(Thread* self, int32_t utf16_length, const uint16_t* utf16_data_in) {
+ObjPtr<String> String::AllocFromUtf16(Thread* self,
+                                      int32_t utf16_length,
+                                      const uint16_t* utf16_data_in) {
   CHECK(utf16_data_in != nullptr || utf16_length == 0);
   gc::AllocatorType allocator_type = Runtime::Current()->GetHeap()->GetCurrentAllocator();
   const bool compressible = kUseStringCompression &&
@@ -175,26 +179,26 @@ String* String::AllocFromUtf16(Thread* self, int32_t utf16_length, const uint16_
     uint16_t* array = string->GetValue();
     memcpy(array, utf16_data_in, utf16_length * sizeof(uint16_t));
   }
-  return string.Ptr();
+  return string;
 }
 
-String* String::AllocFromModifiedUtf8(Thread* self, const char* utf) {
+ObjPtr<String> String::AllocFromModifiedUtf8(Thread* self, const char* utf) {
   DCHECK(utf != nullptr);
   size_t byte_count = strlen(utf);
   size_t char_count = CountModifiedUtf8Chars(utf, byte_count);
   return AllocFromModifiedUtf8(self, char_count, utf, byte_count);
 }
 
-String* String::AllocFromModifiedUtf8(Thread* self,
-                                      int32_t utf16_length,
-                                      const char* utf8_data_in) {
+ObjPtr<String> String::AllocFromModifiedUtf8(Thread* self,
+                                             int32_t utf16_length,
+                                             const char* utf8_data_in) {
   return AllocFromModifiedUtf8(self, utf16_length, utf8_data_in, strlen(utf8_data_in));
 }
 
-String* String::AllocFromModifiedUtf8(Thread* self,
-                                      int32_t utf16_length,
-                                      const char* utf8_data_in,
-                                      int32_t utf8_length) {
+ObjPtr<String> String::AllocFromModifiedUtf8(Thread* self,
+                                             int32_t utf16_length,
+                                             const char* utf8_data_in,
+                                             int32_t utf8_length) {
   gc::AllocatorType allocator_type = Runtime::Current()->GetHeap()->GetCurrentAllocator();
   const bool compressible = kUseStringCompression && (utf16_length == utf8_length);
   const int32_t utf16_length_with_flag = String::GetFlaggedCount(utf16_length, compressible);
@@ -209,7 +213,7 @@ String* String::AllocFromModifiedUtf8(Thread* self,
     uint16_t* utf16_data_out = string->GetValue();
     ConvertModifiedUtf8ToUtf16(utf16_data_out, utf16_length, utf8_data_in, utf8_length);
   }
-  return string.Ptr();
+  return string;
 }
 
 bool String::Equals(ObjPtr<String> that) {
@@ -319,7 +323,7 @@ int32_t String::CompareTo(ObjPtr<String> rhs) {
   return count_diff;
 }
 
-CharArray* String::ToCharArray(Thread* self) {
+ObjPtr<CharArray> String::ToCharArray(Thread* self) {
   StackHandleScope<1> hs(self);
   Handle<String> string(hs.NewHandle(this));
   ObjPtr<CharArray> result = CharArray::Alloc(self, GetLength());
@@ -335,7 +339,7 @@ CharArray* String::ToCharArray(Thread* self) {
   } else {
     self->AssertPendingOOMException();
   }
-  return result.Ptr();
+  return result;
 }
 
 void String::GetChars(int32_t start, int32_t end, Handle<CharArray> array, int32_t index) {

@@ -805,7 +805,7 @@ static bool DoVarHandleInvokeCommon(Thread* self,
 
   const uint32_t vRegC = is_var_args ? inst->VRegC_45cc() : inst->VRegC_4rcc();
   ObjPtr<mirror::Object> receiver(shadow_frame.GetVRegReference(vRegC));
-  Handle<mirror::VarHandle> var_handle(hs.NewHandle(down_cast<mirror::VarHandle*>(receiver.Ptr())));
+  Handle<mirror::VarHandle> var_handle(hs.NewHandle(ObjPtr<mirror::VarHandle>::DownCast(receiver)));
   if (is_var_args) {
     uint32_t args[Instruction::kMaxVarArgRegs];
     inst->GetVarArgs(args, inst_data);

@@ -340,10 +340,10 @@ class MANAGED Class final : public Object {
 
   template<VerifyObjectFlags kVerifyFlags = kDefaultVerifyFlags,
            ReadBarrierOption kReadBarrierOption = kWithReadBarrier>
-  String* GetName() REQUIRES_SHARED(Locks::mutator_lock_);  // Returns the cached name.
+  ObjPtr<String> GetName() REQUIRES_SHARED(Locks::mutator_lock_);  // Returns the cached name.
   void SetName(ObjPtr<String> name) REQUIRES_SHARED(Locks::mutator_lock_);  // Sets the cached name.
   // Computes the name, then sets the cached value.
-  static String* ComputeName(Handle<Class> h_this) REQUIRES_SHARED(Locks::mutator_lock_)
+  static ObjPtr<String> ComputeName(Handle<Class> h_this) REQUIRES_SHARED(Locks::mutator_lock_)
       REQUIRES(!Roles::uninterruptible_);
 
   template<VerifyObjectFlags kVerifyFlags = kDefaultVerifyFlags>

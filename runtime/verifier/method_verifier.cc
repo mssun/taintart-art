@@ -2724,7 +2724,7 @@ bool MethodVerifier::CodeFlowVerifyInstruction(uint32_t* start_guess) {
             : called_method->LookupResolvedReturnType();
         if (return_type_class != nullptr) {
           return_type = &FromClass(called_method->GetReturnTypeDescriptor(),
-                                   return_type_class.Ptr(),
+                                   return_type_class,
                                    return_type_class->CannotBeAssignedFromOtherTypes());
         } else {
           DCHECK(!can_load_classes_ || self_->IsExceptionPending());

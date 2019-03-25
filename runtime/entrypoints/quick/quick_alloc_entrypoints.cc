@@ -89,7 +89,7 @@ extern "C" mirror::String* artAllocStringObject##suffix##suffix2( \
     REQUIRES_SHARED(Locks::mutator_lock_) { \
   /* The klass arg is so it matches the ABI of the other object alloc callbacks. */ \
   DCHECK(klass->IsStringClass()) << klass->PrettyClass(); \
-  return mirror::String::AllocEmptyString<instrumented_bool>(self, allocator_type); \
+  return mirror::String::AllocEmptyString<instrumented_bool>(self, allocator_type).Ptr(); \
 } \
 extern "C" mirror::Array* artAllocArrayFromCodeResolved##suffix##suffix2( \
     mirror::Class* klass, int32_t component_count, Thread* self) \
@@ -105,24 +105,24 @@ extern "C" mirror::String* artAllocStringFromBytesFromCode##suffix##suffix2( \
   ScopedQuickEntrypointChecks sqec(self); \
   StackHandleScope<1> hs(self); \
   Handle<mirror::ByteArray> handle_array(hs.NewHandle(byte_array)); \
-  return mirror::String::AllocFromByteArray<instrumented_bool>(self, byte_count, handle_array, \
-                                                               offset, high, allocator_type); \
+  return mirror::String::AllocFromByteArray<instrumented_bool>( \
+      self, byte_count, handle_array, offset, high, allocator_type).Ptr(); \
 } \
 extern "C" mirror::String* artAllocStringFromCharsFromCode##suffix##suffix2( \
     int32_t offset, int32_t char_count, mirror::CharArray* char_array, Thread* self) \
     REQUIRES_SHARED(Locks::mutator_lock_) { \
   StackHandleScope<1> hs(self); \
   Handle<mirror::CharArray> handle_array(hs.NewHandle(char_array)); \
-  return mirror::String::AllocFromCharArray<instrumented_bool>(self, char_count, handle_array, \
-                                                               offset, allocator_type); \
+  return mirror::String::AllocFromCharArray<instrumented_bool>( \
+      self, char_count, handle_array, offset, allocator_type).Ptr(); \
 } \
 extern "C" mirror::String* artAllocStringFromStringFromCode##suffix##suffix2( /* NOLINT */ \
     mirror::String* string, Thread* self) \
     REQUIRES_SHARED(Locks::mutator_lock_) { \
   StackHandleScope<1> hs(self); \
   Handle<mirror::String> handle_string(hs.NewHandle(string)); \
-  return mirror::String::AllocFromString<instrumented_bool>(self, handle_string->GetLength(), \
-                                                            handle_string, 0, allocator_type); \
+  return mirror::String::AllocFromString<instrumented_bool>( \
+    self, handle_string->GetLength(), handle_string, 0, allocator_type).Ptr(); \
 }
 
 #define GENERATE_ENTRYPOINTS_FOR_ALLOCATOR(suffix, allocator_type) \
