@@ -432,10 +432,6 @@ Runtime::~Runtime() {
     thread_list_->ShutDown();
   }
 
-  // We can only unload boot classpath native libraries once all threads are terminated
-  // or suspended.
-  java_vm_->UnloadBootNativeLibraries();
-
   // TODO Maybe do some locking.
   for (auto& agent : agents_) {
     agent->Unload();

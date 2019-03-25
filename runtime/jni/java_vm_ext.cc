@@ -224,15 +224,15 @@ class Libraries {
     STLDeleteValues(&libraries_);
   }
 
-  void UnloadBootNativeLibraries(JavaVM* vm) {
+  // NO_THREAD_SAFETY_ANALYSIS as this is during runtime shutdown, and we have
+  // no thread to lock this with.
+  void UnloadBootNativeLibraries(JavaVM* vm) const NO_THREAD_SAFETY_ANALYSIS {
+    CHECK(Thread::Current() == nullptr);
     std::vector<SharedLibrary*> unload_libraries;
-    {
-      MutexLock mu(Thread::Current(), *Locks::jni_libraries_lock_);
-      for (auto it = libraries_.begin(); it != libraries_.end(); ++it) {
-        SharedLibrary* const library = it->second;
-        if (library->GetClassLoader() == nullptr) {
-          unload_libraries.push_back(library);
-        }
+    for (auto it = libraries_.begin(); it != libraries_.end(); ++it) {
+      SharedLibrary* const library = it->second;
+      if (library->GetClassLoader() == nullptr) {
+        unload_libraries.push_back(library);
       }
     }
     UnloadLibraries(vm, unload_libraries);
@@ -508,6 +508,7 @@ JavaVMExt::JavaVMExt(Runtime* runtime,
 }
 
 JavaVMExt::~JavaVMExt() {
+  UnloadBootNativeLibraries();
 }
 
 // Checking "globals" and "weak_globals" usually requires locks, but we
