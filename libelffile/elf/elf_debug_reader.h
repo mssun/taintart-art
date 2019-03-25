@@ -19,7 +19,7 @@
 
 #include "base/array_ref.h"
 #include "dwarf/headers.h"
-#include "elf/elf.h"
+#include "elf/elf_utils.h"
 #include "xz_utils.h"
 
 #include <map>
@@ -61,7 +61,10 @@ class ElfDebugReader {
 
   explicit ElfDebugReader(ArrayRef<const uint8_t> file) : file_(file) {
     header_ = Read<Elf_Ehdr>(/*offset=*/ 0);
-    CHECK(header_->checkMagic());
+    CHECK_EQ(header_->e_ident[0], ELFMAG0);
+    CHECK_EQ(header_->e_ident[1], ELFMAG1);
+    CHECK_EQ(header_->e_ident[2], ELFMAG2);
+    CHECK_EQ(header_->e_ident[3], ELFMAG3);
     CHECK_EQ(header_->e_ehsize, sizeof(Elf_Ehdr));
     CHECK_EQ(header_->e_shentsize, sizeof(Elf_Shdr));
 
@@ -100,7 +103,7 @@ class ElfDebugReader {
       CHECK_EQ(symtab->sh_entsize, sizeof(Elf_Sym));
       size_t count = symtab->sh_size / sizeof(Elf_Sym);
       for (const Elf_Sym& symbol : Read<Elf_Sym>(symtab->sh_offset, count)) {
-        if (symbol.getType() == STT_FUNC && &sections_[symbol.st_shndx] == text) {
+        if (ELF_ST_TYPE(symbol.st_info) == STT_FUNC && &sections_[symbol.st_shndx] == text) {
           visit_sym(symbol, Read<char>(strtab->sh_offset + symbol.st_name));
         }
       }

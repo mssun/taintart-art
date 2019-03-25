@@ -26,7 +26,7 @@
 #include "base/casts.h"
 #include "base/leb128.h"
 #include "base/unix_file/fd_file.h"
-#include "elf/elf.h"
+#include "elf/elf_utils.h"
 #include "stream/error_delaying_output_stream.h"
 
 namespace art {
@@ -372,8 +372,8 @@ class ElfBuilder final {
       sym.st_shndx = section->GetSectionIndex();
 
       // The sh_info file must be set to index one-past the last local symbol.
-      if (sym.getBinding() == STB_LOCAL) {
-        DCHECK_EQ(syms_.back().getBinding(), STB_LOCAL);
+      if (ELF_ST_BIND(sym.st_info) == STB_LOCAL) {
+        DCHECK_EQ(ELF_ST_BIND(syms_.back().st_info), STB_LOCAL);
         this->header_.sh_info = syms_.size() + 1;
       }
 
@@ -741,13 +741,13 @@ class ElfBuilder final {
     hash_.AllocateVirtualMemory(hash_.GetCacheSize());
 
     Elf_Dyn dyns[] = {
-      { DT_HASH, { hash_.GetAddress() } },
-      { DT_STRTAB, { dynstr_.GetAddress() } },
-      { DT_SYMTAB, { dynsym_.GetAddress() } },
-      { DT_SYMENT, { sizeof(Elf_Sym) } },
-      { DT_STRSZ, { dynstr_.GetCacheSize() } },
-      { DT_SONAME, { soname_offset } },
-      { DT_NULL, { 0 } },
+      { .d_tag = DT_HASH, .d_un.d_ptr = hash_.GetAddress() },
+      { .d_tag = DT_STRTAB, .d_un.d_ptr = dynstr_.GetAddress() },
+      { .d_tag = DT_SYMTAB, .d_un.d_ptr = dynsym_.GetAddress() },
+      { .d_tag = DT_SYMENT, .d_un.d_ptr = sizeof(Elf_Sym) },
+      { .d_tag = DT_STRSZ, .d_un.d_ptr = dynstr_.GetCacheSize() },
+      { .d_tag = DT_SONAME, .d_un.d_ptr = soname_offset },
+      { .d_tag = DT_NULL, .d_un.d_ptr = 0 },
     };
     dynamic_.Add(&dyns, sizeof(dyns));
     dynamic_.AllocateVirtualMemory(dynamic_.GetCacheSize());
