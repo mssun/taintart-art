@@ -548,6 +548,13 @@ class WatchDog {
     CHECK_WATCH_DOG_PTHREAD_CALL(pthread_mutex_destroy, (&mutex_), reason);
   }
 
+  static void SetRuntime(Runtime* runtime) {
+    const char* reason = "dex2oat watch dog set runtime";
+    CHECK_WATCH_DOG_PTHREAD_CALL(pthread_mutex_lock, (&runtime_mutex_), reason);
+    runtime_ = runtime;
+    CHECK_WATCH_DOG_PTHREAD_CALL(pthread_mutex_unlock, (&runtime_mutex_), reason);
+  }
+
   // TODO: tune the multiplier for GC verification, the following is just to make the timeout
   //       large.
   static constexpr int64_t kWatchdogVerifyMultiplier =
@@ -583,12 +590,13 @@ class WatchDog {
     // If we're on the host, try to dump all threads to get a sense of what's going on. This is
     // restricted to the host as the dump may itself go bad.
     // TODO: Use a double watchdog timeout, so we can enable this on-device.
-    if (!kIsTargetBuild && Runtime::Current() != nullptr) {
-      Runtime::Current()->AttachCurrentThread("Watchdog thread attached for dumping",
-                                              true,
-                                              nullptr,
-                                              false);
-      Runtime::Current()->DumpForSigQuit(std::cerr);
+    Runtime* runtime = GetRuntime();
+    if (!kIsTargetBuild && runtime != nullptr) {
+      runtime->AttachCurrentThread("Watchdog thread attached for dumping",
+                                   true,
+                                   nullptr,
+                                   false);
+      runtime->DumpForSigQuit(std::cerr);
     }
     exit(1);
   }
@@ -617,6 +625,17 @@ class WatchDog {
     CHECK_WATCH_DOG_PTHREAD_CALL(pthread_mutex_unlock, (&mutex_), reason);
   }
 
+  static Runtime* GetRuntime() {
+    const char* reason = "dex2oat watch dog get runtime";
+    CHECK_WATCH_DOG_PTHREAD_CALL(pthread_mutex_lock, (&runtime_mutex_), reason);
+    Runtime* runtime = runtime_;
+    CHECK_WATCH_DOG_PTHREAD_CALL(pthread_mutex_unlock, (&runtime_mutex_), reason);
+    return runtime;
+  }
+
+  static pthread_mutex_t runtime_mutex_;
+  static Runtime* runtime_;
+
   // TODO: Switch to Mutex when we can guarantee it won't prevent shutdown in error cases.
   pthread_mutex_t mutex_;
   pthread_cond_t cond_;
@@ -626,6 +645,9 @@ class WatchDog {
   const int64_t timeout_in_milliseconds_;
   bool shutting_down_;
 };
+
+pthread_mutex_t WatchDog::runtime_mutex_ = PTHREAD_MUTEX_INITIALIZER;
+Runtime* WatchDog::runtime_ = nullptr;
 
 class Dex2Oat final {
  public:
@@ -2545,6 +2567,8 @@ class Dex2Oat final {
     // Runtime::Create acquired the mutator_lock_ that is normally given away when we
     // Runtime::Start, give it away now so that we don't starve GC.
     self->TransitionFromRunnableToSuspended(kNative);
+
+    WatchDog::SetRuntime(runtime_.get());
 
     return true;
   }
