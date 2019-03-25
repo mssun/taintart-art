@@ -370,19 +370,24 @@ class ElfBuilder final {
       DCHECK_LE(section->GetAddress(), sym.st_value);
       DCHECK_LE(sym.st_value, section->GetAddress() + section->header_.sh_size);
       sym.st_shndx = section->GetSectionIndex();
-
-      // The sh_info file must be set to index one-past the last local symbol.
-      if (ELF_ST_BIND(sym.st_info) == STB_LOCAL) {
-        DCHECK_EQ(ELF_ST_BIND(syms_.back().st_info), STB_LOCAL);
-        this->header_.sh_info = syms_.size() + 1;
-      }
-
       syms_.push_back(sym);
     }
 
     Elf_Word GetCacheSize() { return syms_.size() * sizeof(Elf_Sym); }
 
     void WriteCachedSection() {
+      auto is_local = [](const Elf_Sym& sym) { return ELF_ST_BIND(sym.st_info) == STB_LOCAL; };
+      auto less_then = [is_local](const Elf_Sym& a, const Elf_Sym b) {
+        auto tuple_a = std::make_tuple(!is_local(a), a.st_value, a.st_name);
+        auto tuple_b = std::make_tuple(!is_local(b), b.st_value, b.st_name);
+        return tuple_a < tuple_b;  // Locals first, then sort by address and name offset.
+      };
+      if (!std::is_sorted(syms_.begin(), syms_.end(), less_then)) {
+        std::sort(syms_.begin(), syms_.end(), less_then);
+      }
+      auto locals_end = std::partition_point(syms_.begin(), syms_.end(), is_local);
+      this->header_.sh_info = locals_end - syms_.begin();  // Required by the spec.
+
       this->Start();
       for (; !syms_.empty(); syms_.pop_front()) {
         this->WriteFully(&syms_.front(), sizeof(Elf_Sym));
