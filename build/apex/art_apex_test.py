@@ -184,10 +184,11 @@ class Checker:
   def __init__(self, provider):
     self._provider = provider
     self._errors = 0
+    self._expected_file_paths = set()
 
   def fail(self, msg, *fail_args):
     self._errors += 1
-    logging.error(msg, fail_args)
+    logging.error(msg, *fail_args)
 
   def error_count(self):
     return self._errors
@@ -195,34 +196,30 @@ class Checker:
   def reset_errors(self):
     self._errors = 0
 
-  def is_file(self, file):
-    fs_object = self._provider.get(file)
+  def is_file(self, path):
+    fs_object = self._provider.get(path)
     if fs_object is None:
       return False, 'Could not find %s'
     if fs_object.is_dir:
       return False, '%s is a directory'
     return True, ''
 
-  def check_file(self, file):
-    chk = self.is_file(file)
-    if not chk[0]:
-      self.fail(chk[1], file)
-    return chk[0]
+  def check_file(self, path):
+    ok, msg = self.is_file(path)
+    if not ok:
+      self.fail(msg, path)
+    self._expected_file_paths.add(path)
+    return ok
 
-  def check_no_file(self, file):
-    chk = self.is_file(file)
-    if chk[0]:
-      self.fail('File %s does exist', file)
-
-  def check_binary(self, file):
-    path = 'bin/%s' % file
+  def check_binary(self, filename):
+    path = 'bin/%s' % filename
     if not self.check_file(path):
       return
     if not self._provider.get(path).is_exec:
       self.fail('%s is not executable', path)
 
-  def check_binary_symlink(self, file):
-    path = 'bin/%s' % file
+  def check_binary_symlink(self, filename):
+    path = 'bin/%s' % filename
     fs_object = self._provider.get(path)
     if fs_object is None:
       self.fail('Could not find %s', path)
@@ -232,93 +229,120 @@ class Checker:
       return
     if not fs_object.is_symlink:
       self.fail('%s is not a symlink', path)
+    self._expected_file_paths.add(path)
 
-  def check_single_library(self, file):
-    res1 = self.is_file('lib/%s' % file)
-    res2 = self.is_file('lib64/%s' % file)
-    if not res1[0] and not res2[0]:
-      self.fail('Library missing: %s', file)
+  def check_single_library(self, filename):
+    lib_path = 'lib/%s' % filename
+    lib64_path = 'lib64/%s' % filename
+    lib_is_file, _ = self.is_file(lib_path)
+    if lib_is_file:
+      self._expected_file_paths.add(lib_path)
+    lib64_is_file, _ = self.is_file(lib64_path)
+    if lib64_is_file:
+      self._expected_file_paths.add(lib64_path)
+    if not lib_is_file and not lib64_is_file:
+      self.fail('Library missing: %s', filename)
 
-  def check_no_library(self, file):
-    res1 = self.is_file('lib/%s' % file)
-    res2 = self.is_file('lib64/%s' % file)
-    if res1[0] or res2[0]:
-      self.fail('Library exists: %s', file)
+  def check_java_library(self, filename):
+    return self.check_file('javalib/%s' % filename)
 
-  def check_java_library(self, file):
-    return self.check_file('javalib/%s' % file)
+  def ignore_superfluous_path(self, path):
+    self._expected_file_paths.add(path)
+
+  def check_no_superfluous_files(self, dir_path):
+    dir_path += '/'
+    expected_filenames = set(['.', '..'])
+    for path in self._expected_file_paths:
+      if path.startswith(dir_path):
+        subpath = path[len(dir_path):]
+        subpath_first_segment, _, _ = subpath.partition('/')
+        expected_filenames.add(subpath_first_segment)
+    for name in sorted(self._provider.read_dir(dir_path).keys()):
+      if name not in expected_filenames:
+        self.fail('Unexpected file \'%s%s\'', dir_path, name)
 
   # Just here for docs purposes, even if it isn't good Python style.
 
-  def check_library(self, file):
+  def check_multilib_binary(self, filename):
     raise NotImplementedError
 
-  def check_first_library(self, file):
+  def check_prefer32_binary(self, filename):
     raise NotImplementedError
 
-  def check_multilib_binary(self, file):
+  def check_both_bitness_binary(self, filename):
     raise NotImplementedError
 
-  def check_prefer32_binary(self, file):
+  def check_library(self, filename):
+    raise NotImplementedError
+
+  def check_first_library(self, filename):
     raise NotImplementedError
 
 
 class Arch32Checker(Checker):
-  def check_multilib_binary(self, file):
-    self.check_binary('%s32' % file)
-    self.check_no_file('bin/%s64' % file)
-    self.check_binary_symlink(file)
+  def check_multilib_binary(self, filename):
+    self.check_binary('%s32' % filename)
+    self.check_binary_symlink(filename)
 
-  def check_library(self, file):
+  def check_prefer32_binary(self, filename):
+    self.check_binary('%s32' % filename)
+    self.check_binary_symlink(filename)
+
+  def check_both_bitness_binary(self, filename):
+    self.check_binary(filename)
+
+  def check_library(self, filename):
     # TODO: Use $TARGET_ARCH (e.g. check whether it is "arm" or "arm64") to improve
     # the precision of this test?
-    self.check_file('lib/%s' % file)
-    self.check_no_file('lib64/%s' % file)
+    self.check_file('lib/%s' % filename)
 
-  def check_first_library(self, file):
-    self.check_library(file)
-
-  def check_prefer32_binary(self, file):
-    self.check_binary('%s32' % file)
+  def check_first_library(self, filename):
+    self.check_library(filename)
 
 
 class Arch64Checker(Checker):
-  def check_multilib_binary(self, file):
-    self.check_no_file('bin/%s32' % file)
-    self.check_binary('%s64' % file)
-    self.check_binary_symlink(file)
+  def check_multilib_binary(self, filename):
+    self.check_binary('%s64' % filename)
+    self.check_binary_symlink(filename)
 
-  def check_library(self, file):
+  def check_prefer32_binary(self, filename):
+    self.check_binary('%s64' % filename)
+    self.check_binary_symlink(filename)
+
+  def check_both_bitness_binary(self, filename):
+    self.check_binary('%s64' % filename)
+
+  def check_library(self, filename):
     # TODO: Use $TARGET_ARCH (e.g. check whether it is "arm" or "arm64") to improve
     # the precision of this test?
-    self.check_no_file('lib/%s' % file)
-    self.check_file('lib64/%s' % file)
+    self.check_file('lib64/%s' % filename)
 
-  def check_first_library(self, file):
-    self.check_library(file)
-
-  def check_prefer32_binary(self, file):
-    self.check_binary('%s64' % file)
+  def check_first_library(self, filename):
+    self.check_library(filename)
 
 
 class MultilibChecker(Checker):
-  def check_multilib_binary(self, file):
-    self.check_binary('%s32' % file)
-    self.check_binary('%s64' % file)
-    self.check_binary_symlink(file)
+  def check_multilib_binary(self, filename):
+    self.check_binary('%s32' % filename)
+    self.check_binary('%s64' % filename)
+    self.check_binary_symlink(filename)
 
-  def check_library(self, file):
+  def check_prefer32_binary(self, filename):
+    self.check_binary('%s32' % filename)
+    self.check_binary_symlink(filename)
+
+  def check_both_bitness_binary(self, filename):
+    self.check_binary('%s64' % filename)
+    self.check_binary(filename)
+
+  def check_library(self, filename):
     # TODO: Use $TARGET_ARCH (e.g. check whether it is "arm" or "arm64") to improve
     # the precision of this test?
-    self.check_file('lib/%s' % file)
-    self.check_file('lib64/%s' % file)
+    self.check_file('lib/%s' % filename)
+    self.check_file('lib64/%s' % filename)
 
-  def check_first_library(self, file):
-    self.check_no_file('lib/%s' % file)
-    self.check_file('lib64/%s' % file)
-
-  def check_prefer32_binary(self, file):
-    self.check_binary('%s32' % file)
+  def check_first_library(self, filename):
+    self.check_file('lib64/%s' % filename)
 
 
 class ReleaseChecker:
@@ -348,7 +372,6 @@ class ReleaseChecker:
     self._checker.check_library('libart.so')
     self._checker.check_library('libartbase.so')
     self._checker.check_library('libartpalette.so')
-    self._checker.check_no_library('libartpalette-system.so')
     self._checker.check_library('libdexfile.so')
     self._checker.check_library('libdexfile_external.so')
     self._checker.check_library('libnativebridge.so')
@@ -369,19 +392,28 @@ class ReleaseChecker:
     self._checker.check_library('libjdwp.so')
     self._checker.check_library('libnpt.so')
 
-    # TODO: Should we check for other libraries, such as:
+    # Check internal native library dependencies.
     #
-    #   libbacktrace.so
-    #   libbase.so
-    #   liblog.so
-    #   libsigchain.so
-    #   libtombstoned_client.so
-    #   libunwindstack.so
-    #   libvixl.so
-    #   libvixld.so
-    #   ...
-    #
-    # ?
+    # Any internal dependency not listed here will cause a failure in
+    # NoSuperfluousLibrariesChecker. Internal dependencies are generally just
+    # implementation details, but in the release package we want to track them
+    # because a) they add to the package size and the RAM usage (in particular
+    # if the library is also present in /system or another APEX and hence might
+    # get loaded twice through linker namespace separation), and b) we need to
+    # catch invalid dependencies on /system or other APEXes that should go
+    # through an exported library with stubs (b/128708192 tracks implementing a
+    # better approach for that).
+    self._checker.check_library('libbacktrace.so')
+    self._checker.check_library('libbase.so')
+    self._checker.check_library('libc++.so')
+    self._checker.check_library('libdexfile_support.so')
+    self._checker.check_library('liblzma.so')
+    self._checker.check_library('libsigchain.so')
+    self._checker.check_library('libunwindstack.so')
+    self._checker.check_library('libvixl.so')
+
+    # TODO(b/124293228): Figure out why we get this.
+    self._checker.check_library('libcutils.so')
 
     self._checker.check_java_library('core-oj.jar')
     self._checker.check_java_library('core-libart.jar')
@@ -407,6 +439,22 @@ class ReleaseTargetChecker:
     self._checker.check_binary('oatdump')
     self._checker.check_first_library('libart-disassembler.so')
 
+    # Check the APEX package scripts.
+    self._checker.check_binary('art_postinstall_hook')
+    self._checker.check_binary('art_preinstall_hook')
+    self._checker.check_binary('art_preinstall_hook_boot')
+    self._checker.check_binary('art_preinstall_hook_system_server')
+    self._checker.check_binary('art_prepostinstall_utils')
+
+    # Check Bionic binaries.
+    self._checker.check_both_bitness_binary('linker')
+    self._checker.check_both_bitness_binary('linker_asan')
+
+    # Check Bionic libraries.
+    self._checker.check_library('bionic/libc.so')
+    self._checker.check_library('bionic/libdl.so')
+    self._checker.check_library('bionic/libm.so')
+
     # Check that the mounted image contains Android Core libraries.
     self._checker.check_library('libandroidicu.so')
     self._checker.check_library('libexpat.so')
@@ -414,6 +462,22 @@ class ReleaseTargetChecker:
     self._checker.check_library('libicuuc.so')
     self._checker.check_library('libpac.so')
     self._checker.check_library('libz.so')
+
+    # Check internal native library dependencies.
+    self._checker.check_library('libcrypto.so')
+    self._checker.check_library('libtombstoned_client.so')
+
+    # TODO(b/124293228): Figure out why we get these.
+    self._checker.check_first_library('libjsoncpp.so')
+    self._checker.check_first_library('libmeminfo.so')
+    self._checker.check_first_library('libprocessgroup.so')
+    self._checker.check_first_library('libprocinfo.so')
+    self._checker.check_first_library('libutils.so')
+
+    # TODO(b/124293228): Cuttlefish puts ARM libs in a lib/arm subdirectory.
+    # Check that properly on that arch, but for now just ignore the directory.
+    self._checker.ignore_superfluous_path('lib/arm')
+    self._checker.ignore_superfluous_path('lib/arm64')
 
 
 class ReleaseHostChecker:
@@ -446,7 +510,7 @@ class DebugChecker:
     self._checker.check_binary('dexlist')
 
     # Check that the mounted image contains ART debug binaries.
-    self._checker.check_binary('dex2oatd')
+    self._checker.check_prefer32_binary('dex2oatd')
     self._checker.check_binary('dexoptanalyzerd')
     self._checker.check_binary('profmand')
 
@@ -478,6 +542,46 @@ class DebugTargetChecker:
     self._checker.check_binary('oatdumpd')
     self._checker.check_first_library('libart-disassembler.so')
     self._checker.check_first_library('libartd-disassembler.so')
+
+    # Check internal native library dependencies.
+    #
+    # Like in the release package, we check that we don't get other dependencies
+    # besides those listed here. In this case the concern is not bloat, but
+    # rather that we don't get behavioural differences between user (release)
+    # and userdebug/eng builds, which could happen if the debug package has
+    # duplicate library instances where releases don't. In other words, it's
+    # uncontroversial to add debug-only dependencies, as long as they don't make
+    # assumptions on having a single global state (ideally they should have
+    # double_loadable:true, cf. go/double_loadable). Also, like in the release
+    # package we need to look out for dependencies that should go through
+    # exported library stubs (until b/128708192 is fixed).
+    self._checker.check_library('libvixld.so')
+
+
+class NoSuperfluousBinariesChecker:
+  def __init__(self, checker):
+    self._checker = checker
+
+  def __str__(self):
+    return 'No superfluous binaries checker'
+
+  def run(self):
+    self._checker.check_no_superfluous_files('bin')
+
+
+class NoSuperfluousLibrariesChecker:
+  def __init__(self, checker):
+    self._checker = checker
+
+  def __str__(self):
+    return 'No superfluous libraries checker'
+
+  def run(self):
+    self._checker.check_no_superfluous_files('javalib')
+    self._checker.check_no_superfluous_files('lib')
+    self._checker.check_no_superfluous_files('lib/bionic')
+    self._checker.check_no_superfluous_files('lib64')
+    self._checker.check_no_superfluous_files('lib64/bionic')
 
 
 class List:
@@ -615,6 +719,13 @@ def art_apex_test_main(test_args):
     checkers.append(DebugChecker(base_checker))
   if test_args.debug and not test_args.host:
     checkers.append(DebugTargetChecker(base_checker))
+
+  # These checkers must be last.
+  checkers.append(NoSuperfluousBinariesChecker(base_checker))
+  if not test_args.host:
+    # We only care about superfluous libraries on target, where their absence
+    # can be vital to ensure they get picked up from the right package.
+    checkers.append(NoSuperfluousLibrariesChecker(base_checker))
 
   failed = False
   for checker in checkers:
