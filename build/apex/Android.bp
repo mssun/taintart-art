@@ -12,6 +12,16 @@ art_runtime_base_binaries_prefer32 = [
     "profman",
 ]
 // - Base requirements (libraries).
+//
+// Note: ART on-device chroot-based testing and benchmarking is not yet using
+// the Runtime APEX, meaning that copies of some of these libraries have to be
+// installed in `/system` for the ART Buildbot set-up to work properly. This is
+// done by the `standalone-apex-files` Make phony target, used by the ART
+// Buildbot and Golem (see `art/Android.mk`). If you add libraries to this list,
+// you may have to also add them to `PRIVATE_RUNTIME_DEPENDENCY_LIBS` in
+// `art/Android.mk`.
+// TODO(b/121117762): Remove this note when both the ART Buildbot and Golem use
+// the Runtime APEX.
 art_runtime_base_native_shared_libs = [
     "libadbconnection",
     "libart",
@@ -116,6 +126,16 @@ libcore_java_libs = [
 ]
 
 // Native libraries that support the core Java libraries.
+//
+// Note: ART on-device chroot-based testing and benchmarking is not yet using
+// the Runtime APEX, meaning that copies of some of these libraries have to be
+// installed in `/system` for the ART Buildbot set-up to work properly. This is
+// done by the `standalone-apex-files` Make phony target, used by the ART
+// Buildbot and Golem (see `art/Android.mk`). If you add libraries to this list,
+// you may have to also add them to `PRIVATE_RUNTIME_DEPENDENCY_LIBS` in
+// `art/Android.mk`.
+// TODO(b/121117762): Remove this note when both the ART Buildbot and Golem use
+// the Runtime APEX.
 libcore_native_shared_libs = [
     "libandroidicu",
     "libandroidio",
