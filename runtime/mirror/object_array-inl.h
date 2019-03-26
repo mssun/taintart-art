@@ -27,6 +27,7 @@
 #include "class.h"
 #include "obj_ptr-inl.h"
 #include "object-inl.h"
+#include "read_barrier-inl.h"
 #include "runtime.h"
 #include "thread-current-inl.h"
 #include "write_barrier-inl.h"

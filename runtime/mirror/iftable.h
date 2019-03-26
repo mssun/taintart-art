@@ -27,37 +27,22 @@ class MANAGED IfTable final : public ObjectArray<Object> {
  public:
   template<VerifyObjectFlags kVerifyFlags = kDefaultVerifyFlags,
            ReadBarrierOption kReadBarrierOption = kWithReadBarrier>
-  ALWAYS_INLINE Class* GetInterface(int32_t i) REQUIRES_SHARED(Locks::mutator_lock_) {
-    Class* interface =
-        GetWithoutChecks<kVerifyFlags, kReadBarrierOption>((i * kMax) + kInterface)->AsClass();
-    DCHECK(interface != nullptr);
-    return interface;
-  }
+  ALWAYS_INLINE ObjPtr<Class> GetInterface(int32_t i) REQUIRES_SHARED(Locks::mutator_lock_);
 
   ALWAYS_INLINE void SetInterface(int32_t i, ObjPtr<Class> interface)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
   template<VerifyObjectFlags kVerifyFlags = kDefaultVerifyFlags,
            ReadBarrierOption kReadBarrierOption = kWithReadBarrier>
-  PointerArray* GetMethodArrayOrNull(int32_t i) REQUIRES_SHARED(Locks::mutator_lock_) {
-    return down_cast<PointerArray*>(
-        Get<kVerifyFlags, kReadBarrierOption>((i * kMax) + kMethodArray));
-  }
+  ObjPtr<PointerArray> GetMethodArrayOrNull(int32_t i) REQUIRES_SHARED(Locks::mutator_lock_);
 
   template<VerifyObjectFlags kVerifyFlags = kDefaultVerifyFlags,
            ReadBarrierOption kReadBarrierOption = kWithReadBarrier>
-  PointerArray* GetMethodArray(int32_t i) REQUIRES_SHARED(Locks::mutator_lock_) {
-    PointerArray* method_array = GetMethodArrayOrNull<kVerifyFlags, kReadBarrierOption>(i);
-    DCHECK(method_array != nullptr);
-    return method_array;
-  }
+  ObjPtr<PointerArray> GetMethodArray(int32_t i) REQUIRES_SHARED(Locks::mutator_lock_);
 
   template<VerifyObjectFlags kVerifyFlags = kDefaultVerifyFlags,
            ReadBarrierOption kReadBarrierOption = kWithReadBarrier>
-  size_t GetMethodArrayCount(int32_t i) REQUIRES_SHARED(Locks::mutator_lock_) {
-    PointerArray* method_array = GetMethodArrayOrNull<kVerifyFlags, kReadBarrierOption>(i);
-    return method_array == nullptr ? 0u : method_array->GetLength<kVerifyFlags>();
-  }
+  size_t GetMethodArrayCount(int32_t i) REQUIRES_SHARED(Locks::mutator_lock_);
 
   void SetMethodArray(int32_t i, ObjPtr<PointerArray> arr) REQUIRES_SHARED(Locks::mutator_lock_);
 

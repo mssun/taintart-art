@@ -608,10 +608,10 @@ void ClassHierarchyAnalysis::UpdateAfterLoadingOf(Handle<mirror::Class> klass) {
     ObjPtr<mirror::IfTable> iftable = klass->GetIfTable();
     const size_t ifcount = klass->GetIfTableCount();
     for (size_t i = 0; i < ifcount; ++i) {
-      mirror::Class* interface = iftable->GetInterface(i);
+      ObjPtr<mirror::Class> interface = iftable->GetInterface(i);
       for (size_t j = 0, count = iftable->GetMethodArrayCount(i); j < count; ++j) {
         ArtMethod* interface_method = interface->GetVirtualMethod(j, image_pointer_size);
-        mirror::PointerArray* method_array = iftable->GetMethodArray(i);
+        ObjPtr<mirror::PointerArray> method_array = iftable->GetMethodArray(i);
         ArtMethod* implementation_method =
             method_array->GetElementPtrSize<ArtMethod*>(j, image_pointer_size);
         DCHECK(implementation_method != nullptr) << klass->PrettyClass();

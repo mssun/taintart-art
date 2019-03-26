@@ -19,9 +19,19 @@
 
 #include "iftable.h"
 #include "obj_ptr-inl.h"
+#include "object_array-inl.h"
 
 namespace art {
 namespace mirror {
+
+template<VerifyObjectFlags kVerifyFlags,
+         ReadBarrierOption kReadBarrierOption>
+inline ObjPtr<Class> IfTable::GetInterface(int32_t i) {
+  Class* interface =
+      GetWithoutChecks<kVerifyFlags, kReadBarrierOption>((i * kMax) + kInterface)->AsClass();
+  DCHECK(interface != nullptr);
+  return interface;
+}
 
 inline void IfTable::SetInterface(int32_t i, ObjPtr<Class> interface) {
   DCHECK(interface != nullptr);
@@ -29,6 +39,28 @@ inline void IfTable::SetInterface(int32_t i, ObjPtr<Class> interface) {
   const size_t idx = i * kMax + kInterface;
   DCHECK_EQ(Get(idx), static_cast<Object*>(nullptr));
   SetWithoutChecks<false>(idx, interface);
+}
+
+template<VerifyObjectFlags kVerifyFlags,
+         ReadBarrierOption kReadBarrierOption>
+inline ObjPtr<PointerArray> IfTable::GetMethodArrayOrNull(int32_t i) {
+  return down_cast<PointerArray*>(
+      Get<kVerifyFlags, kReadBarrierOption>((i * kMax) + kMethodArray));
+}
+
+template<VerifyObjectFlags kVerifyFlags,
+         ReadBarrierOption kReadBarrierOption>
+inline ObjPtr<PointerArray> IfTable::GetMethodArray(int32_t i) {
+  ObjPtr<PointerArray> method_array = GetMethodArrayOrNull<kVerifyFlags, kReadBarrierOption>(i);
+  DCHECK(method_array != nullptr);
+  return method_array;
+}
+
+template<VerifyObjectFlags kVerifyFlags,
+         ReadBarrierOption kReadBarrierOption>
+inline size_t IfTable::GetMethodArrayCount(int32_t i) {
+  ObjPtr<PointerArray> method_array = GetMethodArrayOrNull<kVerifyFlags, kReadBarrierOption>(i);
+  return method_array == nullptr ? 0u : method_array->GetLength<kVerifyFlags>();
 }
 
 inline void IfTable::SetMethodArray(int32_t i, ObjPtr<PointerArray> arr) {
