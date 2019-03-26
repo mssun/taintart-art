@@ -46,7 +46,7 @@ inline T* ObjectArray<T>::Get(int32_t i) {
 template<class T> template<VerifyObjectFlags kVerifyFlags>
 inline bool ObjectArray<T>::CheckAssignable(ObjPtr<T> object) {
   if (object != nullptr) {
-    Class* element_class = GetClass<kVerifyFlags>()->GetComponentType();
+    ObjPtr<Class> element_class = GetClass<kVerifyFlags>()->GetComponentType();
     if (UNLIKELY(!object->InstanceOf(element_class))) {
       ThrowArrayStoreException(object);
       return false;
@@ -236,10 +236,10 @@ inline void ObjectArray<T>::AssignableCheckingMemcpy(int32_t dst_pos,
       << "This case should be handled with memmove that handles overlaps correctly";
   // We want to avoid redundant IsAssignableFrom checks where possible, so we cache a class that
   // we know is assignable to the destination array's component type.
-  Class* dst_class = GetClass()->GetComponentType();
-  Class* lastAssignableElementClass = dst_class;
+  ObjPtr<Class> dst_class = GetClass()->GetComponentType();
+  ObjPtr<Class> lastAssignableElementClass = dst_class;
 
-  T* o = nullptr;
+  ObjPtr<T> o = nullptr;
   int i = 0;
   bool baker_non_gray_case = false;
   if (kUseReadBarrier && kUseBakerReadBarrier) {
@@ -259,7 +259,7 @@ inline void ObjectArray<T>::AssignableCheckingMemcpy(int32_t dst_pos,
           SetWithoutChecks<kTransactionActive>(dst_pos + i, nullptr);
         } else {
           // TODO: use the underlying class reference to avoid uncompression when not necessary.
-          Class* o_class = o->GetClass();
+          ObjPtr<Class> o_class = o->GetClass();
           if (LIKELY(lastAssignableElementClass == o_class)) {
             SetWithoutChecks<kTransactionActive>(dst_pos + i, o);
           } else if (LIKELY(dst_class->IsAssignableFrom(o_class))) {

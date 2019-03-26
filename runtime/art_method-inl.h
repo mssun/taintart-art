@@ -298,13 +298,13 @@ inline const char* ArtMethod::GetTypeDescriptorFromTypeIdx(dex::TypeIndex type_i
   return dex_file->GetTypeDescriptor(dex_file->GetTypeId(type_idx));
 }
 
-inline mirror::ClassLoader* ArtMethod::GetClassLoader() {
+inline ObjPtr<mirror::ClassLoader> ArtMethod::GetClassLoader() {
   DCHECK(!IsProxyMethod());
   return GetDeclaringClass()->GetClassLoader();
 }
 
 template <ReadBarrierOption kReadBarrierOption>
-inline mirror::DexCache* ArtMethod::GetDexCache() {
+inline ObjPtr<mirror::DexCache> ArtMethod::GetDexCache() {
   if (LIKELY(!IsObsolete())) {
     ObjPtr<mirror::Class> klass = GetDeclaringClass<kReadBarrierOption>();
     return klass->GetDexCache<kDefaultVerifyFlags, kReadBarrierOption>();

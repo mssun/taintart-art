@@ -37,7 +37,7 @@ ArtField* Field::GetArtField() {
       return &declaring_class->GetSFieldsPtr()->At(1);
     }
   }
-  mirror::DexCache* const dex_cache = declaring_class->GetDexCache();
+  ObjPtr<mirror::DexCache> const dex_cache = declaring_class->GetDexCache();
   ArtField* art_field = dex_cache->GetResolvedField(GetDexFieldIndex(), kRuntimePointerSize);
   if (UNLIKELY(art_field == nullptr)) {
     if (IsStatic()) {

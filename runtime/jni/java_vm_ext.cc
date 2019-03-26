@@ -272,7 +272,8 @@ class Libraries {
       REQUIRES_SHARED(Locks::mutator_lock_) {
     std::string jni_short_name(m->JniShortName());
     std::string jni_long_name(m->JniLongName());
-    mirror::ClassLoader* const declaring_class_loader = m->GetDeclaringClass()->GetClassLoader();
+    ObjPtr<mirror::ClassLoader> const declaring_class_loader =
+        m->GetDeclaringClass()->GetClassLoader();
     ScopedObjectAccessUnchecked soa(Thread::Current());
     void* const declaring_class_loader_allocator =
         Runtime::Current()->GetClassLinker()->GetAllocatorForClassLoader(declaring_class_loader);

@@ -80,20 +80,25 @@ inline void Class::SetSuperClass(ObjPtr<Class> new_super_class) {
   SetFieldObject<false>(OFFSET_OF_OBJECT_MEMBER(Class, super_class_), new_super_class);
 }
 
+inline bool Class::HasSuperClass() {
+  // No read barrier is needed for comparing with null. See ReadBarrierOption.
+  return GetSuperClass<kDefaultVerifyFlags, kWithoutReadBarrier>() != nullptr;
+}
+
 template<VerifyObjectFlags kVerifyFlags, ReadBarrierOption kReadBarrierOption>
-inline ClassLoader* Class::GetClassLoader() {
+inline ObjPtr<ClassLoader> Class::GetClassLoader() {
   return GetFieldObject<ClassLoader, kVerifyFlags, kReadBarrierOption>(
       OFFSET_OF_OBJECT_MEMBER(Class, class_loader_));
 }
 
 template<VerifyObjectFlags kVerifyFlags, ReadBarrierOption kReadBarrierOption>
-inline ClassExt* Class::GetExtData() {
+inline ObjPtr<ClassExt> Class::GetExtData() {
   return GetFieldObject<ClassExt, kVerifyFlags, kReadBarrierOption>(
       OFFSET_OF_OBJECT_MEMBER(Class, ext_data_));
 }
 
 template<VerifyObjectFlags kVerifyFlags, ReadBarrierOption kReadBarrierOption>
-inline DexCache* Class::GetDexCache() {
+inline ObjPtr<DexCache> Class::GetDexCache() {
   return GetFieldObject<DexCache, kVerifyFlags, kReadBarrierOption>(
       OFFSET_OF_OBJECT_MEMBER(Class, dex_cache_));
 }
@@ -281,13 +286,13 @@ inline ArtMethod* Class::GetVirtualMethodUnchecked(size_t i, PointerSize pointer
 }
 
 template<VerifyObjectFlags kVerifyFlags, ReadBarrierOption kReadBarrierOption>
-inline PointerArray* Class::GetVTable() {
+inline ObjPtr<PointerArray> Class::GetVTable() {
   DCHECK(IsLoaded<kVerifyFlags>() || IsErroneous<kVerifyFlags>());
   return GetFieldObject<PointerArray, kVerifyFlags, kReadBarrierOption>(
       OFFSET_OF_OBJECT_MEMBER(Class, vtable_));
 }
 
-inline PointerArray* Class::GetVTableDuringLinking() {
+inline ObjPtr<PointerArray> Class::GetVTableDuringLinking() {
   DCHECK(IsLoaded() || IsErroneous());
   return GetFieldObject<PointerArray>(OFFSET_OF_OBJECT_MEMBER(Class, vtable_));
 }
@@ -296,8 +301,18 @@ inline void Class::SetVTable(ObjPtr<PointerArray> new_vtable) {
   SetFieldObject<false>(OFFSET_OF_OBJECT_MEMBER(Class, vtable_), new_vtable);
 }
 
+template<VerifyObjectFlags kVerifyFlags>
+inline bool Class::ShouldHaveImt() {
+  return ShouldHaveEmbeddedVTable<kVerifyFlags>();
+}
+
+template<VerifyObjectFlags kVerifyFlags>
+inline bool Class::ShouldHaveEmbeddedVTable() {
+  return IsInstantiable<kVerifyFlags>();
+}
+
 inline bool Class::HasVTable() {
-  // No read barrier is needed for comparing with null.
+  // No read barrier is needed for comparing with null. See ReadBarrierOption.
   return GetVTable<kDefaultVerifyFlags, kWithoutReadBarrier>() != nullptr ||
          ShouldHaveEmbeddedVTable();
 }
@@ -355,7 +370,7 @@ inline void Class::SetEmbeddedVTableEntryUnchecked(
 }
 
 inline void Class::SetEmbeddedVTableEntry(uint32_t i, ArtMethod* method, PointerSize pointer_size) {
-  auto* vtable = GetVTableDuringLinking();
+  ObjPtr<PointerArray> vtable = GetVTableDuringLinking();
   CHECK_EQ(method, vtable->GetElementPtrSize<ArtMethod*>(i, pointer_size));
   SetEmbeddedVTableEntryUnchecked(i, method, pointer_size);
 }
@@ -624,10 +639,10 @@ inline ArtMethod* Class::FindVirtualMethodForVirtualOrInterface(ArtMethod* metho
 }
 
 template<VerifyObjectFlags kVerifyFlags, ReadBarrierOption kReadBarrierOption>
-inline IfTable* Class::GetIfTable() {
+inline ObjPtr<IfTable> Class::GetIfTable() {
   ObjPtr<IfTable> ret = GetFieldObject<IfTable, kVerifyFlags, kReadBarrierOption>(IfTableOffset());
   DCHECK(ret != nullptr) << PrettyClass(this);
-  return ret.Ptr();
+  return ret;
 }
 
 template<VerifyObjectFlags kVerifyFlags>
@@ -851,22 +866,27 @@ inline void Class::AssertInitializedOrInitializingInThread(Thread* self) {
   }
 }
 
-inline ObjectArray<Class>* Class::GetProxyInterfaces() {
+inline ObjPtr<ObjectArray<Class>> Class::GetProxyInterfaces() {
   CHECK(IsProxyClass());
   // First static field.
-  auto* field = GetStaticField(0);
+  ArtField* field = GetStaticField(0);
   DCHECK_STREQ(field->GetName(), "interfaces");
   MemberOffset field_offset = field->GetOffset();
   return GetFieldObject<ObjectArray<Class>>(field_offset);
 }
 
-inline ObjectArray<ObjectArray<Class>>* Class::GetProxyThrows() {
+inline ObjPtr<ObjectArray<ObjectArray<Class>>> Class::GetProxyThrows() {
   CHECK(IsProxyClass());
   // Second static field.
-  auto* field = GetStaticField(1);
+  ArtField* field = GetStaticField(1);
   DCHECK_STREQ(field->GetName(), "throws");
   MemberOffset field_offset = field->GetOffset();
   return GetFieldObject<ObjectArray<ObjectArray<Class>>>(field_offset);
+}
+
+inline bool Class::IsBootStrapClassLoaded() {
+  // No read barrier is needed for comparing with null. See ReadBarrierOption.
+  return GetClassLoader<kDefaultVerifyFlags, kWithoutReadBarrier>() == nullptr;
 }
 
 inline void Class::InitializeClassVisitor::operator()(ObjPtr<Object> obj,
@@ -909,7 +929,7 @@ inline uint32_t Class::NumDirectInterfaces() {
   } else if (IsArrayClass()) {
     return 2;
   } else if (IsProxyClass()) {
-    ObjectArray<Class>* interfaces = GetProxyInterfaces();
+    ObjPtr<ObjectArray<Class>> interfaces = GetProxyInterfaces();
     return interfaces != nullptr ? interfaces->GetLength() : 0;
   } else {
     const dex::TypeList* interfaces = GetInterfaceTypeList();
@@ -976,8 +996,42 @@ inline void Class::CheckPointerSize(PointerSize pointer_size) {
 }
 
 template<VerifyObjectFlags kVerifyFlags, ReadBarrierOption kReadBarrierOption>
-inline Class* Class::GetComponentType() {
+inline ObjPtr<Class> Class::GetComponentType() {
   return GetFieldObject<Class, kVerifyFlags, kReadBarrierOption>(ComponentTypeOffset());
+}
+
+inline void Class::SetComponentType(ObjPtr<Class> new_component_type) {
+  DCHECK(GetComponentType() == nullptr);
+  DCHECK(new_component_type != nullptr);
+  // Component type is invariant: use non-transactional mode without check.
+  SetFieldObject<false, false>(ComponentTypeOffset(), new_component_type);
+}
+
+template<ReadBarrierOption kReadBarrierOption>
+inline size_t Class::GetComponentSize() {
+  return 1U << GetComponentSizeShift<kReadBarrierOption>();
+}
+
+template<ReadBarrierOption kReadBarrierOption>
+inline size_t Class::GetComponentSizeShift() {
+  return GetComponentType<kDefaultVerifyFlags, kReadBarrierOption>()->GetPrimitiveTypeSizeShift();
+}
+
+inline bool Class::IsObjectClass() {
+  // No read barrier is needed for comparing with null. See ReadBarrierOption.
+  return !IsPrimitive() && GetSuperClass<kDefaultVerifyFlags, kWithoutReadBarrier>() == nullptr;
+}
+
+inline bool Class::IsInstantiableNonArray() {
+  return !IsPrimitive() && !IsInterface() && !IsAbstract() && !IsArrayClass();
+}
+
+template<VerifyObjectFlags kVerifyFlags>
+bool Class::IsInstantiable() {
+  return (!IsPrimitive<kVerifyFlags>() &&
+          !IsInterface<kVerifyFlags>() &&
+          !IsAbstract<kVerifyFlags>()) ||
+      (IsAbstract<kVerifyFlags>() && IsArrayClass<kVerifyFlags>());
 }
 
 template<VerifyObjectFlags kVerifyFlags>

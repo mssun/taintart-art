@@ -1254,7 +1254,7 @@ void Hprof::DumpHeapClass(mirror::Class* klass) {
   __ AddClassId(LookupClassId(klass));
   __ AddStackTraceSerialNumber(LookupStackTraceSerialNumber(klass));
   __ AddClassId(LookupClassId(klass->GetSuperClass().Ptr()));
-  __ AddObjectId(klass->GetClassLoader());
+  __ AddObjectId(klass->GetClassLoader().Ptr());
   __ AddObjectId(nullptr);    // no signer
   __ AddObjectId(nullptr);    // no prot domain
   __ AddObjectId(nullptr);    // reserved

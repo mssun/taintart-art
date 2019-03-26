@@ -103,7 +103,7 @@ TEST_F(DexCacheTest, TestResolvedFieldAccess) {
   Handle<mirror::Class> klass2 =
       hs.NewHandle(class_linker_->FindClass(soa.Self(), "Lpackage2/Package2;", class_loader));
   ASSERT_TRUE(klass2 != nullptr);
-  EXPECT_EQ(klass1->GetDexCache(), klass2->GetDexCache());
+  EXPECT_OBJ_PTR_EQ(klass1->GetDexCache(), klass2->GetDexCache());
 
   EXPECT_NE(klass1->NumStaticFields(), 0u);
   for (ArtField& field : klass2->GetSFields()) {

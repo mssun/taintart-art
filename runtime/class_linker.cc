@@ -1793,11 +1793,11 @@ class ImageSanityChecks final {
         for (ArtField& field : klass->GetSFields()) {
           CHECK_EQ(field.GetDeclaringClass(), klass);
         }
-        const auto pointer_size = isc.pointer_size_;
-        for (auto& m : klass->GetMethods(pointer_size)) {
+        const PointerSize pointer_size = isc.pointer_size_;
+        for (ArtMethod& m : klass->GetMethods(pointer_size)) {
           isc.SanityCheckArtMethod(&m, klass);
         }
-        auto* vtable = klass->GetVTable();
+        ObjPtr<mirror::PointerArray> vtable = klass->GetVTable();
         if (vtable != nullptr) {
           isc.SanityCheckArtMethodPointerArray(vtable, nullptr);
         }
@@ -1812,7 +1812,7 @@ class ImageSanityChecks final {
             isc.SanityCheckArtMethod(klass->GetEmbeddedVTableEntry(i, pointer_size), nullptr);
           }
         }
-        mirror::IfTable* iftable = klass->GetIfTable();
+        ObjPtr<mirror::IfTable> iftable = klass->GetIfTable();
         for (int32_t i = 0; i < klass->GetIfTableCount(); ++i) {
           if (iftable->GetMethodArrayCount(i) > 0) {
             isc.SanityCheckArtMethodPointerArray(iftable->GetMethodArray(i), nullptr);
@@ -6217,7 +6217,7 @@ bool ClassLinker::LinkVirtualMethods(
       }
     } else {
       DCHECK(super_class->IsAbstract() && !super_class->IsArrayClass());
-      auto* super_vtable = super_class->GetVTable();
+      ObjPtr<mirror::PointerArray> super_vtable = super_class->GetVTable();
       CHECK(super_vtable != nullptr) << super_class->PrettyClass();
       // We might need to change vtable if we have new virtual methods or new interfaces (since that
       // might give us new default methods). See comment above.

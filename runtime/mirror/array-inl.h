@@ -270,7 +270,7 @@ inline void PointerArray::SetElementPtrSize(uint32_t idx, T* element, PointerSiz
 }
 
 template <VerifyObjectFlags kVerifyFlags, typename Visitor>
-inline void PointerArray::Fixup(mirror::PointerArray* dest,
+inline void PointerArray::Fixup(ObjPtr<mirror::PointerArray> dest,
                                 PointerSize pointer_size,
                                 const Visitor& visitor) {
   for (size_t i = 0, count = GetLength(); i < count; ++i) {

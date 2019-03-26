@@ -467,7 +467,7 @@ class RegionSpecializedBase<mirror::Object> : public RegionCommon<mirror::Object
         }
         if (field == nullptr) {
           if (klass->IsArrayClass()) {
-            mirror::Class* component_type = klass->GetComponentType();
+            ObjPtr<mirror::Class> component_type = klass->GetComponentType();
             Primitive::Type primitive_type = component_type->GetPrimitiveType();
             size_t component_size = Primitive::ComponentSize(primitive_type);
             size_t data_offset = mirror::Array::DataOffset(component_size).Uint32Value();

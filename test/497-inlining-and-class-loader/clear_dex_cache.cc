@@ -32,7 +32,7 @@ extern "C" JNIEXPORT jobject JNICALL Java_Main_cloneResolvedMethods(JNIEnv* env,
                                                                     jclass,
                                                                     jclass cls) {
   ScopedObjectAccess soa(Thread::Current());
-  mirror::DexCache* dex_cache = soa.Decode<mirror::Class>(cls)->GetDexCache();
+  ObjPtr<mirror::DexCache> dex_cache = soa.Decode<mirror::Class>(cls)->GetDexCache();
   size_t num_methods = dex_cache->NumResolvedMethods();
   mirror::MethodDexCacheType* methods = dex_cache->GetResolvedMethods();
   CHECK_EQ(num_methods != 0u, methods != nullptr);
@@ -67,10 +67,9 @@ extern "C" JNIEXPORT jobject JNICALL Java_Main_cloneResolvedMethods(JNIEnv* env,
 extern "C" JNIEXPORT void JNICALL Java_Main_restoreResolvedMethods(
     JNIEnv*, jclass, jclass cls, jobject old_cache) {
   ScopedObjectAccess soa(Thread::Current());
-  mirror::DexCache* dex_cache = soa.Decode<mirror::Class>(cls)->GetDexCache();
+  ObjPtr<mirror::DexCache> dex_cache = soa.Decode<mirror::Class>(cls)->GetDexCache();
   size_t num_methods = dex_cache->NumResolvedMethods();
-  mirror::MethodDexCacheType* methods =
-      soa.Decode<mirror::Class>(cls)->GetDexCache()->GetResolvedMethods();
+  mirror::MethodDexCacheType* methods = dex_cache->GetResolvedMethods();
   CHECK_EQ(num_methods != 0u, methods != nullptr);
   ObjPtr<mirror::Array> old = soa.Decode<mirror::Array>(old_cache);
   CHECK_EQ(methods != nullptr, old != nullptr);

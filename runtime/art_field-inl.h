@@ -29,6 +29,7 @@
 #include "jvalue.h"
 #include "mirror/dex_cache-inl.h"
 #include "mirror/object-inl.h"
+#include "obj_ptr-inl.h"
 #include "thread-current-inl.h"
 
 namespace art {
@@ -400,7 +401,7 @@ inline ArtField* ArtField::FindStaticFieldWithOffset(ObjPtr<mirror::Class> klass
   return FindFieldWithOffset<kExactOffset>(klass->GetSFields(), field_offset);
 }
 
-inline mirror::ClassLoader* ArtField::GetClassLoader() {
+inline ObjPtr<mirror::ClassLoader> ArtField::GetClassLoader() {
   return GetDeclaringClass()->GetClassLoader();
 }
 

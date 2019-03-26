@@ -26,7 +26,7 @@ namespace art {
 
 extern "C" JNIEXPORT void JNICALL Java_Main_nativeClearResolvedTypes(JNIEnv*, jclass, jclass cls) {
   ScopedObjectAccess soa(Thread::Current());
-  mirror::DexCache* dex_cache = soa.Decode<mirror::Class>(cls)->GetDexCache();
+  ObjPtr<mirror::DexCache> dex_cache = soa.Decode<mirror::Class>(cls)->GetDexCache();
   for (size_t i = 0, num_types = dex_cache->NumResolvedTypes(); i != num_types; ++i) {
     mirror::TypeDexCachePair cleared(nullptr, mirror::TypeDexCachePair::InvalidIndexForSlot(i));
     dex_cache->GetResolvedTypes()[i].store(cleared, std::memory_order_relaxed);
@@ -57,12 +57,12 @@ extern "C" JNIEXPORT void JNICALL Java_Main_nativeDumpClasses(JNIEnv*, jclass, j
     CHECK(classes->Get(i) != nullptr) << i;
     CHECK(classes->Get(i)->IsClass())
         << i << " " << classes->Get(i)->GetClass()->PrettyDescriptor();
-    mirror::Class* as_class = classes->Get(i)->AsClass();
-    mirror::ClassLoader* loader = as_class->GetClassLoader();
+    ObjPtr<mirror::Class> as_class = classes->Get(i)->AsClass();
+    ObjPtr<mirror::ClassLoader> loader = as_class->GetClassLoader();
     LOG(ERROR) << "Class #" << i << ": " << as_class->PrettyDescriptor()
-        << " @" << static_cast<const void*>(as_class)
+        << " @" << static_cast<const void*>(as_class.Ptr())
         << " status:" << as_class->GetStatus()
-        << " definingLoader:" << static_cast<const void*>(loader)
+        << " definingLoader:" << static_cast<const void*>(loader.Ptr())
         << " definingLoaderClass:"
         << (loader != nullptr ? loader->GetClass()->PrettyDescriptor() : "N/A");
   }

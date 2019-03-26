@@ -105,7 +105,7 @@ ArtMethod* ArtMethod::FromReflectedMethod(const ScopedObjectAccessAlreadyRunnabl
   return executable->GetArtMethod();
 }
 
-mirror::DexCache* ArtMethod::GetObsoleteDexCache() {
+ObjPtr<mirror::DexCache> ArtMethod::GetObsoleteDexCache() {
   DCHECK(!Runtime::Current()->IsAotCompiler()) << PrettyMethod();
   DCHECK(IsObsolete());
   ObjPtr<mirror::ClassExt> ext(GetDeclaringClass()->GetExtData());
@@ -212,7 +212,7 @@ ArtMethod* ArtMethod::FindOverriddenMethod(PointerSize pointer_size) {
       result = GetInterfaceMethodIfProxy(pointer_size);
       DCHECK(result != nullptr);
     } else {
-      mirror::IfTable* iftable = GetDeclaringClass()->GetIfTable();
+      ObjPtr<mirror::IfTable> iftable = GetDeclaringClass()->GetIfTable();
       for (size_t i = 0; i < iftable->Count() && result == nullptr; i++) {
         ObjPtr<mirror::Class> interface = iftable->GetInterface(i);
         for (ArtMethod& interface_method : interface->GetVirtualMethods(pointer_size)) {
@@ -519,8 +519,7 @@ static const OatFile::OatMethod FindOatMethodFor(ArtMethod* method,
 }
 
 bool ArtMethod::EqualParameters(Handle<mirror::ObjectArray<mirror::Class>> params) {
-  auto* dex_cache = GetDexCache();
-  auto* dex_file = dex_cache->GetDexFile();
+  const DexFile* dex_file = GetDexFile();
   const auto& method_id = dex_file->GetMethodId(GetDexMethodIndex());
   const auto& proto_id = dex_file->GetMethodPrototype(method_id);
   const dex::TypeList* proto_params = dex_file->GetProtoParameters(proto_id);

@@ -1734,7 +1734,7 @@ HInstanceFieldSet* HInliner::CreateInstanceFieldSet(uint32_t field_index,
 }
 
 template <typename T>
-static inline Handle<T> NewHandleIfDifferent(T* object,
+static inline Handle<T> NewHandleIfDifferent(ObjPtr<T> object,
                                              Handle<T> hint,
                                              VariableSizedHandleScope* handles)
     REQUIRES_SHARED(Locks::mutator_lock_) {
