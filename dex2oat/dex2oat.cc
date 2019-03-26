@@ -619,7 +619,7 @@ class WatchDog {
                            timeout_in_milliseconds_/1000));
       } else if (rc != 0) {
         std::string message(StringPrintf("pthread_cond_timedwait failed: %s", strerror(rc)));
-        Fatal(message.c_str());
+        Fatal(message);
       }
     }
     CHECK_WATCH_DOG_PTHREAD_CALL(pthread_mutex_unlock, (&mutex_), reason);
