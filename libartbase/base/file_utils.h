@@ -102,6 +102,9 @@ bool RuntimeModuleRootDistinctFromAndroidRoot();
 // dup(2), except setting the O_CLOEXEC flag atomically, when possible.
 int DupCloexec(int fd);
 
+// Returns true if `path` begins with a slash.
+inline bool IsAbsoluteLocation(const std::string& path) { return !path.empty() && path[0] == '/'; }
+
 }  // namespace art
 
 #endif  // ART_LIBARTBASE_BASE_FILE_UTILS_H_
