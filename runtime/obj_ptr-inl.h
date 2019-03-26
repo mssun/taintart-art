@@ -129,42 +129,42 @@ size_t HashObjPtr::operator()(const ObjPtr<MirrorType>& ptr) const {
 template<class MirrorType1, class MirrorType2>
 inline std::enable_if_t<std::is_base_of_v<MirrorType1, MirrorType2> ||
                         std::is_base_of_v<MirrorType2, MirrorType1>, bool>
-operator==(ObjPtr<MirrorType1> lhs, ObjPtr<MirrorType2> rhs) REQUIRES_SHARED(Locks::mutator_lock_) {
+operator==(ObjPtr<MirrorType1> lhs, ObjPtr<MirrorType2> rhs) {
   return lhs.Ptr() == rhs.Ptr();
 }
 
 template<class MirrorType1, class MirrorType2>
 inline std::enable_if_t<std::is_base_of_v<MirrorType1, MirrorType2> ||
                         std::is_base_of_v<MirrorType2, MirrorType1>, bool>
-operator==(const MirrorType1* lhs, ObjPtr<MirrorType2> rhs) REQUIRES_SHARED(Locks::mutator_lock_) {
+operator==(const MirrorType1* lhs, ObjPtr<MirrorType2> rhs) {
   return lhs == rhs.Ptr();
 }
 
 template<class MirrorType1, class MirrorType2>
 inline std::enable_if_t<std::is_base_of_v<MirrorType1, MirrorType2> ||
                         std::is_base_of_v<MirrorType2, MirrorType1>, bool>
-operator==(ObjPtr<MirrorType1> lhs, const MirrorType2* rhs) REQUIRES_SHARED(Locks::mutator_lock_) {
+operator==(ObjPtr<MirrorType1> lhs, const MirrorType2* rhs) {
   return lhs.Ptr() == rhs;
 }
 
 template<class MirrorType1, class MirrorType2>
 inline std::enable_if_t<std::is_base_of_v<MirrorType1, MirrorType2> ||
                         std::is_base_of_v<MirrorType2, MirrorType1>, bool>
-operator!=(ObjPtr<MirrorType1> lhs, ObjPtr<MirrorType2> rhs) REQUIRES_SHARED(Locks::mutator_lock_) {
+operator!=(ObjPtr<MirrorType1> lhs, ObjPtr<MirrorType2> rhs) {
   return !(lhs == rhs);
 }
 
 template<class MirrorType1, class MirrorType2>
 inline std::enable_if_t<std::is_base_of_v<MirrorType1, MirrorType2> ||
                         std::is_base_of_v<MirrorType2, MirrorType1>, bool>
-operator!=(const MirrorType1* lhs, ObjPtr<MirrorType2> rhs) REQUIRES_SHARED(Locks::mutator_lock_) {
+operator!=(const MirrorType1* lhs, ObjPtr<MirrorType2> rhs) {
   return !(lhs == rhs);
 }
 
 template<class MirrorType1, class MirrorType2>
 inline std::enable_if_t<std::is_base_of_v<MirrorType1, MirrorType2> ||
                         std::is_base_of_v<MirrorType2, MirrorType1>, bool>
-operator!=(ObjPtr<MirrorType1> lhs, const MirrorType2* rhs) REQUIRES_SHARED(Locks::mutator_lock_) {
+operator!=(ObjPtr<MirrorType1> lhs, const MirrorType2* rhs) {
   return !(lhs == rhs);
 }
 

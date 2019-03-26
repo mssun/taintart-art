@@ -219,10 +219,10 @@ inline ObjPtr<mirror::Object> AllocObjectFromCodeResolved(ObjPtr<mirror::Class> 
     // Pass in false since the object cannot be finalizable.
     // CheckClassInitializedForObjectAlloc can cause thread suspension which means we may now be
     // instrumented.
-    return klass->Alloc</*kInstrumented=*/true, false>(self, heap->GetCurrentAllocator()).Ptr();
+    return klass->Alloc</*kInstrumented=*/true, false>(self, heap->GetCurrentAllocator());
   }
   // Pass in false since the object cannot be finalizable.
-  return klass->Alloc<kInstrumented, false>(self, allocator_type).Ptr();
+  return klass->Alloc<kInstrumented, false>(self, allocator_type);
 }
 
 // Given the context of a calling Method and an initialized class, create an instance.
@@ -233,7 +233,7 @@ inline ObjPtr<mirror::Object> AllocObjectFromCodeInitialized(ObjPtr<mirror::Clas
                                                              gc::AllocatorType allocator_type) {
   DCHECK(klass != nullptr);
   // Pass in false since the object cannot be finalizable.
-  return klass->Alloc<kInstrumented, false>(self, allocator_type).Ptr();
+  return klass->Alloc<kInstrumented, false>(self, allocator_type);
 }
 
 
@@ -314,7 +314,7 @@ inline ObjPtr<mirror::Array> AllocArrayFromCodeResolved(ObjPtr<mirror::Class> kl
   // No need to retry a slow-path allocation as the above code won't cause a GC or thread
   // suspension.
   return mirror::Array::Alloc<kInstrumented>(self, klass, component_count,
-                                             klass->GetComponentSizeShift(), allocator_type).Ptr();
+                                             klass->GetComponentSizeShift(), allocator_type);
 }
 
 template<FindFieldType type, bool access_check>
