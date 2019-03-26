@@ -161,8 +161,8 @@ class SharedLibrary {
   void* FindSymbol(const std::string& symbol_name, const char* shorty = nullptr)
       REQUIRES(!Locks::mutator_lock_) {
     return NeedsNativeBridge()
-        ? FindSymbolWithNativeBridge(symbol_name.c_str(), shorty)
-        : FindSymbolWithoutNativeBridge(symbol_name.c_str());
+        ? FindSymbolWithNativeBridge(symbol_name, shorty)
+        : FindSymbolWithoutNativeBridge(symbol_name);
   }
 
   // No mutator lock since dlsym may block for a while if another thread is doing dlopen.
