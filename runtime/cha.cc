@@ -605,7 +605,7 @@ void ClassHierarchyAnalysis::UpdateAfterLoadingOf(Handle<mirror::Class> klass) {
   }
 
   if (klass->IsInstantiable()) {
-    auto* iftable = klass->GetIfTable();
+    ObjPtr<mirror::IfTable> iftable = klass->GetIfTable();
     const size_t ifcount = klass->GetIfTableCount();
     for (size_t i = 0; i < ifcount; ++i) {
       mirror::Class* interface = iftable->GetInterface(i);

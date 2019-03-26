@@ -618,11 +618,11 @@ class ArtMethod final {
   // calling ResolveType this caused a large number of bugs at call sites.
   ObjPtr<mirror::Class> ResolveReturnType() REQUIRES_SHARED(Locks::mutator_lock_);
 
-  mirror::ClassLoader* GetClassLoader() REQUIRES_SHARED(Locks::mutator_lock_);
+  ObjPtr<mirror::ClassLoader> GetClassLoader() REQUIRES_SHARED(Locks::mutator_lock_);
 
   template <ReadBarrierOption kReadBarrierOption = kWithReadBarrier>
-  mirror::DexCache* GetDexCache() REQUIRES_SHARED(Locks::mutator_lock_);
-  mirror::DexCache* GetObsoleteDexCache() REQUIRES_SHARED(Locks::mutator_lock_);
+  ObjPtr<mirror::DexCache> GetDexCache() REQUIRES_SHARED(Locks::mutator_lock_);
+  ObjPtr<mirror::DexCache> GetObsoleteDexCache() REQUIRES_SHARED(Locks::mutator_lock_);
 
   ALWAYS_INLINE ArtMethod* GetInterfaceMethodForProxyUnchecked(PointerSize pointer_size)
       REQUIRES_SHARED(Locks::mutator_lock_);

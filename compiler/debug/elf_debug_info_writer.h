@@ -37,6 +37,7 @@
 #include "mirror/class-inl.h"
 #include "mirror/class.h"
 #include "oat_file.h"
+#include "obj_ptr-inl.h"
 
 namespace art {
 namespace debug {
@@ -303,7 +304,7 @@ class ElfCompilationUnitWriter {
           WriteTypeDeclaration(type->GetDescriptor(nullptr));
         }
       } else if (type->IsArrayClass()) {
-        mirror::Class* element_type = type->GetComponentType();
+        ObjPtr<mirror::Class> element_type = type->GetComponentType();
         uint32_t component_size = type->GetComponentSize();
         uint32_t data_offset = mirror::Array::DataOffset(component_size).Uint32Value();
         uint32_t length_offset = mirror::Array::LengthOffset().Uint32Value();

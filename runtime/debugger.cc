@@ -476,7 +476,7 @@ static JDWP::JdwpTag BasicTagFromDescriptor(const char* descriptor) {
   return static_cast<JDWP::JdwpTag>(descriptor[0]);
 }
 
-static JDWP::JdwpTag BasicTagFromClass(mirror::Class* klass)
+static JDWP::JdwpTag BasicTagFromClass(ObjPtr<mirror::Class> klass)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   std::string temp;
   const char* descriptor = klass->GetDescriptor(&temp);

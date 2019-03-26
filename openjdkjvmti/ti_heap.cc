@@ -1209,7 +1209,7 @@ class FollowReferencesHelper final {
       stop_reports_ = !ReportReferenceMaybeEnqueue(JVMTI_HEAP_REFERENCE_CLASS_LOADER,
                                                    nullptr,
                                                    klass,
-                                                   klass->GetClassLoader());
+                                                   klass->GetClassLoader().Ptr());
       if (stop_reports_) {
         return;
       }

@@ -249,7 +249,7 @@ class PointerArray : public Array {
   // Fixup the pointers in the dest arrays by passing our pointers through the visitor. Only copies
   // to dest if visitor(source_ptr) != source_ptr.
   template <VerifyObjectFlags kVerifyFlags = kVerifyNone, typename Visitor>
-  void Fixup(mirror::PointerArray* dest, PointerSize pointer_size, const Visitor& visitor)
+  void Fixup(ObjPtr<mirror::PointerArray> dest, PointerSize pointer_size, const Visitor& visitor)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
   // Works like memcpy(), except we guarantee not to allow tearing of array values (ie using smaller

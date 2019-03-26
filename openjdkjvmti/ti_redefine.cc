@@ -472,7 +472,7 @@ art::mirror::Class* Redefiner::ClassRedefinition::GetMirrorClass() {
   return driver_->self_->DecodeJObject(klass_)->AsClass();
 }
 
-art::mirror::ClassLoader* Redefiner::ClassRedefinition::GetClassLoader() {
+art::ObjPtr<art::mirror::ClassLoader> Redefiner::ClassRedefinition::GetClassLoader() {
   return GetMirrorClass()->GetClassLoader();
 }
 

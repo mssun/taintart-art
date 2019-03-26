@@ -442,41 +442,22 @@ class MANAGED Class final : public Object {
 
   template<VerifyObjectFlags kVerifyFlags = kDefaultVerifyFlags,
            ReadBarrierOption kReadBarrierOption = kWithReadBarrier>
-  Class* GetComponentType() REQUIRES_SHARED(Locks::mutator_lock_);
+  ObjPtr<Class> GetComponentType() REQUIRES_SHARED(Locks::mutator_lock_);
 
-  void SetComponentType(ObjPtr<Class> new_component_type) REQUIRES_SHARED(Locks::mutator_lock_) {
-    DCHECK(GetComponentType() == nullptr);
-    DCHECK(new_component_type != nullptr);
-    // Component type is invariant: use non-transactional mode without check.
-    SetFieldObject<false, false>(ComponentTypeOffset(), new_component_type);
-  }
+  void SetComponentType(ObjPtr<Class> new_component_type) REQUIRES_SHARED(Locks::mutator_lock_);
 
   template<ReadBarrierOption kReadBarrierOption = kWithReadBarrier>
-  size_t GetComponentSize() REQUIRES_SHARED(Locks::mutator_lock_) {
-    return 1U << GetComponentSizeShift<kReadBarrierOption>();
-  }
+  size_t GetComponentSize() REQUIRES_SHARED(Locks::mutator_lock_);
 
   template<ReadBarrierOption kReadBarrierOption = kWithReadBarrier>
-  size_t GetComponentSizeShift() REQUIRES_SHARED(Locks::mutator_lock_) {
-    return GetComponentType<kDefaultVerifyFlags, kReadBarrierOption>()->GetPrimitiveTypeSizeShift();
-  }
+  size_t GetComponentSizeShift() REQUIRES_SHARED(Locks::mutator_lock_);
 
-  bool IsObjectClass() REQUIRES_SHARED(Locks::mutator_lock_) {
-    // No read barrier is needed for comparing with null.
-    return !IsPrimitive() && GetSuperClass<kDefaultVerifyFlags, kWithoutReadBarrier>() == nullptr;
-  }
+  bool IsObjectClass() REQUIRES_SHARED(Locks::mutator_lock_);
 
-  bool IsInstantiableNonArray() REQUIRES_SHARED(Locks::mutator_lock_) {
-    return !IsPrimitive() && !IsInterface() && !IsAbstract() && !IsArrayClass();
-  }
+  bool IsInstantiableNonArray() REQUIRES_SHARED(Locks::mutator_lock_);
 
   template<VerifyObjectFlags kVerifyFlags = kDefaultVerifyFlags>
-  bool IsInstantiable() REQUIRES_SHARED(Locks::mutator_lock_) {
-    return (!IsPrimitive<kVerifyFlags>() &&
-            !IsInterface<kVerifyFlags>() &&
-            !IsAbstract<kVerifyFlags>()) ||
-        (IsAbstract<kVerifyFlags>() && IsArrayClass<kVerifyFlags>());
-  }
+  bool IsInstantiable() REQUIRES_SHARED(Locks::mutator_lock_);
 
   template<VerifyObjectFlags kVerifyFlags = kDefaultVerifyFlags>
   ALWAYS_INLINE bool IsObjectArrayClass() REQUIRES_SHARED(Locks::mutator_lock_);
@@ -618,10 +599,7 @@ class MANAGED Class final : public Object {
 
   void SetSuperClass(ObjPtr<Class> new_super_class) REQUIRES_SHARED(Locks::mutator_lock_);
 
-  bool HasSuperClass() REQUIRES_SHARED(Locks::mutator_lock_) {
-    // No read barrier is needed for comparing with null.
-    return GetSuperClass<kDefaultVerifyFlags, kWithoutReadBarrier>() != nullptr;
-  }
+  bool HasSuperClass() REQUIRES_SHARED(Locks::mutator_lock_);
 
   static constexpr MemberOffset SuperClassOffset() {
     return MemberOffset(OFFSETOF_MEMBER(Class, super_class_));
@@ -629,7 +607,7 @@ class MANAGED Class final : public Object {
 
   template<VerifyObjectFlags kVerifyFlags = kDefaultVerifyFlags,
            ReadBarrierOption kReadBarrierOption = kWithReadBarrier>
-  ClassLoader* GetClassLoader() ALWAYS_INLINE REQUIRES_SHARED(Locks::mutator_lock_);
+  ObjPtr<ClassLoader> GetClassLoader() ALWAYS_INLINE REQUIRES_SHARED(Locks::mutator_lock_);
 
   template <bool kCheckTransaction = true>
   void SetClassLoader(ObjPtr<ClassLoader> new_cl) REQUIRES_SHARED(Locks::mutator_lock_);
@@ -652,7 +630,7 @@ class MANAGED Class final : public Object {
 
   template<VerifyObjectFlags kVerifyFlags = kDefaultVerifyFlags,
            ReadBarrierOption kReadBarrierOption = kWithReadBarrier>
-  DexCache* GetDexCache() REQUIRES_SHARED(Locks::mutator_lock_);
+  ObjPtr<DexCache> GetDexCache() REQUIRES_SHARED(Locks::mutator_lock_);
 
   // Also updates the dex_cache_strings_ variable from new_dex_cache.
   void SetDexCache(ObjPtr<DexCache> new_dex_cache) REQUIRES_SHARED(Locks::mutator_lock_);
@@ -768,9 +746,9 @@ class MANAGED Class final : public Object {
 
   template<VerifyObjectFlags kVerifyFlags = kDefaultVerifyFlags,
            ReadBarrierOption kReadBarrierOption = kWithReadBarrier>
-  ALWAYS_INLINE PointerArray* GetVTable() REQUIRES_SHARED(Locks::mutator_lock_);
+  ALWAYS_INLINE ObjPtr<PointerArray> GetVTable() REQUIRES_SHARED(Locks::mutator_lock_);
 
-  ALWAYS_INLINE PointerArray* GetVTableDuringLinking() REQUIRES_SHARED(Locks::mutator_lock_);
+  ALWAYS_INLINE ObjPtr<PointerArray> GetVTableDuringLinking() REQUIRES_SHARED(Locks::mutator_lock_);
 
   void SetVTable(ObjPtr<PointerArray> new_vtable) REQUIRES_SHARED(Locks::mutator_lock_);
 
@@ -789,14 +767,10 @@ class MANAGED Class final : public Object {
   }
 
   template<VerifyObjectFlags kVerifyFlags = kDefaultVerifyFlags>
-  bool ShouldHaveImt() REQUIRES_SHARED(Locks::mutator_lock_) {
-    return ShouldHaveEmbeddedVTable<kVerifyFlags>();
-  }
+  bool ShouldHaveImt() REQUIRES_SHARED(Locks::mutator_lock_);
 
   template<VerifyObjectFlags kVerifyFlags = kDefaultVerifyFlags>
-  bool ShouldHaveEmbeddedVTable() REQUIRES_SHARED(Locks::mutator_lock_) {
-    return IsInstantiable<kVerifyFlags>();
-  }
+  bool ShouldHaveEmbeddedVTable() REQUIRES_SHARED(Locks::mutator_lock_);
 
   bool HasVTable() REQUIRES_SHARED(Locks::mutator_lock_);
 
@@ -942,7 +916,7 @@ class MANAGED Class final : public Object {
 
   template<VerifyObjectFlags kVerifyFlags = kDefaultVerifyFlags,
            ReadBarrierOption kReadBarrierOption = kWithReadBarrier>
-  ALWAYS_INLINE IfTable* GetIfTable() REQUIRES_SHARED(Locks::mutator_lock_);
+  ALWAYS_INLINE ObjPtr<IfTable> GetIfTable() REQUIRES_SHARED(Locks::mutator_lock_);
 
   ALWAYS_INLINE void SetIfTable(ObjPtr<IfTable> new_iftable)
       REQUIRES_SHARED(Locks::mutator_lock_);
@@ -1088,12 +1062,12 @@ class MANAGED Class final : public Object {
 
   template<VerifyObjectFlags kVerifyFlags = kDefaultVerifyFlags,
            ReadBarrierOption kReadBarrierOption = kWithReadBarrier>
-  ClassExt* GetExtData() REQUIRES_SHARED(Locks::mutator_lock_);
+  ObjPtr<ClassExt> GetExtData() REQUIRES_SHARED(Locks::mutator_lock_);
 
   // Returns the ExtData for this class, allocating one if necessary. This should be the only way
   // to force ext_data_ to be set. No functions are available for changing an already set ext_data_
   // since doing so is not allowed.
-  ClassExt* EnsureExtDataPresent(Thread* self)
+  ObjPtr<ClassExt> EnsureExtDataPresent(Thread* self)
       REQUIRES_SHARED(Locks::mutator_lock_) REQUIRES(!Roles::uninterruptible_);
 
   uint16_t GetDexClassDefIndex() REQUIRES_SHARED(Locks::mutator_lock_) {
@@ -1166,14 +1140,14 @@ class MANAGED Class final : public Object {
   void AssertInitializedOrInitializingInThread(Thread* self)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
-  Class* CopyOf(Thread* self, int32_t new_length, ImTable* imt, PointerSize pointer_size)
+  ObjPtr<Class> CopyOf(Thread* self, int32_t new_length, ImTable* imt, PointerSize pointer_size)
       REQUIRES_SHARED(Locks::mutator_lock_) REQUIRES(!Roles::uninterruptible_);
 
   // For proxy class only.
-  ObjectArray<Class>* GetProxyInterfaces() REQUIRES_SHARED(Locks::mutator_lock_);
+  ObjPtr<ObjectArray<Class>> GetProxyInterfaces() REQUIRES_SHARED(Locks::mutator_lock_);
 
   // For proxy class only.
-  ObjectArray<ObjectArray<Class>>* GetProxyThrows() REQUIRES_SHARED(Locks::mutator_lock_);
+  ObjPtr<ObjectArray<ObjectArray<Class>>> GetProxyThrows() REQUIRES_SHARED(Locks::mutator_lock_);
 
   // May cause thread suspension due to EqualParameters.
   ArtMethod* GetDeclaredConstructor(Thread* self,
@@ -1201,10 +1175,7 @@ class MANAGED Class final : public Object {
   };
 
   // Returns true if the class loader is null, ie the class loader is the boot strap class loader.
-  bool IsBootStrapClassLoaded() REQUIRES_SHARED(Locks::mutator_lock_) {
-    // No read barrier is needed for comparing with null.
-    return GetClassLoader<kDefaultVerifyFlags, kWithoutReadBarrier>() == nullptr;
-  }
+  bool IsBootStrapClassLoaded() REQUIRES_SHARED(Locks::mutator_lock_);
 
   static size_t ImTableEntrySize(PointerSize pointer_size) {
     return static_cast<size_t>(pointer_size);

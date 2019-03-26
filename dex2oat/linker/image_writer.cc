@@ -1075,7 +1075,7 @@ void ImageWriter::AddDexCacheArrayRelocation(void* array,
   }
 }
 
-void ImageWriter::AddMethodPointerArray(mirror::PointerArray* arr) {
+void ImageWriter::AddMethodPointerArray(ObjPtr<mirror::PointerArray> arr) {
   DCHECK(arr != nullptr);
   if (kIsDebugBuild) {
     for (size_t i = 0, len = arr->GetLength(); i < len; i++) {
@@ -1089,7 +1089,7 @@ void ImageWriter::AddMethodPointerArray(mirror::PointerArray* arr) {
   }
   // kBinArtMethodClean picked arbitrarily, just required to differentiate between ArtFields and
   // ArtMethods.
-  pointer_arrays_.emplace(arr, Bin::kArtMethodClean);
+  pointer_arrays_.emplace(arr.Ptr(), Bin::kArtMethodClean);
 }
 
 void ImageWriter::AssignImageBinSlot(mirror::Object* object, size_t oat_index) {
@@ -1143,11 +1143,11 @@ void ImageWriter::AssignImageBinSlot(mirror::Object* object, size_t oat_index) {
       mirror::Class* klass = object->AsClass();
 
       // Add non-embedded vtable to the pointer array table if there is one.
-      auto* vtable = klass->GetVTable();
+      ObjPtr<mirror::PointerArray> vtable = klass->GetVTable();
       if (vtable != nullptr) {
         AddMethodPointerArray(vtable);
       }
-      auto* iftable = klass->GetIfTable();
+      ObjPtr<mirror::IfTable> iftable = klass->GetIfTable();
       if (iftable != nullptr) {
         for (int32_t i = 0; i < klass->GetIfTableCount(); ++i) {
           if (iftable->GetMethodArrayCount(i) > 0) {
@@ -1411,7 +1411,7 @@ bool ImageWriter::PruneAppImageClassInternal(
   }
   if (!result) {
     // Check interfaces since these wont be visited through VisitReferences.)
-    mirror::IfTable* if_table = klass->GetIfTable();
+    ObjPtr<mirror::IfTable> if_table = klass->GetIfTable();
     for (size_t i = 0, num_interfaces = klass->GetIfTableCount(); i < num_interfaces; ++i) {
       result = result || PruneAppImageClassInternal(if_table->GetInterface(i),
                                                     &my_early_exit,
@@ -1461,7 +1461,7 @@ bool ImageWriter::PruneAppImageClassInternal(
                                                 visited);
   // Remove the class if the dex file is not in the set of dex files. This happens for classes that
   // are from uses-library if there is no profile. b/30688277
-  mirror::DexCache* dex_cache = klass->GetDexCache();
+  ObjPtr<mirror::DexCache> dex_cache = klass->GetDexCache();
   if (dex_cache != nullptr) {
     result = result ||
         dex_file_oat_index_map_.find(dex_cache->GetDexFile()) == dex_file_oat_index_map_.end();
@@ -1989,8 +1989,8 @@ mirror::Object* ImageWriter::TryAssignBinSlot(WorkStack& work_stack,
       oat_index = GetOatIndexForDexCache(obj->AsDexCache());
     } else if (obj->IsClass()) {
       // Visit and assign offsets for fields and field arrays.
-      mirror::Class* as_klass = obj->AsClass();
-      mirror::DexCache* dex_cache = as_klass->GetDexCache();
+      ObjPtr<mirror::Class> as_klass = obj->AsClass();
+      ObjPtr<mirror::DexCache> dex_cache = as_klass->GetDexCache();
       DCHECK(!as_klass->IsErroneous()) << as_klass->GetStatus();
       if (compiler_options_.IsAppImage()) {
         // Extra sanity, no boot loader classes should be left!

@@ -2192,7 +2192,7 @@ class ImageDumper {
           os << StringPrintf("%d to %zd: ", i, i + run);
           i = i + run;
         }
-        mirror::Class* value_class =
+        ObjPtr<mirror::Class> value_class =
             (value == nullptr) ? obj_class->GetComponentType() : value->GetClass();
         PrettyObjectValue(os, value_class, value);
       }
@@ -3202,9 +3202,9 @@ class IMTDumper {
 
     std::cerr << " Interfaces:" << std::endl;
     // Run through iftable, find methods that slot here, see if they fit.
-    mirror::IfTable* if_table = klass->GetIfTable();
+    ObjPtr<mirror::IfTable> if_table = klass->GetIfTable();
     for (size_t i = 0, num_interfaces = klass->GetIfTableCount(); i < num_interfaces; ++i) {
-      mirror::Class* iface = if_table->GetInterface(i);
+      ObjPtr<mirror::Class> iface = if_table->GetInterface(i);
       std::string iface_name;
       std::cerr << "  " << iface->GetDescriptor(&iface_name) << std::endl;
 
@@ -3283,9 +3283,9 @@ class IMTDumper {
           std::cerr << "    " << p_name << std::endl;
         } else {
           // Run through iftable, find methods that slot here, see if they fit.
-          mirror::IfTable* if_table = klass->GetIfTable();
+          ObjPtr<mirror::IfTable> if_table = klass->GetIfTable();
           for (size_t i = 0, num_interfaces = klass->GetIfTableCount(); i < num_interfaces; ++i) {
-            mirror::Class* iface = if_table->GetInterface(i);
+            ObjPtr<mirror::Class> iface = if_table->GetInterface(i);
             size_t num_methods = iface->NumDeclaredVirtualMethods();
             if (num_methods > 0) {
               for (ArtMethod& iface_method : iface->GetMethods(pointer_size)) {

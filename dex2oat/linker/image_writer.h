@@ -424,7 +424,8 @@ class ImageWriter final {
 
   void AddDexCacheArrayRelocation(void* array, size_t offset, size_t oat_index)
       REQUIRES_SHARED(Locks::mutator_lock_);
-  void AddMethodPointerArray(mirror::PointerArray* arr) REQUIRES_SHARED(Locks::mutator_lock_);
+  void AddMethodPointerArray(ObjPtr<mirror::PointerArray> arr)
+      REQUIRES_SHARED(Locks::mutator_lock_);
 
   mirror::Object* GetLocalAddress(mirror::Object* object) const
       REQUIRES_SHARED(Locks::mutator_lock_) {

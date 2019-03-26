@@ -43,7 +43,7 @@ class ArtField final {
   template<ReadBarrierOption kReadBarrierOption = kWithReadBarrier>
   ObjPtr<mirror::Class> GetDeclaringClass() REQUIRES_SHARED(Locks::mutator_lock_);
 
-  mirror::ClassLoader* GetClassLoader() REQUIRES_SHARED(Locks::mutator_lock_);
+  ObjPtr<mirror::ClassLoader> GetClassLoader() REQUIRES_SHARED(Locks::mutator_lock_);
 
   void SetDeclaringClass(ObjPtr<mirror::Class> new_declaring_class)
       REQUIRES_SHARED(Locks::mutator_lock_);

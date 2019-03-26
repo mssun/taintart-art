@@ -466,7 +466,7 @@ class ImageSpace::PatchObjectVisitor final {
     return (ptr != nullptr) ? native_visitor_(ptr) : nullptr;
   }
 
-  void VisitPointerArray(mirror::PointerArray* pointer_array)
+  void VisitPointerArray(ObjPtr<mirror::PointerArray> pointer_array)
       REQUIRES_SHARED(Locks::mutator_lock_) {
     // Fully patch the pointer array, including the `klass_` field.
     PatchReferenceField</*kMayBeNull=*/ false>(pointer_array, mirror::Object::ClassOffset());
@@ -565,13 +565,13 @@ class ImageSpace::PatchObjectVisitor final {
   }
 
   template <bool kMayBeNull = true>
-  ALWAYS_INLINE void PatchReferenceField(mirror::Object* object, MemberOffset offset) const
+  ALWAYS_INLINE void PatchReferenceField(ObjPtr<mirror::Object> object, MemberOffset offset) const
       REQUIRES_SHARED(Locks::mutator_lock_) {
-    mirror::Object* old_value =
+    ObjPtr<mirror::Object> old_value =
         object->GetFieldObject<mirror::Object, kVerifyNone, kWithoutReadBarrier>(offset);
     DCHECK(kMayBeNull || old_value != nullptr);
     if (!kMayBeNull || old_value != nullptr) {
-      mirror::Object* new_value = heap_visitor_(old_value);
+      ObjPtr<mirror::Object> new_value = heap_visitor_(old_value.Ptr());
       object->SetFieldObjectWithoutWriteBarrier</*kTransactionActive=*/ false,
                                                 /*kCheckTransaction=*/ true,
                                                 kVerifyNone>(offset, new_value);
@@ -1215,14 +1215,15 @@ class ImageSpace::Loader {
             CHECK(!already_marked) << "App image class already visited";
             patch_object_visitor.VisitClass(klass);
             // Then patch the non-embedded vtable and iftable.
-            mirror::PointerArray* vtable = klass->GetVTable<kVerifyNone, kWithoutReadBarrier>();
+            ObjPtr<mirror::PointerArray> vtable =
+                klass->GetVTable<kVerifyNone, kWithoutReadBarrier>();
             if (vtable != nullptr &&
-                app_image_objects.InDest(vtable) &&
-                !visited_bitmap->Set(vtable)) {
+                app_image_objects.InDest(vtable.Ptr()) &&
+                !visited_bitmap->Set(vtable.Ptr())) {
               patch_object_visitor.VisitPointerArray(vtable);
             }
-            auto* iftable = klass->GetIfTable<kVerifyNone, kWithoutReadBarrier>();
-            if (iftable != nullptr && app_image_objects.InDest(iftable)) {
+            ObjPtr<mirror::IfTable> iftable = klass->GetIfTable<kVerifyNone, kWithoutReadBarrier>();
+            if (iftable != nullptr && app_image_objects.InDest(iftable.Ptr())) {
               // Avoid processing the fields of iftable since we will process them later anyways
               // below.
               int32_t ifcount = klass->GetIfTableCount<kVerifyNone>();
@@ -1613,20 +1614,21 @@ class ImageSpace::BootImageLoader {
             }
           }
           // Then patch the non-embedded vtable and iftable.
-          mirror::PointerArray* vtable = klass->GetVTable<kVerifyNone, kWithoutReadBarrier>();
-          if (vtable != nullptr && !patched_objects->Set(vtable)) {
+          ObjPtr<mirror::PointerArray> vtable =
+              klass->GetVTable<kVerifyNone, kWithoutReadBarrier>();
+          if (vtable != nullptr && !patched_objects->Set(vtable.Ptr())) {
             patch_object_visitor.VisitPointerArray(vtable);
           }
-          auto* iftable = klass->GetIfTable<kVerifyNone, kWithoutReadBarrier>();
+          ObjPtr<mirror::IfTable> iftable = klass->GetIfTable<kVerifyNone, kWithoutReadBarrier>();
           if (iftable != nullptr) {
             int32_t ifcount = klass->GetIfTableCount<kVerifyNone>();
             for (int32_t i = 0; i != ifcount; ++i) {
-              mirror::PointerArray* unpatched_ifarray =
+              ObjPtr<mirror::PointerArray> unpatched_ifarray =
                   iftable->GetMethodArrayOrNull<kVerifyNone, kWithoutReadBarrier>(i);
               if (unpatched_ifarray != nullptr) {
                 // The iftable has not been patched, so we need to explicitly adjust the pointer.
-                mirror::PointerArray* ifarray = relocate_visitor(unpatched_ifarray);
-                if (!patched_objects->Set(ifarray)) {
+                ObjPtr<mirror::PointerArray> ifarray = relocate_visitor(unpatched_ifarray.Ptr());
+                if (!patched_objects->Set(ifarray.Ptr())) {
                   patch_object_visitor.VisitPointerArray(ifarray);
                 }
               }
