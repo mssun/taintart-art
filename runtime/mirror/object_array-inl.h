@@ -36,7 +36,7 @@ namespace art {
 namespace mirror {
 
 template<class T> template<VerifyObjectFlags kVerifyFlags, ReadBarrierOption kReadBarrierOption>
-inline T* ObjectArray<T>::Get(int32_t i) {
+inline ObjPtr<T> ObjectArray<T>::Get(int32_t i) {
   if (!CheckIsValidIndex<kVerifyFlags>(i)) {
     DCHECK(Thread::Current()->IsExceptionPending());
     return nullptr;
@@ -94,7 +94,7 @@ inline void ObjectArray<T>::SetWithoutChecksAndWriteBarrier(int32_t i, ObjPtr<T>
 }
 
 template<class T> template<VerifyObjectFlags kVerifyFlags, ReadBarrierOption kReadBarrierOption>
-inline T* ObjectArray<T>::GetWithoutChecks(int32_t i) {
+inline ObjPtr<T> ObjectArray<T>::GetWithoutChecks(int32_t i) {
   DCHECK(CheckIsValidIndex(i));
   return GetFieldObject<T, kVerifyFlags, kReadBarrierOption>(OffsetOfElement(i));
 }
@@ -129,7 +129,7 @@ inline void ObjectArray<T>::AssignableMemmove(int32_t dst_pos,
             reinterpret_cast<uintptr_t>(src.Ptr()) | fake_address_dependency));
         for (int i = 0; i < count; ++i) {
           // We can skip the RB here because 'src' isn't gray.
-          T* obj = src->template GetWithoutChecks<kDefaultVerifyFlags, kWithoutReadBarrier>(
+          ObjPtr<T> obj = src->template GetWithoutChecks<kDefaultVerifyFlags, kWithoutReadBarrier>(
               src_pos + i);
           SetWithoutChecksAndWriteBarrier<false>(dst_pos + i, obj);
         }
@@ -138,7 +138,7 @@ inline void ObjectArray<T>::AssignableMemmove(int32_t dst_pos,
     if (!baker_non_gray_case) {
       for (int i = 0; i < count; ++i) {
         // We need a RB here. ObjectArray::GetWithoutChecks() contains a RB.
-        T* obj = src->GetWithoutChecks(src_pos + i);
+        ObjPtr<T> obj = src->GetWithoutChecks(src_pos + i);
         SetWithoutChecksAndWriteBarrier<false>(dst_pos + i, obj);
       }
     }
@@ -154,7 +154,7 @@ inline void ObjectArray<T>::AssignableMemmove(int32_t dst_pos,
             reinterpret_cast<uintptr_t>(src.Ptr()) | fake_address_dependency));
         for (int i = count - 1; i >= 0; --i) {
           // We can skip the RB here because 'src' isn't gray.
-          T* obj = src->template GetWithoutChecks<kDefaultVerifyFlags, kWithoutReadBarrier>(
+          ObjPtr<T> obj = src->template GetWithoutChecks<kDefaultVerifyFlags, kWithoutReadBarrier>(
               src_pos + i);
           SetWithoutChecksAndWriteBarrier<false>(dst_pos + i, obj);
         }
@@ -163,7 +163,7 @@ inline void ObjectArray<T>::AssignableMemmove(int32_t dst_pos,
     if (!baker_non_gray_case) {
       for (int i = count - 1; i >= 0; --i) {
         // We need a RB here. ObjectArray::GetWithoutChecks() contains a RB.
-        T* obj = src->GetWithoutChecks(src_pos + i);
+        ObjPtr<T> obj = src->GetWithoutChecks(src_pos + i);
         SetWithoutChecksAndWriteBarrier<false>(dst_pos + i, obj);
       }
     }
@@ -204,8 +204,8 @@ inline void ObjectArray<T>::AssignableMemcpy(int32_t dst_pos,
           reinterpret_cast<uintptr_t>(src.Ptr()) | fake_address_dependency));
       for (int i = 0; i < count; ++i) {
         // We can skip the RB here because 'src' isn't gray.
-        Object* obj = src->template GetWithoutChecks<kDefaultVerifyFlags, kWithoutReadBarrier>(
-            src_pos + i);
+        ObjPtr<Object> obj =
+            src->template GetWithoutChecks<kDefaultVerifyFlags, kWithoutReadBarrier>(src_pos + i);
         SetWithoutChecksAndWriteBarrier<false>(dst_pos + i, obj);
       }
     }
@@ -213,7 +213,7 @@ inline void ObjectArray<T>::AssignableMemcpy(int32_t dst_pos,
   if (!baker_non_gray_case) {
     for (int i = 0; i < count; ++i) {
       // We need a RB here. ObjectArray::GetWithoutChecks() contains a RB.
-      T* obj = src->GetWithoutChecks(src_pos + i);
+      ObjPtr<T> obj = src->GetWithoutChecks(src_pos + i);
       SetWithoutChecksAndWriteBarrier<false>(dst_pos + i, obj);
     }
   }

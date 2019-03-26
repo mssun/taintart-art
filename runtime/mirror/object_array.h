@@ -44,7 +44,7 @@ class MANAGED ObjectArray: public Array {
 
   template<VerifyObjectFlags kVerifyFlags = kDefaultVerifyFlags,
            ReadBarrierOption kReadBarrierOption = kWithReadBarrier>
-  ALWAYS_INLINE T* Get(int32_t i) REQUIRES_SHARED(Locks::mutator_lock_);
+  ALWAYS_INLINE ObjPtr<T> Get(int32_t i) REQUIRES_SHARED(Locks::mutator_lock_);
 
   // Returns true if the object can be stored into the array. If not, throws
   // an ArrayStoreException and returns false.
@@ -74,7 +74,7 @@ class MANAGED ObjectArray: public Array {
 
   template<VerifyObjectFlags kVerifyFlags = kDefaultVerifyFlags,
            ReadBarrierOption kReadBarrierOption = kWithReadBarrier>
-  ALWAYS_INLINE T* GetWithoutChecks(int32_t i) REQUIRES_SHARED(Locks::mutator_lock_);
+  ALWAYS_INLINE ObjPtr<T> GetWithoutChecks(int32_t i) REQUIRES_SHARED(Locks::mutator_lock_);
 
   // Copy src into this array (dealing with overlaps as memmove does) without assignability checks.
   void AssignableMemmove(int32_t dst_pos,

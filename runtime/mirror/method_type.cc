@@ -102,7 +102,7 @@ size_t MethodType::NumberOfVRegs() REQUIRES_SHARED(Locks::mutator_lock_) {
   // types requiring a second vreg.
   size_t num_vregs = static_cast<size_t>(p_types_length);
   for (int32_t i = 0; i < p_types_length; ++i) {
-    Class* klass = p_types->GetWithoutChecks(i);
+    ObjPtr<Class> klass = p_types->GetWithoutChecks(i);
     if (klass->IsPrimitiveLong() || klass->IsPrimitiveDouble()) {
       ++num_vregs;
     }

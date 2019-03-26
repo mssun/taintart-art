@@ -857,9 +857,9 @@ extern "C" mirror::Object* artAGetObjectFromMterp(mirror::Object* arr,
     ThrowNullPointerExceptionFromInterpreter();
     return nullptr;
   }
-  mirror::ObjectArray<mirror::Object>* array = arr->AsObjectArray<mirror::Object>();
+  ObjPtr<mirror::ObjectArray<mirror::Object>> array = arr->AsObjectArray<mirror::Object>();
   if (LIKELY(array->CheckIsValidIndex(index))) {
-    return array->GetWithoutChecks(index);
+    return array->GetWithoutChecks(index).Ptr();
   } else {
     return nullptr;
   }

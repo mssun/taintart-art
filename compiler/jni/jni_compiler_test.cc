@@ -1188,7 +1188,7 @@ jint Java_MyClassNatives_nativeUpCall(JNIEnv* env, jobject thisObj, jint i) {
     // Check stack trace entries have expected values
     for (int32_t j = 0; j < trace_array->GetLength(); ++j) {
       EXPECT_EQ(-2, trace_array->Get(j)->GetLineNumber());
-      mirror::StackTraceElement* ste = trace_array->Get(j);
+      ObjPtr<mirror::StackTraceElement> ste = trace_array->Get(j);
       EXPECT_STREQ("MyClassNatives.java", ste->GetFileName()->ToModifiedUtf8().c_str());
       EXPECT_STREQ("MyClassNatives", ste->GetDeclaringClass()->ToModifiedUtf8().c_str());
       EXPECT_EQ(("fooI" + CurrentJniStringSuffix()), ste->GetMethodName()->ToModifiedUtf8());

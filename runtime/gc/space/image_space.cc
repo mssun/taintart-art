@@ -505,7 +505,8 @@ class ImageSpace::PatchObjectVisitor final {
       const {}
   void VisitRoot(mirror::CompressedReference<mirror::Object>* root ATTRIBUTE_UNUSED) const {}
 
-  void VisitDexCacheArrays(mirror::DexCache* dex_cache) REQUIRES_SHARED(Locks::mutator_lock_) {
+  void VisitDexCacheArrays(ObjPtr<mirror::DexCache> dex_cache)
+      REQUIRES_SHARED(Locks::mutator_lock_) {
     FixupDexCacheArray<mirror::StringDexCacheType>(dex_cache,
                                                    mirror::DexCache::StringsOffset(),
                                                    dex_cache->NumStrings<kVerifyNone>());
@@ -611,7 +612,7 @@ class ImageSpace::PatchObjectVisitor final {
   }
 
   template <typename EntryType>
-  void FixupDexCacheArray(mirror::DexCache* dex_cache,
+  void FixupDexCacheArray(ObjPtr<mirror::DexCache> dex_cache,
                           MemberOffset array_offset,
                           uint32_t size) REQUIRES_SHARED(Locks::mutator_lock_) {
     EntryType* old_array =
@@ -1262,7 +1263,7 @@ class ImageSpace::Loader {
       auto* dex_caches = image_header.GetImageRoot<kWithoutReadBarrier>(ImageHeader::kDexCaches)->
           AsObjectArray<mirror::DexCache, kVerifyNone>();
       for (int32_t i = 0, count = dex_caches->GetLength(); i < count; ++i) {
-        mirror::DexCache* dex_cache = dex_caches->Get<kVerifyNone, kWithoutReadBarrier>(i);
+        ObjPtr<mirror::DexCache> dex_cache = dex_caches->Get<kVerifyNone, kWithoutReadBarrier>(i);
         CHECK(dex_cache != nullptr);
         patch_object_visitor.VisitDexCacheArrays(dex_cache);
       }

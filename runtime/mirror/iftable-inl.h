@@ -44,7 +44,7 @@ inline void IfTable::SetInterface(int32_t i, ObjPtr<Class> interface) {
 template<VerifyObjectFlags kVerifyFlags,
          ReadBarrierOption kReadBarrierOption>
 inline ObjPtr<PointerArray> IfTable::GetMethodArrayOrNull(int32_t i) {
-  return down_cast<PointerArray*>(
+  return ObjPtr<PointerArray>::DownCast(
       Get<kVerifyFlags, kReadBarrierOption>((i * kMax) + kMethodArray));
 }
 

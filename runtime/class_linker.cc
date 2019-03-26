@@ -2120,7 +2120,7 @@ bool ClassLinker::AddImageSpace(
 
   if (kSanityCheckObjects) {
     for (int32_t i = 0; i < dex_caches->GetLength(); i++) {
-      auto* dex_cache = dex_caches->Get(i);
+      ObjPtr<mirror::DexCache> dex_cache = dex_caches->Get(i);
       for (size_t j = 0; j < dex_cache->NumResolvedFields(); ++j) {
         auto* field = dex_cache->GetResolvedField(j, image_pointer_size_);
         if (field != nullptr) {

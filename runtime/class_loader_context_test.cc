@@ -1051,7 +1051,7 @@ TEST_F(ClassLoaderContextTest, CreateClassLoaderWithSameSharedLibraries) {
   Handle<mirror::ObjectArray<mirror::ClassLoader>> shared_libraries_2(
       hs.NewHandle(raw_shared_libraries->AsObjectArray<mirror::ClassLoader>()));
   ASSERT_EQ(shared_libraries_2->GetLength(), 1);
-  ASSERT_EQ(shared_libraries_2->Get(0), class_loader_2.Get());
+  ASSERT_OBJ_PTR_EQ(shared_libraries_2->Get(0), class_loader_2.Get());
 
   // Class loaders should have the BootClassLoader as a parent.
   ASSERT_TRUE(class_loader_2->GetParent()->GetClass() ==

@@ -134,7 +134,7 @@ std::string Throwable::Dump() {
         result += "(Throwable with empty stack trace)\n";
       } else {
         for (int32_t i = 0; i < ste_array->GetLength(); ++i) {
-          StackTraceElement* ste = ste_array->Get(i);
+          ObjPtr<StackTraceElement> ste = ste_array->Get(i);
           DCHECK(ste != nullptr);
           auto* method_name = ste->GetMethodName();
           auto* file_name = ste->GetFileName();

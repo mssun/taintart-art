@@ -23,7 +23,7 @@
 #include "interpreter/shadow_frame-inl.h"
 #include "jvalue-inl.h"
 #include "mirror/class-inl.h"
-#include "mirror/emulated_stack_frame.h"
+#include "mirror/emulated_stack_frame-inl.h"
 #include "mirror/method_handle_impl-inl.h"
 #include "mirror/method_type.h"
 #include "mirror/var_handle.h"

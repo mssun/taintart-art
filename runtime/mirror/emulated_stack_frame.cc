@@ -14,15 +14,17 @@
  * limitations under the License.
  */
 
-#include "emulated_stack_frame.h"
+#include "emulated_stack_frame-inl.h"
 
 #include "array-alloc-inl.h"
 #include "array-inl.h"
 #include "class-alloc-inl.h"
 #include "class_root.h"
+#include "handle.h"
 #include "jvalue-inl.h"
 #include "method_handles-inl.h"
 #include "method_handles.h"
+#include "method_type.h"
 #include "object_array-alloc-inl.h"
 #include "object_array-inl.h"
 #include "reflection-inl.h"
@@ -141,7 +143,7 @@ class EmulatedStackFrameAccessor {
   DISALLOW_COPY_AND_ASSIGN(EmulatedStackFrameAccessor);
 };
 
-mirror::EmulatedStackFrame* EmulatedStackFrame::CreateFromShadowFrameAndArgs(
+ObjPtr<mirror::EmulatedStackFrame> EmulatedStackFrame::CreateFromShadowFrameAndArgs(
     Thread* self,
     Handle<mirror::MethodType> caller_type,
     Handle<mirror::MethodType> callee_type,
