@@ -53,6 +53,7 @@ static constexpr char kClassLoaderSharedLibrarySeparator = '#';
 static constexpr char kClassLoaderSeparator = ';';
 static constexpr char kClasspathSeparator = ':';
 static constexpr char kDexFileChecksumSeparator = '*';
+static constexpr char kInMemoryDexClassLoaderClasspathMagic[] = "<unknown>";
 
 ClassLoaderContext::ClassLoaderContext()
     : special_shared_library_(false),
@@ -169,6 +170,8 @@ std::unique_ptr<ClassLoaderContext::ClassLoaderInfo> ClassLoaderContext::ParseCl
       // Checksums are not provided and dex locations themselves have no meaning
       // (although we keep them in the spec to simplify parsing). Treat this as
       // an unknown class loader.
+      // We can hit this case if dex2oat is invoked with a spec containing IMC.
+      // Because the dex file data is only available at runtime, we cannot proceed.
       return nullptr;
     }
   }
@@ -197,6 +200,7 @@ std::unique_ptr<ClassLoaderContext::ClassLoaderInfo> ClassLoaderContext::ParseCl
   std::unique_ptr<ClassLoaderInfo> info(new ClassLoaderInfo(class_loader_type));
 
   if (!parse_checksums) {
+    DCHECK(class_loader_type != kInMemoryDexClassLoader);
     Split(classpath, kClasspathSeparator, &info->classpath);
   } else {
     std::vector<std::string> classpath_elements;
@@ -209,6 +213,10 @@ std::unique_ptr<ClassLoaderContext::ClassLoaderInfo> ClassLoaderContext::ParseCl
       }
       uint32_t checksum = 0;
       if (!android::base::ParseUint(dex_file_with_checksum[1].c_str(), &checksum)) {
+        return nullptr;
+      }
+      if ((class_loader_type == kInMemoryDexClassLoader) &&
+          (dex_file_with_checksum[0] != kInMemoryDexClassLoaderClasspathMagic)) {
         return nullptr;
       }
 
@@ -416,6 +424,8 @@ bool ClassLoaderContext::OpenDexFiles(InstructionSet isa,
   while (!work_list.empty()) {
     ClassLoaderInfo* info = work_list.back();
     work_list.pop_back();
+    DCHECK(info->type != kInMemoryDexClassLoader) << __FUNCTION__ << " not supported for IMC";
+
     size_t opened_dex_files_index = info->opened_dex_files.size();
     for (const std::string& cp_elem : info->classpath) {
       // If path is relative, append it to the provided base directory.
@@ -624,8 +634,10 @@ void ClassLoaderContext::EncodeContextInternal(const ClassLoaderInfo& info,
     if (k > 0) {
       out << kClasspathSeparator;
     }
-    // Find paths that were relative and convert them back from absolute.
-    if (!base_dir.empty() && location.substr(0, base_dir.length()) == base_dir) {
+    if (info.type == kInMemoryDexClassLoader) {
+      out << kInMemoryDexClassLoaderClasspathMagic;
+    } else if (!base_dir.empty() && location.substr(0, base_dir.length()) == base_dir) {
+      // Find paths that were relative and convert them back from absolute.
       out << location.substr(base_dir.length() + 1).c_str();
     } else {
       out << location.c_str();
