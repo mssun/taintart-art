@@ -652,7 +652,7 @@ void OptimizingCompiler::RunOptimizations(HGraph* graph,
     std::vector<OptimizationDef> optimizations;
     for (const std::string& pass_name : *pass_names) {
       std::string opt_name = ConvertPassNameToOptimizationName(pass_name);
-      optimizations.push_back(OptDef(OptimizationPassByName(opt_name.c_str()), pass_name.c_str()));
+      optimizations.push_back(OptDef(OptimizationPassByName(opt_name), pass_name.c_str()));
     }
     RunOptimizations(graph,
                      codegen,
