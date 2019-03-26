@@ -448,11 +448,19 @@ include $(CLEAR_VARS)
 LOCAL_MODULE := art-tools
 LOCAL_HOST_REQUIRED_MODULES := \
     ahat \
-    dexdiag \
     dexdump \
-    dexlist \
     hprof-conv \
+
+# A subset of the tools are disabled when HOST_PREFER_32_BIT is defined as make reports that
+# they are not supported on host (b/129323791). This is likely due to art_apex disabling host
+# APEX builds when HOST_PREFER_32_BIT is set (b/120617876).
+ifneq ($(HOST_PREFER_32_BIT),true)
+LOCAL_HOST_REQUIRED_MODULES += \
+    dexdiag \
+    dexlist \
     oatdump \
+
+endif
 
 include $(BUILD_PHONY_PACKAGE)
 
