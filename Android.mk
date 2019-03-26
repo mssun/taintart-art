@@ -528,6 +528,8 @@ PRIVATE_RUNTIME_DEPENDENCY_LIBS := \
   lib64/libdexfile_external.so \
   lib/libnativeloader.so \
   lib64/libnativeloader.so \
+  lib/libandroidio.so \
+  lib64/libandroidio.so \
 
 .PHONY: standalone-apex-files
 standalone-apex-files: libc.bootstrap libdl.bootstrap libm.bootstrap linker com.android.runtime.debug
