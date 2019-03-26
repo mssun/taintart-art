@@ -31,7 +31,7 @@
 #include "dex/dex_file-inl.h"
 #include "dex/invoke_type.h"
 #include "dex_cache.h"
-#include "iftable.h"
+#include "iftable-inl.h"
 #include "imtable.h"
 #include "object-inl.h"
 #include "object_array.h"

@@ -1228,12 +1228,13 @@ class ImageSpace::Loader {
               // below.
               int32_t ifcount = klass->GetIfTableCount<kVerifyNone>();
               for (int32_t i = 0; i != ifcount; ++i) {
-                mirror::PointerArray* unpatched_ifarray =
+                ObjPtr<mirror::PointerArray> unpatched_ifarray =
                     iftable->GetMethodArrayOrNull<kVerifyNone, kWithoutReadBarrier>(i);
                 if (unpatched_ifarray != nullptr) {
                   // The iftable has not been patched, so we need to explicitly adjust the pointer.
-                  mirror::PointerArray* ifarray = forward_object(unpatched_ifarray);
-                  if (app_image_objects.InDest(ifarray) && !visited_bitmap->Set(ifarray)) {
+                  ObjPtr<mirror::PointerArray> ifarray = forward_object(unpatched_ifarray.Ptr());
+                  if (app_image_objects.InDest(ifarray.Ptr()) &&
+                      !visited_bitmap->Set(ifarray.Ptr())) {
                     patch_object_visitor.VisitPointerArray(ifarray);
                   }
                 }

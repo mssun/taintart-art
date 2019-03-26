@@ -6766,7 +6766,7 @@ void ClassLinker::FillIMTFromIfTable(ObjPtr<mirror::IfTable> if_table,
     if (method_array_count == 0) {
       continue;
     }
-    auto* method_array = if_table->GetMethodArray(i);
+    ObjPtr<mirror::PointerArray> method_array = if_table->GetMethodArray(i);
     for (size_t j = 0; j < method_array_count; ++j) {
       ArtMethod* implementation_method =
           method_array->GetElementPtrSize<ArtMethod*>(j, image_pointer_size_);
@@ -6824,7 +6824,7 @@ void ClassLinker::FillIMTFromIfTable(ObjPtr<mirror::IfTable> if_table,
       if (method_array_count == 0) {
         continue;
       }
-      auto* method_array = if_table->GetMethodArray(i);
+      ObjPtr<mirror::PointerArray> method_array = if_table->GetMethodArray(i);
       for (size_t j = 0; j < method_array_count; ++j) {
         ArtMethod* implementation_method =
             method_array->GetElementPtrSize<ArtMethod*>(j, image_pointer_size_);
@@ -7784,8 +7784,8 @@ void ClassLinker::LinkInterfaceMethodsHelper::UpdateIfTable(Handle<mirror::IfTab
   // Go fix up all the stale iftable pointers.
   for (size_t i = 0; i < ifcount; ++i) {
     for (size_t j = 0, count = iftable->GetMethodArrayCount(i); j < count; ++j) {
-      auto* method_array = iftable->GetMethodArray(i);
-      auto* m = method_array->GetElementPtrSize<ArtMethod*>(j, pointer_size);
+      ObjPtr<mirror::PointerArray> method_array = iftable->GetMethodArray(i);
+      ArtMethod* m = method_array->GetElementPtrSize<ArtMethod*>(j, pointer_size);
       DCHECK(m != nullptr) << klass_->PrettyClass();
       auto it = move_table_.find(m);
       if (it != move_table_.end()) {
