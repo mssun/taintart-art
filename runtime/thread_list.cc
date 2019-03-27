@@ -203,7 +203,7 @@ class DumpCheckpoint final : public Closure {
  public:
   DumpCheckpoint(std::ostream* os, bool dump_native_stack)
       : os_(os),
-        barrier_(0),
+        barrier_(0, /*verify_count_on_shutdown=*/false),
         backtrace_map_(dump_native_stack ? BacktraceMap::Create(getpid()) : nullptr),
         dump_native_stack_(dump_native_stack) {
     if (backtrace_map_ != nullptr) {
