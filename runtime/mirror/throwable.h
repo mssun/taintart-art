@@ -33,7 +33,7 @@ class MANAGED Throwable : public Object {
  public:
   void SetDetailMessage(ObjPtr<String> new_detail_message) REQUIRES_SHARED(Locks::mutator_lock_);
 
-  String* GetDetailMessage() REQUIRES_SHARED(Locks::mutator_lock_);
+  ObjPtr<String> GetDetailMessage() REQUIRES_SHARED(Locks::mutator_lock_);
 
   std::string Dump() REQUIRES_SHARED(Locks::mutator_lock_);
 
@@ -48,11 +48,11 @@ class MANAGED Throwable : public Object {
   int32_t GetStackDepth() REQUIRES_SHARED(Locks::mutator_lock_);
 
  private:
-  Object* GetStackState() REQUIRES_SHARED(Locks::mutator_lock_);
-  Object* GetStackTrace() REQUIRES_SHARED(Locks::mutator_lock_);
+  ObjPtr<Object> GetStackState() REQUIRES_SHARED(Locks::mutator_lock_);
+  ObjPtr<Object> GetStackTrace() REQUIRES_SHARED(Locks::mutator_lock_);
 
   // Field order required by test "ValidateFieldOrderOfJavaCppUnionClasses".
-  HeapReference<Object> backtrace_;  // Note this is Java volatile:
+  HeapReference<Object> backtrace_;
   HeapReference<Throwable> cause_;
   HeapReference<String> detail_message_;
   HeapReference<Object> stack_trace_;
