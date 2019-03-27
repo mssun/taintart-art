@@ -250,7 +250,7 @@ class EndianOutput {
       REQUIRES_SHARED(Locks::mutator_lock_) {
     const int32_t length = values->GetLength();
     for (int32_t i = 0; i < length; ++i) {
-      AddObjectId(values->GetWithoutChecks(i));
+      AddObjectId(values->GetWithoutChecks(i).Ptr());
     }
   }
 

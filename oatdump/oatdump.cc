@@ -1819,7 +1819,7 @@ class ImageDumper {
               = image_root_object->AsObjectArray<mirror::Object>();
           ScopedIndentation indent2(&vios_);
           for (int j = 0; j < image_root_object_array->GetLength(); j++) {
-            mirror::Object* value = image_root_object_array->Get(j);
+            ObjPtr<mirror::Object> value = image_root_object_array->Get(j);
             size_t run = 0;
             for (int32_t k = j + 1; k < image_root_object_array->GetLength(); k++) {
               if (value == image_root_object_array->Get(k)) {
@@ -2177,7 +2177,7 @@ class ImageDumper {
     if (obj->IsObjectArray()) {
       auto* obj_array = obj->AsObjectArray<mirror::Object>();
       for (int32_t i = 0, length = obj_array->GetLength(); i < length; i++) {
-        mirror::Object* value = obj_array->Get(i);
+        ObjPtr<mirror::Object> value = obj_array->Get(i);
         size_t run = 0;
         for (int32_t j = i + 1; j < length; j++) {
           if (value == obj_array->Get(j)) {

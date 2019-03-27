@@ -123,13 +123,13 @@ JValue InvokeProxyInvocationHandler(ScopedObjectAccessAlreadyRunnable& soa,
   } else {
     // In the case of checked exceptions that aren't declared, the exception must be wrapped by
     // a UndeclaredThrowableException.
-    mirror::Throwable* exception = soa.Self()->GetException();
+    ObjPtr<mirror::Throwable> exception = soa.Self()->GetException();
     if (exception->IsCheckedException()) {
       bool declares_exception = false;
       {
         ScopedAssertNoThreadSuspension ants(__FUNCTION__);
         ObjPtr<mirror::Object> rcvr = soa.Decode<mirror::Object>(rcvr_jobj);
-        mirror::Class* proxy_class = rcvr->GetClass();
+        ObjPtr<mirror::Class> proxy_class = rcvr->GetClass();
         ObjPtr<mirror::Method> interface_method = soa.Decode<mirror::Method>(interface_method_jobj);
         ArtMethod* proxy_method = rcvr->GetClass()->FindVirtualMethodForInterface(
             interface_method->GetArtMethod(), kRuntimePointerSize);
@@ -141,11 +141,11 @@ JValue InvokeProxyInvocationHandler(ScopedObjectAccessAlreadyRunnable& soa,
         int throws_index = (reinterpret_cast<uintptr_t>(proxy_method) -
             reinterpret_cast<uintptr_t>(&virtual_methods[0])) / method_size;
         CHECK_LT(throws_index, static_cast<int>(num_virtuals));
-        mirror::ObjectArray<mirror::Class>* declared_exceptions =
+        ObjPtr<mirror::ObjectArray<mirror::Class>> declared_exceptions =
             proxy_class->GetProxyThrows()->Get(throws_index);
-        mirror::Class* exception_class = exception->GetClass();
+        ObjPtr<mirror::Class> exception_class = exception->GetClass();
         for (int32_t i = 0; i < declared_exceptions->GetLength() && !declares_exception; i++) {
-          mirror::Class* declared_exception = declared_exceptions->Get(i);
+          ObjPtr<mirror::Class> declared_exception = declared_exceptions->Get(i);
           declares_exception = declared_exception->IsAssignableFrom(exception_class);
         }
       }

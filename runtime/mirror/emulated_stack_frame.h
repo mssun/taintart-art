@@ -19,10 +19,9 @@
 
 #include "base/utils.h"
 #include "dex/dex_instruction.h"
-#include "method_type.h"
+#include "handle.h"
 #include "object.h"
 #include "stack.h"
-#include "string.h"
 
 namespace art {
 
@@ -30,12 +29,14 @@ struct EmulatedStackFrameOffsets;
 
 namespace mirror {
 
+class MethodType;
+
 // C++ mirror of dalvik.system.EmulatedStackFrame
 class MANAGED EmulatedStackFrame : public Object {
  public:
   // Creates an emulated stack frame whose type is |frame_type| from
   // a shadow frame.
-  static mirror::EmulatedStackFrame* CreateFromShadowFrameAndArgs(
+  static ObjPtr<mirror::EmulatedStackFrame> CreateFromShadowFrameAndArgs(
       Thread* self,
       Handle<mirror::MethodType> args_type,
       Handle<mirror::MethodType> frame_type,
@@ -56,24 +57,14 @@ class MANAGED EmulatedStackFrame : public Object {
   // Sets the return value slot of this emulated stack frame to |value|.
   void SetReturnValue(Thread* self, const JValue& value) REQUIRES_SHARED(Locks::mutator_lock_);
 
-  mirror::MethodType* GetType() REQUIRES_SHARED(Locks::mutator_lock_) {
-    return GetFieldObject<MethodType>(OFFSET_OF_OBJECT_MEMBER(EmulatedStackFrame, type_));
-  }
+  ObjPtr<mirror::MethodType> GetType() REQUIRES_SHARED(Locks::mutator_lock_);
 
-  mirror::Object* GetReceiver() REQUIRES_SHARED(Locks::mutator_lock_) {
-    return GetReferences()->Get(0);
-  }
+  ObjPtr<mirror::Object> GetReceiver() REQUIRES_SHARED(Locks::mutator_lock_);
 
  private:
-  mirror::ObjectArray<mirror::Object>* GetReferences() REQUIRES_SHARED(Locks::mutator_lock_) {
-    return GetFieldObject<mirror::ObjectArray<mirror::Object>>(
-        OFFSET_OF_OBJECT_MEMBER(EmulatedStackFrame, references_));
-  }
+  ObjPtr<mirror::ObjectArray<mirror::Object>> GetReferences() REQUIRES_SHARED(Locks::mutator_lock_);
 
-  mirror::ByteArray* GetStackFrame() REQUIRES_SHARED(Locks::mutator_lock_) {
-    return GetFieldObject<mirror::ByteArray>(
-        OFFSET_OF_OBJECT_MEMBER(EmulatedStackFrame, stack_frame_));
-  }
+  ObjPtr<mirror::ByteArray> GetStackFrame() REQUIRES_SHARED(Locks::mutator_lock_);
 
   static MemberOffset CallsiteTypeOffset() {
     return MemberOffset(OFFSETOF_MEMBER(EmulatedStackFrame, callsite_type_));

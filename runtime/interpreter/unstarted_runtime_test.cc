@@ -132,7 +132,7 @@ class UnstartedRuntimeTest : public CommonRuntimeTest {
     CHECK_EQ(array->GetLength(), 3);
     CHECK_EQ(data.NumberOfReferences(), 3U);
     for (size_t i = 0; i < 3; ++i) {
-      EXPECT_EQ(data.GetReference(i), array->Get(static_cast<int32_t>(i))) << i;
+      EXPECT_OBJ_PTR_EQ(data.GetReference(i), array->Get(static_cast<int32_t>(i))) << i;
     }
   }
 

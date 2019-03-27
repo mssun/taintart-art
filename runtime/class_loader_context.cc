@@ -927,7 +927,7 @@ static bool CollectDexFilesFromSupportedClassLoader(ScopedObjectAccessAlreadyRun
     Handle<mirror::ObjectArray<mirror::Object>> dex_elements(
         hs.NewHandle(dex_elements_obj->AsObjectArray<mirror::Object>()));
     for (int32_t i = 0; i < dex_elements->GetLength(); ++i) {
-      mirror::Object* element = dex_elements->GetWithoutChecks(i);
+      ObjPtr<mirror::Object> element = dex_elements->GetWithoutChecks(i);
       if (element == nullptr) {
         // Should never happen, log an error and break.
         // TODO(calin): It's unclear if we should just assert here.
@@ -962,7 +962,7 @@ static bool GetDexFilesFromDexElementsArray(
       WellKnownClasses::dalvik_system_DexFile);
 
   for (int32_t i = 0; i < dex_elements->GetLength(); ++i) {
-    mirror::Object* element = dex_elements->GetWithoutChecks(i);
+    ObjPtr<mirror::Object> element = dex_elements->GetWithoutChecks(i);
     // We can hit a null element here because this is invoked with a partially filled dex_elements
     // array from DexPathList. DexPathList will open each dex sequentially, each time passing the
     // list of dex files which were opened before.

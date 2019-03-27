@@ -709,7 +709,8 @@ class Dbg {
     return gRegistry;
   }
 
-  static JDWP::JdwpTag TagFromObject(const ScopedObjectAccessUnchecked& soa, mirror::Object* o)
+  static JDWP::JdwpTag TagFromObject(const ScopedObjectAccessUnchecked& soa,
+                                     ObjPtr<mirror::Object> o)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
   static JDWP::JdwpTypeTag GetTypeTag(ObjPtr<mirror::Class> klass)

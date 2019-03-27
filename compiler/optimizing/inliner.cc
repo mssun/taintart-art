@@ -289,7 +289,7 @@ static uint32_t FindMethodIndexIn(ArtMethod* method,
   }
 }
 
-static dex::TypeIndex FindClassIndexIn(mirror::Class* cls,
+static dex::TypeIndex FindClassIndexIn(ObjPtr<mirror::Class> cls,
                                        const DexCompilationUnit& compilation_unit)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   const DexFile& dex_file = *compilation_unit.GetDexFile();
@@ -368,7 +368,7 @@ HInliner::InlineCacheType HInliner::GetInlineCacheType(
   }
 }
 
-static mirror::Class* GetMonomorphicType(Handle<mirror::ObjectArray<mirror::Class>> classes)
+static ObjPtr<mirror::Class> GetMonomorphicType(Handle<mirror::ObjectArray<mirror::Class>> classes)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   DCHECK(classes->Get(0) != nullptr);
   return classes->Get(0);
