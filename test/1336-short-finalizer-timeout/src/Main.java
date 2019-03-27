@@ -19,47 +19,38 @@ import java.util.concurrent.CountDownLatch;
 import static java.util.concurrent.TimeUnit.MINUTES;
 
 /**
- * Test a class with a bad finalizer.
+ * Test a class with a bad finalizer in an environment with a short finalizer timeout.
  *
  * This test is inherently flaky. It assumes that the system will schedule the finalizer daemon
  * and finalizer watchdog daemon enough to reach the timeout and throwing the fatal exception.
+ * Largely cloned from 030-bad-finalizer.
  */
 public class Main {
     public static void main(String[] args) throws Exception {
         CountDownLatch finalizerWait = new CountDownLatch(1);
 
+        System.out.println("Finalizer timeout = "
+                + VMRuntime.getRuntime().getFinalizerTimeoutMs() + " msecs.");
         // A separate method to ensure no dex register keeps the object alive.
         createBadFinalizer(finalizerWait);
 
-        // Should have at least two iterations to trigger finalization, but just to make sure run
-        // some more.
-        for (int i = 0; i < 5; i++) {
+        for (int i = 0; i < 2; i++) {
             Runtime.getRuntime().gc();
         }
 
-        // Now wait for the finalizer to start running. Give it a minute.
-        finalizerWait.await(1, MINUTES);
-
-        // Now fall asleep with a timeout. The timeout is large enough that we expect the
-        // finalizer daemon to have killed the process before the deadline elapses.
-        // The timeout is also large enough to cover the extra 5 seconds we wait
-        // to dump threads, plus potentially substantial gcstress overhead.
-        // Note: the timeout is here (instead of an infinite sleep) to protect the test
-        //       environment (e.g., in case this is run without a timeout wrapper).
-        final long timeout = 100 * 1000 + VMRuntime.getRuntime().getFinalizerTimeoutMs();
-        long remainingWait = timeout;
-        final long waitStart = System.currentTimeMillis();
-        while (remainingWait > 0) {
-            synchronized (args) {  // Just use an already existing object for simplicity...
-                try {
-                    args.wait(remainingWait);
-                } catch (Exception e) {
-                }
-            }
-            remainingWait = timeout - (System.currentTimeMillis() - waitStart);
+        // Now wait for the finalizer to start running.
+        if (!finalizerWait.await(1, MINUTES)) {
+            System.out.println("finalizerWait timed out.");
         }
 
-        // We should not get here.
+        System.out.println("Starting main snooze.");
+        // Sleep for less time than the default finalizer timeout, but significantly more than
+        // the new timeout plus the 5 seconds we wait to dump thread stacks before actually
+        // exiting.
+        snooze(9800);
+
+        // We should not get here, since it should only take 5.5 seconds for the timed out
+        // fiinalizer to kill the process.
         System.out.println("UNREACHABLE");
         System.exit(0);
     }
@@ -75,6 +66,7 @@ public class Main {
         try {
             Thread.sleep(ms);
         } catch (InterruptedException ie) {
+            System.out.println("Snooze(" + ms + ") interrupted");
         }
     }
 
@@ -90,16 +82,10 @@ public class Main {
         }
 
         protected void finalize() {
+            System.out.println("Finalizer started and snoozing...");
             finalizerWait.countDown();
-
-            System.out.println("Finalizer started and spinning...");
-
-            /* spin for a bit */
-            long start, end;
-            start = System.nanoTime();
-            snooze(2000);
-            end = System.nanoTime();
-            System.out.println("Finalizer done spinning.");
+            snooze(200);
+            System.out.println("Finalizer done snoozing.");
 
             System.out.println("Finalizer sleeping forever now.");
             while (true) {

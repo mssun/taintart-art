@@ -1211,6 +1211,7 @@ bool Runtime::Init(RuntimeArgumentMap&& runtime_options_in) {
   }
   image_compiler_options_ = runtime_options.ReleaseOrDefault(Opt::ImageCompilerOptions);
 
+  finalizer_timeout_ms_ = runtime_options.GetOrDefault(Opt::FinalizerTimeoutMs);
   max_spins_before_thin_lock_inflation_ =
       runtime_options.GetOrDefault(Opt::MaxSpinsBeforeThinLockInflation);
 

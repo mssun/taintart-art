@@ -272,6 +272,10 @@ class Runtime {
     return default_stack_size_;
   }
 
+  unsigned int GetFinalizerTimeoutMs() const {
+    return finalizer_timeout_ms_;
+  }
+
   gc::Heap* GetHeap() const {
     return heap_;
   }
@@ -943,6 +947,9 @@ class Runtime {
 
   // The default stack size for managed threads created by the runtime.
   size_t default_stack_size_;
+
+  // Finalizers running for longer than this many milliseconds abort the runtime.
+  unsigned int finalizer_timeout_ms_;
 
   gc::Heap* heap_;
 

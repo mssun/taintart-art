@@ -308,6 +308,10 @@ static void VMRuntime_notifyNativeAllocationsInternal(JNIEnv* env, jobject) {
   Runtime::Current()->GetHeap()->NotifyNativeAllocations(env);
 }
 
+static jlong VMRuntime_getFinalizerTimeoutMs(JNIEnv*, jobject) {
+  return Runtime::Current()->GetFinalizerTimeoutMs();
+}
+
 static void VMRuntime_registerSensitiveThread(JNIEnv*, jobject) {
   Runtime::Current()->RegisterSensitiveThread();
 }
@@ -737,6 +741,7 @@ static JNINativeMethod gMethods[] = {
   NATIVE_METHOD(VMRuntime, registerNativeAllocation, "(J)V"),
   NATIVE_METHOD(VMRuntime, registerNativeFree, "(J)V"),
   NATIVE_METHOD(VMRuntime, getNotifyNativeInterval, "()I"),
+  NATIVE_METHOD(VMRuntime, getFinalizerTimeoutMs, "()J"),
   NATIVE_METHOD(VMRuntime, notifyNativeAllocationsInternal, "()V"),
   NATIVE_METHOD(VMRuntime, notifyStartupCompleted, "()V"),
   NATIVE_METHOD(VMRuntime, registerSensitiveThread, "()V"),

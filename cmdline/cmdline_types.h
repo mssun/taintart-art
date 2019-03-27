@@ -237,7 +237,7 @@ struct CmdlineType<int> : CmdlineTypeParser<int> {
     return ParseNumeric<int>(str);
   }
 
-  static const char* Name() { return "unsigned integer"; }
+  static const char* Name() { return "integer"; }
 };
 
 // Lightweight nanosecond value type. Allows parser to convert user-input from milliseconds
