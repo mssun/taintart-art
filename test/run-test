@@ -425,6 +425,15 @@ while true; do
         DEX_LOCATION=$tmp_dir
         host_lib_root=$OUT_DIR/soong/host/linux_bionic-x86
         shift
+    elif [ "x$1" = "x--runtime-extracted-zipapex" ]; then
+        shift
+        # TODO Should we allow the java.library.path to search the zipapex too?
+        # Not needed at the moment and adding it will be complicated so for now
+        # we'll ignore this.
+        run_args="${run_args} --host --runtime-extracted-zipapex $1"
+        target_mode="no"
+        DEX_LOCATION=$tmp_dir
+        shift
     elif [ "x$1" = "x--runtime-zipapex" ]; then
         shift
         # TODO Should we allow the java.library.path to search the zipapex too?
@@ -771,6 +780,9 @@ if [ "$usage" = "yes" ]; then
         echo "    --bionic              Use the (host, 64-bit only) linux_bionic libc runtime"
         echo "    --runtime-zipapex [file]"
         echo "                          Use the given zipapex file to provide runtime binaries"
+        echo "    --runtime-extracted-zipapex [dir]"
+        echo "                          Use the given extracted zipapex directory to provide"
+        echo "                          runtime binaries"
         echo "    --trace               Run with method tracing"
         echo "    --strace              Run with syscall tracing from strace."
         echo "    --stream              Run method tracing in streaming mode (requires --trace)"
