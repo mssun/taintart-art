@@ -31,6 +31,7 @@
 #include "method_handles.h"
 #include "mirror/array-alloc-inl.h"
 #include "mirror/array-inl.h"
+#include "mirror/call_site-inl.h"
 #include "mirror/class.h"
 #include "mirror/emulated_stack_frame.h"
 #include "mirror/method_handle_impl-inl.h"

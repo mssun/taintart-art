@@ -18,6 +18,7 @@
 #define ART_RUNTIME_MIRROR_CALL_SITE_H_
 
 #include "mirror/method_handle_impl.h"
+#include "obj_ptr.h"
 
 namespace art {
 
@@ -28,13 +29,7 @@ namespace mirror {
 // C++ mirror of java.lang.invoke.CallSite
 class MANAGED CallSite : public Object {
  public:
-  static mirror::CallSite* Create(Thread* const self,
-                                  Handle<MethodHandle> method_handle)
-      REQUIRES_SHARED(Locks::mutator_lock_) REQUIRES(!Roles::uninterruptible_);
-
-  MethodHandle* GetTarget() REQUIRES_SHARED(Locks::mutator_lock_) {
-    return GetFieldObject<MethodHandle>(TargetOffset());
-  }
+  ObjPtr<MethodHandle> GetTarget() REQUIRES_SHARED(Locks::mutator_lock_);
 
  private:
   static inline MemberOffset TargetOffset() {
