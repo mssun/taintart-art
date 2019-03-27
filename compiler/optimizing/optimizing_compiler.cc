@@ -1313,7 +1313,7 @@ bool OptimizingCompiler::JitCompile(Thread* self,
       const auto* method_header = reinterpret_cast<const OatQuickMethodHeader*>(code);
       const uintptr_t code_address = reinterpret_cast<uintptr_t>(method_header->GetCode());
       debug::MethodDebugInfo info = {};
-      DCHECK(info.custom_name.empty());
+      info.custom_name = "art_jni_trampoline";
       info.dex_file = dex_file;
       info.class_def_index = class_def_idx;
       info.dex_method_index = method_idx;
