@@ -59,6 +59,9 @@ cc_defaults {
             ],
             export_static_lib_headers: ["libbase"],
         },
+        darwin: {
+            enabled: true,
+        },
     },
     //generated_sources: ["art_libartbase_operator_srcs"],
     cflags: ["-DBUILDING_LIBART=1"],

@@ -90,6 +90,9 @@ cc_defaults {
             ],
             cflags: ["-Wno-thread-safety"],
         },
+        darwin: {
+            enabled: true,
+        },
     },
     generated_sources: ["dexfile_operator_srcs"],
     export_include_dirs: ["."],

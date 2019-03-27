@@ -147,6 +147,9 @@ art_global_defaults {
                 "-Wmissing-noreturn",
             ],
         },
+        darwin: {
+            enabled: false,
+        },
         host: {
             cflags: [
                 // Bug: 15446488. We don't omit the frame pointer to work around
