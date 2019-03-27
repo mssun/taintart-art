@@ -39,8 +39,6 @@ BIONIC="n"
 CREATE_ANDROID_ROOT="n"
 USE_ZIPAPEX="n"
 ZIPAPEX_LOC=""
-USE_EXTRACTED_ZIPAPEX="n"
-EXTRACTED_ZIPAPEX_LOC=""
 INTERPRETER="n"
 JIT="n"
 INVOKE_WITH=""
@@ -230,11 +228,6 @@ while true; do
         # the frameworks/libcore with linux_bionic so we need to use the normal
         # host ones which are in a different location.
         CREATE_ANDROID_ROOT="y"
-        shift
-    elif [ "x$1" = "x--runtime-extracted-zipapex" ]; then
-        shift
-        USE_EXTRACTED_ZIPAPEX="y"
-        EXTRACTED_ZIPAPEX_LOC="$1"
         shift
     elif [ "x$1" = "x--runtime-zipapex" ]; then
         shift
@@ -811,15 +804,6 @@ if [ "$USE_ZIPAPEX" = "y" ]; then
   setupapex_cmdline="unzip -o -u ${zip_options} ${ZIPAPEX_LOC} apex_payload.zip -d ${DEX_LOCATION}"
   installapex_cmdline="unzip -o -u ${zip_options} ${DEX_LOCATION}/apex_payload.zip -d ${DEX_LOCATION}/zipapex"
   BIN_DIR=$DEX_LOCATION/zipapex/bin
-elif [ "$USE_EXTRACTED_ZIPAPEX" = "y" ]; then
-  # Just symlink the zipapex binaries
-  BIN_DIR=$DEX_LOCATION/zipapex/bin
-  # Force since some tests manually run this file twice.
-  ln_options=""
-  if [ "$DEV_MODE" = "y" ]; then
-    ln_options="--verbose"
-  fi
-  installapex_cmdline="ln -s -f ${ln_options} ${EXTRACTED_ZIPAPEX_LOC} ${DEX_LOCATION}/zipapex"
 fi
 
 # PROFILE takes precedence over RANDOM_PROFILE, since PROFILE tests require a
@@ -1063,7 +1047,7 @@ else
     export ANDROID_ROOT="${ANDROID_ROOT}"
     export ANDROID_RUNTIME_ROOT="${ANDROID_RUNTIME_ROOT}"
     export ANDROID_TZDATA_ROOT="${ANDROID_TZDATA_ROOT}"
-    if [ "$USE_ZIPAPEX" = "y" ] || [ "$USE_EXRACTED_ZIPAPEX" = "y" ]; then
+    if [ "$USE_ZIPAPEX" = "y" ]; then
       # Put the zipapex files in front of the ld-library-path
       export LD_LIBRARY_PATH="${ANDROID_DATA}/zipapex/${LIBRARY_DIRECTORY}:${ANDROID_ROOT}/${TEST_DIRECTORY}"
       export DYLD_LIBRARY_PATH="${ANDROID_DATA}/zipapex/${LIBRARY_DIRECTORY}:${ANDROID_ROOT}/${TEST_DIRECTORY}"
