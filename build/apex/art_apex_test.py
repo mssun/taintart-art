@@ -428,6 +428,7 @@ class ReleaseChecker:
     # TODO(b/124293228): Figure out why we get these.
     self._checker.check_library('libcutils.so')
     self._checker.check_optional_library('libclang_rt.asan-i686-android.so')
+    self._checker.check_optional_library('libclang_rt.hwasan-aarch64-android.so')
 
     self._checker.check_java_library('core-oj.jar')
     self._checker.check_java_library('core-libart.jar')
