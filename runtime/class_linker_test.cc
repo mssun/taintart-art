@@ -46,7 +46,7 @@
 #include "mirror/field.h"
 #include "mirror/method_handle_impl.h"
 #include "mirror/method_handles_lookup.h"
-#include "mirror/method_type.h"
+#include "mirror/method_type-inl.h"
 #include "mirror/object-inl.h"
 #include "mirror/object_array-alloc-inl.h"
 #include "mirror/object_array-inl.h"

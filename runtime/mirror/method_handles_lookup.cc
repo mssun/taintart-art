@@ -22,13 +22,14 @@
 #include "handle_scope.h"
 #include "jni/jni_internal.h"
 #include "mirror/method_handle_impl.h"
+#include "obj_ptr-inl.h"
 #include "object-inl.h"
 #include "well_known_classes.h"
 
 namespace art {
 namespace mirror {
 
-MethodHandlesLookup* MethodHandlesLookup::Create(Thread* const self, Handle<Class> lookup_class)
+ObjPtr<MethodHandlesLookup> MethodHandlesLookup::Create(Thread* const self, Handle<Class> lookup_class)
   REQUIRES_SHARED(Locks::mutator_lock_) REQUIRES(!Roles::uninterruptible_) {
   static constexpr uint32_t kAllModes = kAccPublic | kAccPrivate | kAccProtected | kAccStatic;
 
@@ -36,19 +37,19 @@ MethodHandlesLookup* MethodHandlesLookup::Create(Thread* const self, Handle<Clas
       GetClassRoot<MethodHandlesLookup>()->AllocObject(self));
   mhl->SetFieldObject<false>(LookupClassOffset(), lookup_class.Get());
   mhl->SetField32<false>(AllowedModesOffset(), kAllModes);
-  return mhl.Ptr();
+  return mhl;
 }
 
-MethodHandlesLookup* MethodHandlesLookup::GetDefault(Thread* const self) {
+ObjPtr<MethodHandlesLookup> MethodHandlesLookup::GetDefault(Thread* const self) {
   ArtMethod* lookup = jni::DecodeArtMethod(WellKnownClasses::java_lang_invoke_MethodHandles_lookup);
   JValue result;
   lookup->Invoke(self, nullptr, 0, &result, "L");
-  return down_cast<MethodHandlesLookup*>(result.GetL());
+  return ObjPtr<MethodHandlesLookup>::DownCast(MakeObjPtr(result.GetL()));
 }
 
-MethodHandle* MethodHandlesLookup::FindConstructor(Thread* const self,
-                                                           Handle<Class> klass,
-                                                           Handle<MethodType> method_type) {
+ObjPtr<MethodHandle> MethodHandlesLookup::FindConstructor(Thread* const self,
+                                                          Handle<Class> klass,
+                                                          Handle<MethodType> method_type) {
   ArtMethod* findConstructor =
       jni::DecodeArtMethod(WellKnownClasses::java_lang_invoke_MethodHandles_Lookup_findConstructor);
   uint32_t args[] = {
@@ -58,7 +59,7 @@ MethodHandle* MethodHandlesLookup::FindConstructor(Thread* const self,
   };
   JValue result;
   findConstructor->Invoke(self, args, sizeof(args), &result, "LLL");
-  return down_cast<MethodHandle*>(result.GetL());
+  return ObjPtr<MethodHandle>::DownCast(MakeObjPtr(result.GetL()));
 }
 
 }  // namespace mirror

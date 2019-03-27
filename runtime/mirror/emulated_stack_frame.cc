@@ -24,7 +24,7 @@
 #include "jvalue-inl.h"
 #include "method_handles-inl.h"
 #include "method_handles.h"
-#include "method_type.h"
+#include "method_type-inl.h"
 #include "object_array-alloc-inl.h"
 #include "object_array-inl.h"
 #include "reflection-inl.h"

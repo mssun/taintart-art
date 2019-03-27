@@ -46,8 +46,8 @@ namespace {
     return throwable->GetClass()->DescriptorEquals("Ljava/lang/invoke/WrongMethodTypeException;");
   }
 
-  static mirror::MethodType* CreateVoidMethodType(Thread* self,
-                                                  Handle<mirror::Class> parameter_type)
+  static ObjPtr<mirror::MethodType> CreateVoidMethodType(Thread* self,
+                                                         Handle<mirror::Class> parameter_type)
         REQUIRES_SHARED(Locks::mutator_lock_) {
     ClassLinker* cl = Runtime::Current()->GetClassLinker();
     StackHandleScope<2> hs(self);

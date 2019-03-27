@@ -8819,7 +8819,7 @@ ObjPtr<mirror::MethodType> ClassLinker::ResolveMethodType(Thread* self,
   return ResolveMethodType(self, proto_idx, dex_cache, class_loader);
 }
 
-mirror::MethodHandle* ClassLinker::ResolveMethodHandleForField(
+ObjPtr<mirror::MethodHandle> ClassLinker::ResolveMethodHandleForField(
     Thread* self,
     const dex::MethodHandleItem& method_handle,
     ArtMethod* referrer) {
@@ -8947,7 +8947,7 @@ mirror::MethodHandle* ClassLinker::ResolveMethodHandleForField(
   return mirror::MethodHandleImpl::Create(self, target, kind, method_type);
 }
 
-mirror::MethodHandle* ClassLinker::ResolveMethodHandleForMethod(
+ObjPtr<mirror::MethodHandle> ClassLinker::ResolveMethodHandleForMethod(
     Thread* self,
     const dex::MethodHandleItem& method_handle,
     ArtMethod* referrer) {

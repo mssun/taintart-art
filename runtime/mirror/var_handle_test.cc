@@ -40,9 +40,9 @@ namespace mirror {
 // Tests for mirror::VarHandle and it's descendents.
 class VarHandleTest : public CommonRuntimeTest {
  public:
-  static FieldVarHandle* CreateFieldVarHandle(Thread* const self,
-                                              ArtField* art_field,
-                                              int32_t access_modes_bit_mask)
+  static ObjPtr<FieldVarHandle> CreateFieldVarHandle(Thread* const self,
+                                                     ArtField* art_field,
+                                                     int32_t access_modes_bit_mask)
       REQUIRES_SHARED(Locks::mutator_lock_) REQUIRES(!Roles::uninterruptible_) {
     StackHandleScope<4> hs(self);
     Handle<FieldVarHandle> fvh = hs.NewHandle(
@@ -63,9 +63,9 @@ class VarHandleTest : public CommonRuntimeTest {
     return fvh.Get();
   }
 
-  static ArrayElementVarHandle* CreateArrayElementVarHandle(Thread* const self,
-                                                            Handle<Class> array_class,
-                                                            int32_t access_modes_bit_mask)
+  static ObjPtr<ArrayElementVarHandle> CreateArrayElementVarHandle(Thread* const self,
+                                                                   Handle<Class> array_class,
+                                                                   int32_t access_modes_bit_mask)
       REQUIRES_SHARED(Locks::mutator_lock_) REQUIRES(!Roles::uninterruptible_) {
     StackHandleScope<3> hs(self);
     Handle<ArrayElementVarHandle> vh = hs.NewHandle(
@@ -80,10 +80,11 @@ class VarHandleTest : public CommonRuntimeTest {
     return vh.Get();
   }
 
-  static ByteArrayViewVarHandle* CreateByteArrayViewVarHandle(Thread* const self,
-                                                              Handle<Class> view_array_class,
-                                                              bool native_byte_order,
-                                                              int32_t access_modes_bit_mask)
+  static ObjPtr<ByteArrayViewVarHandle> CreateByteArrayViewVarHandle(
+      Thread* const self,
+      Handle<Class> view_array_class,
+      bool native_byte_order,
+      int32_t access_modes_bit_mask)
       REQUIRES_SHARED(Locks::mutator_lock_) REQUIRES(!Roles::uninterruptible_) {
     StackHandleScope<4> hs(self);
     Handle<ByteArrayViewVarHandle> bvh = hs.NewHandle(
@@ -100,10 +101,11 @@ class VarHandleTest : public CommonRuntimeTest {
     return bvh.Get();
   }
 
-  static ByteBufferViewVarHandle* CreateByteBufferViewVarHandle(Thread* const self,
-                                                                Handle<Class> view_array_class,
-                                                                bool native_byte_order,
-                                                                int32_t access_modes_bit_mask)
+  static ObjPtr<ByteBufferViewVarHandle> CreateByteBufferViewVarHandle(
+      Thread* const self,
+      Handle<Class> view_array_class,
+      bool native_byte_order,
+      int32_t access_modes_bit_mask)
       REQUIRES_SHARED(Locks::mutator_lock_) REQUIRES(!Roles::uninterruptible_) {
     StackHandleScope<5> hs(self);
     Handle<ByteBufferViewVarHandle> bvh = hs.NewHandle(
@@ -129,26 +131,6 @@ class VarHandleTest : public CommonRuntimeTest {
   template<typename... Args>
   static int32_t AccessModesBitMask(VarHandle::AccessMode first, Args... args) {
     return AccessModesBitMask(first) | AccessModesBitMask(args...);
-  }
-
-  // Helper to get the VarType of a VarHandle.
-  static ObjPtr<Class> GetVarType(VarHandle* vh) REQUIRES_SHARED(Locks::mutator_lock_) {
-    return vh->GetVarType();
-  }
-
-  // Helper to get the CoordinateType0 of a VarHandle.
-  static ObjPtr<Class> GetCoordinateType0(VarHandle* vh) REQUIRES_SHARED(Locks::mutator_lock_) {
-    return vh->GetCoordinateType0();
-  }
-
-  // Helper to get the CoordinateType1 of a VarHandle.
-  static ObjPtr<Class> GetCoordinateType1(VarHandle* vh) REQUIRES_SHARED(Locks::mutator_lock_) {
-    return vh->GetCoordinateType1();
-  }
-
-  // Helper to get the AccessModesBitMask of a VarHandle.
-  static int32_t GetAccessModesBitMask(VarHandle* vh) REQUIRES_SHARED(Locks::mutator_lock_) {
-    return vh->GetAccessModesBitMask();
   }
 
  private:
@@ -183,7 +165,7 @@ class VarHandleTest : public CommonRuntimeTest {
 
 // Convenience method for constructing MethodType instances from
 // well-formed method descriptors.
-static MethodType* MethodTypeOf(const std::string& method_descriptor) {
+static ObjPtr<MethodType> MethodTypeOf(const std::string& method_descriptor) {
   std::vector<std::string> descriptors;
 
   auto it = method_descriptor.cbegin();
@@ -247,9 +229,9 @@ static MethodType* MethodTypeOf(const std::string& method_descriptor) {
   return MethodType::Create(self, rtype, ptypes);
 }
 
-static bool AccessModeMatch(VarHandle* vh,
+static bool AccessModeMatch(ObjPtr<VarHandle> vh,
                             VarHandle::AccessMode access_mode,
-                            MethodType* method_type,
+                            ObjPtr<MethodType> method_type,
                             VarHandle::MatchKind expected_match)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   return vh->GetMethodTypeMatchForAccessMode(access_mode, method_type) == expected_match;
@@ -260,9 +242,10 @@ static bool AccessModeExactMatch(Handle<VH> vh,
                                  VarHandle::AccessMode access_mode,
                                  const char* descriptor)
     REQUIRES_SHARED(Locks::mutator_lock_) {
+  ObjPtr<MethodType> method_type = MethodTypeOf(descriptor);
   return AccessModeMatch(vh.Get(),
                          access_mode,
-                         MethodTypeOf(descriptor),
+                         method_type,
                          VarHandle::MatchKind::kExact);
 }
 
@@ -271,9 +254,10 @@ static bool AccessModeWithConversionsMatch(Handle<VH> vh,
                                           VarHandle::AccessMode access_mode,
                                           const char* descriptor)
     REQUIRES_SHARED(Locks::mutator_lock_) {
+  ObjPtr<MethodType> method_type = MethodTypeOf(descriptor);
   return AccessModeMatch(vh.Get(),
                          access_mode,
-                         MethodTypeOf(descriptor),
+                         method_type,
                          VarHandle::MatchKind::kWithConversions);
 }
 
@@ -282,9 +266,10 @@ static bool AccessModeNoMatch(Handle<VH> vh,
                               VarHandle::AccessMode access_mode,
                               const char* descriptor)
     REQUIRES_SHARED(Locks::mutator_lock_) {
+  ObjPtr<MethodType> method_type = MethodTypeOf(descriptor);
   return AccessModeMatch(vh.Get(),
                          access_mode,
-                         MethodTypeOf(descriptor),
+                         method_type,
                          VarHandle::MatchKind::kNone);
 }
 
@@ -297,7 +282,7 @@ TEST_F(VarHandleTest, InstanceFieldVarHandle) {
   int32_t mask = AccessModesBitMask(VarHandle::AccessMode::kGet,
                                     VarHandle::AccessMode::kGetAndSet,
                                     VarHandle::AccessMode::kGetAndBitwiseXor);
-  StackHandleScope<1> hs(self);
+  StackHandleScope<6> hs(self);
   Handle<mirror::FieldVarHandle> fvh(hs.NewHandle(CreateFieldVarHandle(self, value, mask)));
   EXPECT_FALSE(fvh.IsNull());
   EXPECT_EQ(value, fvh->GetField());
@@ -389,42 +374,46 @@ TEST_F(VarHandleTest, InstanceFieldVarHandle) {
 
   // Check synthesized method types match expected forms.
   {
-    MethodType* get = MethodTypeOf("(Ljava/lang/Integer;)I");
-    MethodType* set = MethodTypeOf("(Ljava/lang/Integer;I)V");
-    MethodType* compareAndSet = MethodTypeOf("(Ljava/lang/Integer;II)Z");
-    MethodType* compareAndExchange = MethodTypeOf("(Ljava/lang/Integer;II)I");
-    MethodType* getAndUpdate = MethodTypeOf("(Ljava/lang/Integer;I)I");
-    EXPECT_TRUE(fvh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kGet)->IsExactMatch(get));
-    EXPECT_TRUE(fvh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kSet)->IsExactMatch(set));
-    EXPECT_TRUE(fvh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kGetVolatile)->IsExactMatch(get));
-    EXPECT_TRUE(fvh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kSetVolatile)->IsExactMatch(set));
-    EXPECT_TRUE(fvh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kGetAcquire)->IsExactMatch(get));
-    EXPECT_TRUE(fvh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kSetRelease)->IsExactMatch(set));
-    EXPECT_TRUE(fvh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kGetOpaque)->IsExactMatch(get));
-    EXPECT_TRUE(fvh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kSetOpaque)->IsExactMatch(set));
-    EXPECT_TRUE(fvh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kCompareAndSet)->IsExactMatch(compareAndSet));
-    EXPECT_TRUE(fvh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kCompareAndExchange)->IsExactMatch(compareAndExchange));
-    EXPECT_TRUE(fvh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kCompareAndExchangeAcquire)->IsExactMatch(compareAndExchange));
-    EXPECT_TRUE(fvh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kCompareAndExchangeRelease)->IsExactMatch(compareAndExchange));
-    EXPECT_TRUE(fvh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kWeakCompareAndSetPlain)->IsExactMatch(compareAndSet));
-    EXPECT_TRUE(fvh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kWeakCompareAndSet)->IsExactMatch(compareAndSet));
-    EXPECT_TRUE(fvh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kWeakCompareAndSetAcquire)->IsExactMatch(compareAndSet));
-    EXPECT_TRUE(fvh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kWeakCompareAndSetRelease)->IsExactMatch(compareAndSet));
-    EXPECT_TRUE(fvh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kGetAndSet)->IsExactMatch(getAndUpdate));
-    EXPECT_TRUE(fvh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kGetAndSetAcquire)->IsExactMatch(getAndUpdate));
-    EXPECT_TRUE(fvh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kGetAndSetRelease)->IsExactMatch(getAndUpdate));
-    EXPECT_TRUE(fvh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kGetAndAdd)->IsExactMatch(getAndUpdate));
-    EXPECT_TRUE(fvh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kGetAndAddAcquire)->IsExactMatch(getAndUpdate));
-    EXPECT_TRUE(fvh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kGetAndAddRelease)->IsExactMatch(getAndUpdate));
-    EXPECT_TRUE(fvh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kGetAndBitwiseOr)->IsExactMatch(getAndUpdate));
-    EXPECT_TRUE(fvh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kGetAndBitwiseOrRelease)->IsExactMatch(getAndUpdate));
-    EXPECT_TRUE(fvh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kGetAndBitwiseOrAcquire)->IsExactMatch(getAndUpdate));
-    EXPECT_TRUE(fvh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kGetAndBitwiseAnd)->IsExactMatch(getAndUpdate));
-    EXPECT_TRUE(fvh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kGetAndBitwiseAndRelease)->IsExactMatch(getAndUpdate));
-    EXPECT_TRUE(fvh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kGetAndBitwiseAndAcquire)->IsExactMatch(getAndUpdate));
-    EXPECT_TRUE(fvh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kGetAndBitwiseXor)->IsExactMatch(getAndUpdate));
-    EXPECT_TRUE(fvh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kGetAndBitwiseXorRelease)->IsExactMatch(getAndUpdate));
-    EXPECT_TRUE(fvh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kGetAndBitwiseXorAcquire)->IsExactMatch(getAndUpdate));
+    Handle<MethodType> get = hs.NewHandle(MethodTypeOf("(Ljava/lang/Integer;)I"));
+    Handle<MethodType> set = hs.NewHandle(MethodTypeOf("(Ljava/lang/Integer;I)V"));
+    Handle<MethodType> compareAndSet = hs.NewHandle(MethodTypeOf("(Ljava/lang/Integer;II)Z"));
+    Handle<MethodType> compareAndExchange = hs.NewHandle(MethodTypeOf("(Ljava/lang/Integer;II)I"));
+    Handle<MethodType> getAndUpdate = hs.NewHandle(MethodTypeOf("(Ljava/lang/Integer;I)I"));
+    auto test_mode = [=](VarHandle::AccessMode access_mode, Handle<MethodType> method_type)
+        REQUIRES_SHARED(Locks::mutator_lock_) {
+      return fvh->GetMethodTypeForAccessMode(self, access_mode)->IsExactMatch(method_type.Get());
+    };
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kGet, get));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kSet, set));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kGetVolatile, get));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kSetVolatile, set));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kGetAcquire, get));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kSetRelease, set));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kGetOpaque, get));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kSetOpaque, set));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kCompareAndSet, compareAndSet));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kCompareAndExchange, compareAndExchange));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kCompareAndExchangeAcquire, compareAndExchange));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kCompareAndExchangeRelease, compareAndExchange));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kWeakCompareAndSetPlain, compareAndSet));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kWeakCompareAndSet, compareAndSet));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kWeakCompareAndSetAcquire, compareAndSet));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kWeakCompareAndSetRelease, compareAndSet));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kGetAndSet, getAndUpdate));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kGetAndSetAcquire, getAndUpdate));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kGetAndSetRelease, getAndUpdate));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kGetAndAdd, getAndUpdate));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kGetAndAddAcquire, getAndUpdate));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kGetAndAddRelease, getAndUpdate));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kGetAndBitwiseOr, getAndUpdate));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kGetAndBitwiseOrRelease, getAndUpdate));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kGetAndBitwiseOrAcquire, getAndUpdate));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kGetAndBitwiseAnd, getAndUpdate));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kGetAndBitwiseAndRelease, getAndUpdate));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kGetAndBitwiseAndAcquire, getAndUpdate));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kGetAndBitwiseXor, getAndUpdate));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kGetAndBitwiseXorRelease, getAndUpdate));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kGetAndBitwiseXorAcquire, getAndUpdate));
   }
 }
 
@@ -437,7 +426,7 @@ TEST_F(VarHandleTest, StaticFieldVarHandle) {
   int32_t mask = AccessModesBitMask(VarHandle::AccessMode::kSet,
                                     VarHandle::AccessMode::kGetOpaque,
                                     VarHandle::AccessMode::kGetAndBitwiseAndRelease);
-  StackHandleScope<1> hs(self);
+  StackHandleScope<6> hs(self);
   Handle<mirror::FieldVarHandle> fvh(hs.NewHandle(CreateFieldVarHandle(self, value, mask)));
   EXPECT_FALSE(fvh.IsNull());
   EXPECT_EQ(value, fvh->GetField());
@@ -523,49 +512,53 @@ TEST_F(VarHandleTest, StaticFieldVarHandle) {
 
   // Check synthesized method types match expected forms.
   {
-    MethodType* get = MethodTypeOf("()I");
-    MethodType* set = MethodTypeOf("(I)V");
-    MethodType* compareAndSet = MethodTypeOf("(II)Z");
-    MethodType* compareAndExchange = MethodTypeOf("(II)I");
-    MethodType* getAndUpdate = MethodTypeOf("(I)I");
-    EXPECT_TRUE(fvh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kGet)->IsExactMatch(get));
-    EXPECT_TRUE(fvh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kSet)->IsExactMatch(set));
-    EXPECT_TRUE(fvh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kGetVolatile)->IsExactMatch(get));
-    EXPECT_TRUE(fvh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kSetVolatile)->IsExactMatch(set));
-    EXPECT_TRUE(fvh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kGetAcquire)->IsExactMatch(get));
-    EXPECT_TRUE(fvh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kSetRelease)->IsExactMatch(set));
-    EXPECT_TRUE(fvh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kGetOpaque)->IsExactMatch(get));
-    EXPECT_TRUE(fvh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kSetOpaque)->IsExactMatch(set));
-    EXPECT_TRUE(fvh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kCompareAndSet)->IsExactMatch(compareAndSet));
-    EXPECT_TRUE(fvh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kCompareAndExchange)->IsExactMatch(compareAndExchange));
-    EXPECT_TRUE(fvh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kCompareAndExchangeAcquire)->IsExactMatch(compareAndExchange));
-    EXPECT_TRUE(fvh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kCompareAndExchangeRelease)->IsExactMatch(compareAndExchange));
-    EXPECT_TRUE(fvh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kWeakCompareAndSetPlain)->IsExactMatch(compareAndSet));
-    EXPECT_TRUE(fvh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kWeakCompareAndSet)->IsExactMatch(compareAndSet));
-    EXPECT_TRUE(fvh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kWeakCompareAndSetAcquire)->IsExactMatch(compareAndSet));
-    EXPECT_TRUE(fvh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kWeakCompareAndSetRelease)->IsExactMatch(compareAndSet));
-    EXPECT_TRUE(fvh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kGetAndSet)->IsExactMatch(getAndUpdate));
-    EXPECT_TRUE(fvh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kGetAndSetAcquire)->IsExactMatch(getAndUpdate));
-    EXPECT_TRUE(fvh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kGetAndSetRelease)->IsExactMatch(getAndUpdate));
-    EXPECT_TRUE(fvh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kGetAndAdd)->IsExactMatch(getAndUpdate));
-    EXPECT_TRUE(fvh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kGetAndAddAcquire)->IsExactMatch(getAndUpdate));
-    EXPECT_TRUE(fvh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kGetAndAddRelease)->IsExactMatch(getAndUpdate));
-    EXPECT_TRUE(fvh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kGetAndBitwiseOr)->IsExactMatch(getAndUpdate));
-    EXPECT_TRUE(fvh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kGetAndBitwiseOrRelease)->IsExactMatch(getAndUpdate));
-    EXPECT_TRUE(fvh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kGetAndBitwiseOrAcquire)->IsExactMatch(getAndUpdate));
-    EXPECT_TRUE(fvh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kGetAndBitwiseAnd)->IsExactMatch(getAndUpdate));
-    EXPECT_TRUE(fvh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kGetAndBitwiseAndRelease)->IsExactMatch(getAndUpdate));
-    EXPECT_TRUE(fvh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kGetAndBitwiseAndAcquire)->IsExactMatch(getAndUpdate));
-    EXPECT_TRUE(fvh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kGetAndBitwiseXor)->IsExactMatch(getAndUpdate));
-    EXPECT_TRUE(fvh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kGetAndBitwiseXorRelease)->IsExactMatch(getAndUpdate));
-    EXPECT_TRUE(fvh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kGetAndBitwiseXorAcquire)->IsExactMatch(getAndUpdate));
+    Handle<MethodType> get = hs.NewHandle(MethodTypeOf("()I"));
+    Handle<MethodType> set = hs.NewHandle(MethodTypeOf("(I)V"));
+    Handle<MethodType> compareAndSet = hs.NewHandle(MethodTypeOf("(II)Z"));
+    Handle<MethodType> compareAndExchange = hs.NewHandle(MethodTypeOf("(II)I"));
+    Handle<MethodType> getAndUpdate = hs.NewHandle(MethodTypeOf("(I)I"));
+    auto test_mode = [=](VarHandle::AccessMode access_mode, Handle<MethodType> method_type)
+        REQUIRES_SHARED(Locks::mutator_lock_) {
+      return fvh->GetMethodTypeForAccessMode(self, access_mode)->IsExactMatch(method_type.Get());
+    };
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kGet, get));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kSet, set));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kGetVolatile, get));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kSetVolatile, set));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kGetAcquire, get));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kSetRelease, set));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kGetOpaque, get));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kSetOpaque, set));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kCompareAndSet, compareAndSet));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kCompareAndExchange, compareAndExchange));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kCompareAndExchangeAcquire, compareAndExchange));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kCompareAndExchangeRelease, compareAndExchange));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kWeakCompareAndSetPlain, compareAndSet));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kWeakCompareAndSet, compareAndSet));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kWeakCompareAndSetAcquire, compareAndSet));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kWeakCompareAndSetRelease, compareAndSet));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kGetAndSet, getAndUpdate));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kGetAndSetAcquire, getAndUpdate));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kGetAndSetRelease, getAndUpdate));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kGetAndAdd, getAndUpdate));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kGetAndAddAcquire, getAndUpdate));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kGetAndAddRelease, getAndUpdate));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kGetAndBitwiseOr, getAndUpdate));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kGetAndBitwiseOrRelease, getAndUpdate));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kGetAndBitwiseOrAcquire, getAndUpdate));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kGetAndBitwiseAnd, getAndUpdate));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kGetAndBitwiseAndRelease, getAndUpdate));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kGetAndBitwiseAndAcquire, getAndUpdate));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kGetAndBitwiseXor, getAndUpdate));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kGetAndBitwiseXorRelease, getAndUpdate));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kGetAndBitwiseXorAcquire, getAndUpdate));
   }
 }
 
 TEST_F(VarHandleTest, ArrayElementVarHandle) {
   Thread * const self = Thread::Current();
   ScopedObjectAccess soa(self);
-  StackHandleScope<2> hs(self);
+  StackHandleScope<7> hs(self);
 
   int32_t mask = AccessModesBitMask(VarHandle::AccessMode::kGet,
                                     VarHandle::AccessMode::kSet,
@@ -685,49 +678,57 @@ TEST_F(VarHandleTest, ArrayElementVarHandle) {
 
   // Check synthesized method types match expected forms.
   {
-    MethodType* get = MethodTypeOf("([Ljava/lang/String;I)Ljava/lang/String;");
-    MethodType* set = MethodTypeOf("([Ljava/lang/String;ILjava/lang/String;)V");
-    MethodType* compareAndSet = MethodTypeOf("([Ljava/lang/String;ILjava/lang/String;Ljava/lang/String;)Z");
-    MethodType* compareAndExchange = MethodTypeOf("([Ljava/lang/String;ILjava/lang/String;Ljava/lang/String;)Ljava/lang/String;");
-    MethodType* getAndUpdate = MethodTypeOf("([Ljava/lang/String;ILjava/lang/String;)Ljava/lang/String;");
-    EXPECT_TRUE(vh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kGet)->IsExactMatch(get));
-    EXPECT_TRUE(vh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kSet)->IsExactMatch(set));
-    EXPECT_TRUE(vh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kGetVolatile)->IsExactMatch(get));
-    EXPECT_TRUE(vh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kSetVolatile)->IsExactMatch(set));
-    EXPECT_TRUE(vh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kGetAcquire)->IsExactMatch(get));
-    EXPECT_TRUE(vh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kSetRelease)->IsExactMatch(set));
-    EXPECT_TRUE(vh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kGetOpaque)->IsExactMatch(get));
-    EXPECT_TRUE(vh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kSetOpaque)->IsExactMatch(set));
-    EXPECT_TRUE(vh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kCompareAndSet)->IsExactMatch(compareAndSet));
-    EXPECT_TRUE(vh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kCompareAndExchange)->IsExactMatch(compareAndExchange));
-    EXPECT_TRUE(vh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kCompareAndExchangeAcquire)->IsExactMatch(compareAndExchange));
-    EXPECT_TRUE(vh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kCompareAndExchangeRelease)->IsExactMatch(compareAndExchange));
-    EXPECT_TRUE(vh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kWeakCompareAndSetPlain)->IsExactMatch(compareAndSet));
-    EXPECT_TRUE(vh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kWeakCompareAndSet)->IsExactMatch(compareAndSet));
-    EXPECT_TRUE(vh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kWeakCompareAndSetAcquire)->IsExactMatch(compareAndSet));
-    EXPECT_TRUE(vh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kWeakCompareAndSetRelease)->IsExactMatch(compareAndSet));
-    EXPECT_TRUE(vh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kGetAndSet)->IsExactMatch(getAndUpdate));
-    EXPECT_TRUE(vh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kGetAndSetAcquire)->IsExactMatch(getAndUpdate));
-    EXPECT_TRUE(vh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kGetAndSetRelease)->IsExactMatch(getAndUpdate));
-    EXPECT_TRUE(vh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kGetAndAdd)->IsExactMatch(getAndUpdate));
-    EXPECT_TRUE(vh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kGetAndAddAcquire)->IsExactMatch(getAndUpdate));
-    EXPECT_TRUE(vh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kGetAndAddRelease)->IsExactMatch(getAndUpdate));
-    EXPECT_TRUE(vh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kGetAndBitwiseOr)->IsExactMatch(getAndUpdate));
-    EXPECT_TRUE(vh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kGetAndBitwiseOrRelease)->IsExactMatch(getAndUpdate));
-    EXPECT_TRUE(vh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kGetAndBitwiseOrAcquire)->IsExactMatch(getAndUpdate));
-    EXPECT_TRUE(vh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kGetAndBitwiseAnd)->IsExactMatch(getAndUpdate));
-    EXPECT_TRUE(vh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kGetAndBitwiseAndRelease)->IsExactMatch(getAndUpdate));
-    EXPECT_TRUE(vh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kGetAndBitwiseAndAcquire)->IsExactMatch(getAndUpdate));
-    EXPECT_TRUE(vh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kGetAndBitwiseXor)->IsExactMatch(getAndUpdate));
-    EXPECT_TRUE(vh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kGetAndBitwiseXorRelease)->IsExactMatch(getAndUpdate));
-    EXPECT_TRUE(vh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kGetAndBitwiseXorAcquire)->IsExactMatch(getAndUpdate));
+    Handle<MethodType> get = hs.NewHandle(MethodTypeOf("([Ljava/lang/String;I)Ljava/lang/String;"));
+    Handle<MethodType> set =
+        hs.NewHandle(MethodTypeOf("([Ljava/lang/String;ILjava/lang/String;)V"));
+    Handle<MethodType> compareAndSet =
+        hs.NewHandle(MethodTypeOf("([Ljava/lang/String;ILjava/lang/String;Ljava/lang/String;)Z"));
+    Handle<MethodType> compareAndExchange = hs.NewHandle(MethodTypeOf(
+        "([Ljava/lang/String;ILjava/lang/String;Ljava/lang/String;)Ljava/lang/String;"));
+    Handle<MethodType> getAndUpdate =
+        hs.NewHandle(MethodTypeOf("([Ljava/lang/String;ILjava/lang/String;)Ljava/lang/String;"));
+    auto test_mode = [=](VarHandle::AccessMode access_mode, Handle<MethodType> method_type)
+        REQUIRES_SHARED(Locks::mutator_lock_) {
+      return vh->GetMethodTypeForAccessMode(self, access_mode)->IsExactMatch(method_type.Get());
+    };
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kGet, get));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kSet, set));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kGetVolatile, get));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kSetVolatile, set));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kGetAcquire, get));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kSetRelease, set));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kGetOpaque, get));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kSetOpaque, set));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kCompareAndSet, compareAndSet));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kCompareAndExchange, compareAndExchange));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kCompareAndExchangeAcquire, compareAndExchange));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kCompareAndExchangeRelease, compareAndExchange));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kWeakCompareAndSetPlain, compareAndSet));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kWeakCompareAndSet, compareAndSet));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kWeakCompareAndSetAcquire, compareAndSet));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kWeakCompareAndSetRelease, compareAndSet));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kGetAndSet, getAndUpdate));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kGetAndSetAcquire, getAndUpdate));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kGetAndSetRelease, getAndUpdate));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kGetAndAdd, getAndUpdate));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kGetAndAddAcquire, getAndUpdate));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kGetAndAddRelease, getAndUpdate));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kGetAndBitwiseOr, getAndUpdate));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kGetAndBitwiseOrRelease, getAndUpdate));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kGetAndBitwiseOrAcquire, getAndUpdate));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kGetAndBitwiseAnd, getAndUpdate));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kGetAndBitwiseAndRelease, getAndUpdate));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kGetAndBitwiseAndAcquire, getAndUpdate));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kGetAndBitwiseXor, getAndUpdate));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kGetAndBitwiseXorRelease, getAndUpdate));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kGetAndBitwiseXorAcquire, getAndUpdate));
   }
 }
 
 TEST_F(VarHandleTest, ByteArrayViewVarHandle) {
   Thread * const self = Thread::Current();
   ScopedObjectAccess soa(self);
-  StackHandleScope<2> hs(self);
+  StackHandleScope<7> hs(self);
 
   int32_t mask = AccessModesBitMask(VarHandle::AccessMode::kGet,
                                     VarHandle::AccessMode::kGetVolatile,
@@ -833,49 +834,53 @@ TEST_F(VarHandleTest, ByteArrayViewVarHandle) {
 
   // Check synthesized method types match expected forms.
   {
-    MethodType* get = MethodTypeOf("([BI)C");
-    MethodType* set = MethodTypeOf("([BIC)V");
-    MethodType* compareAndSet = MethodTypeOf("([BICC)Z");
-    MethodType* compareAndExchange = MethodTypeOf("([BICC)C");
-    MethodType* getAndUpdate = MethodTypeOf("([BIC)C");
-    EXPECT_TRUE(vh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kGet)->IsExactMatch(get));
-    EXPECT_TRUE(vh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kSet)->IsExactMatch(set));
-    EXPECT_TRUE(vh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kGetVolatile)->IsExactMatch(get));
-    EXPECT_TRUE(vh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kSetVolatile)->IsExactMatch(set));
-    EXPECT_TRUE(vh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kGetAcquire)->IsExactMatch(get));
-    EXPECT_TRUE(vh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kSetRelease)->IsExactMatch(set));
-    EXPECT_TRUE(vh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kGetOpaque)->IsExactMatch(get));
-    EXPECT_TRUE(vh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kSetOpaque)->IsExactMatch(set));
-    EXPECT_TRUE(vh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kCompareAndSet)->IsExactMatch(compareAndSet));
-    EXPECT_TRUE(vh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kCompareAndExchange)->IsExactMatch(compareAndExchange));
-    EXPECT_TRUE(vh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kCompareAndExchangeAcquire)->IsExactMatch(compareAndExchange));
-    EXPECT_TRUE(vh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kCompareAndExchangeRelease)->IsExactMatch(compareAndExchange));
-    EXPECT_TRUE(vh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kWeakCompareAndSetPlain)->IsExactMatch(compareAndSet));
-    EXPECT_TRUE(vh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kWeakCompareAndSet)->IsExactMatch(compareAndSet));
-    EXPECT_TRUE(vh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kWeakCompareAndSetAcquire)->IsExactMatch(compareAndSet));
-    EXPECT_TRUE(vh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kWeakCompareAndSetRelease)->IsExactMatch(compareAndSet));
-    EXPECT_TRUE(vh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kGetAndSet)->IsExactMatch(getAndUpdate));
-    EXPECT_TRUE(vh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kGetAndSetAcquire)->IsExactMatch(getAndUpdate));
-    EXPECT_TRUE(vh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kGetAndSetRelease)->IsExactMatch(getAndUpdate));
-    EXPECT_TRUE(vh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kGetAndAdd)->IsExactMatch(getAndUpdate));
-    EXPECT_TRUE(vh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kGetAndAddAcquire)->IsExactMatch(getAndUpdate));
-    EXPECT_TRUE(vh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kGetAndAddRelease)->IsExactMatch(getAndUpdate));
-    EXPECT_TRUE(vh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kGetAndBitwiseOr)->IsExactMatch(getAndUpdate));
-    EXPECT_TRUE(vh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kGetAndBitwiseOrRelease)->IsExactMatch(getAndUpdate));
-    EXPECT_TRUE(vh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kGetAndBitwiseOrAcquire)->IsExactMatch(getAndUpdate));
-    EXPECT_TRUE(vh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kGetAndBitwiseAnd)->IsExactMatch(getAndUpdate));
-    EXPECT_TRUE(vh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kGetAndBitwiseAndRelease)->IsExactMatch(getAndUpdate));
-    EXPECT_TRUE(vh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kGetAndBitwiseAndAcquire)->IsExactMatch(getAndUpdate));
-    EXPECT_TRUE(vh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kGetAndBitwiseXor)->IsExactMatch(getAndUpdate));
-    EXPECT_TRUE(vh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kGetAndBitwiseXorRelease)->IsExactMatch(getAndUpdate));
-    EXPECT_TRUE(vh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kGetAndBitwiseXorAcquire)->IsExactMatch(getAndUpdate));
+    Handle<MethodType> get = hs.NewHandle(MethodTypeOf("([BI)C"));
+    Handle<MethodType> set = hs.NewHandle(MethodTypeOf("([BIC)V"));
+    Handle<MethodType> compareAndSet = hs.NewHandle(MethodTypeOf("([BICC)Z"));
+    Handle<MethodType> compareAndExchange = hs.NewHandle(MethodTypeOf("([BICC)C"));
+    Handle<MethodType> getAndUpdate = hs.NewHandle(MethodTypeOf("([BIC)C"));
+    auto test_mode = [=](VarHandle::AccessMode access_mode, Handle<MethodType> method_type)
+        REQUIRES_SHARED(Locks::mutator_lock_) {
+      return vh->GetMethodTypeForAccessMode(self, access_mode)->IsExactMatch(method_type.Get());
+    };
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kGet, get));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kSet, set));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kGetVolatile, get));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kSetVolatile, set));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kGetAcquire, get));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kSetRelease, set));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kGetOpaque, get));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kSetOpaque, set));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kCompareAndSet, compareAndSet));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kCompareAndExchange, compareAndExchange));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kCompareAndExchangeAcquire, compareAndExchange));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kCompareAndExchangeRelease, compareAndExchange));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kWeakCompareAndSetPlain, compareAndSet));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kWeakCompareAndSet, compareAndSet));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kWeakCompareAndSetAcquire, compareAndSet));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kWeakCompareAndSetRelease, compareAndSet));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kGetAndSet, getAndUpdate));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kGetAndSetAcquire, getAndUpdate));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kGetAndSetRelease, getAndUpdate));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kGetAndAdd, getAndUpdate));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kGetAndAddAcquire, getAndUpdate));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kGetAndAddRelease, getAndUpdate));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kGetAndBitwiseOr, getAndUpdate));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kGetAndBitwiseOrRelease, getAndUpdate));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kGetAndBitwiseOrAcquire, getAndUpdate));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kGetAndBitwiseAnd, getAndUpdate));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kGetAndBitwiseAndRelease, getAndUpdate));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kGetAndBitwiseAndAcquire, getAndUpdate));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kGetAndBitwiseXor, getAndUpdate));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kGetAndBitwiseXorRelease, getAndUpdate));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kGetAndBitwiseXorAcquire, getAndUpdate));
   }
 }
 
 TEST_F(VarHandleTest, ByteBufferViewVarHandle) {
   Thread * const self = Thread::Current();
   ScopedObjectAccess soa(self);
-  StackHandleScope<2> hs(self);
+  StackHandleScope<7> hs(self);
 
   int32_t mask = AccessModesBitMask(VarHandle::AccessMode::kGet,
                                     VarHandle::AccessMode::kGetVolatile,
@@ -981,42 +986,47 @@ TEST_F(VarHandleTest, ByteBufferViewVarHandle) {
 
   // Check synthesized method types match expected forms.
   {
-    MethodType* get = MethodTypeOf("(Ljava/nio/ByteBuffer;I)D");
-    MethodType* set = MethodTypeOf("(Ljava/nio/ByteBuffer;ID)V");
-    MethodType* compareAndSet = MethodTypeOf("(Ljava/nio/ByteBuffer;IDD)Z");
-    MethodType* compareAndExchange = MethodTypeOf("(Ljava/nio/ByteBuffer;IDD)D");
-    MethodType* getAndUpdate = MethodTypeOf("(Ljava/nio/ByteBuffer;ID)D");
-    EXPECT_TRUE(vh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kGet)->IsExactMatch(get));
-    EXPECT_TRUE(vh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kSet)->IsExactMatch(set));
-    EXPECT_TRUE(vh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kGetVolatile)->IsExactMatch(get));
-    EXPECT_TRUE(vh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kSetVolatile)->IsExactMatch(set));
-    EXPECT_TRUE(vh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kGetAcquire)->IsExactMatch(get));
-    EXPECT_TRUE(vh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kSetRelease)->IsExactMatch(set));
-    EXPECT_TRUE(vh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kGetOpaque)->IsExactMatch(get));
-    EXPECT_TRUE(vh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kSetOpaque)->IsExactMatch(set));
-    EXPECT_TRUE(vh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kCompareAndSet)->IsExactMatch(compareAndSet));
-    EXPECT_TRUE(vh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kCompareAndExchange)->IsExactMatch(compareAndExchange));
-    EXPECT_TRUE(vh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kCompareAndExchangeAcquire)->IsExactMatch(compareAndExchange));
-    EXPECT_TRUE(vh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kCompareAndExchangeRelease)->IsExactMatch(compareAndExchange));
-    EXPECT_TRUE(vh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kWeakCompareAndSetPlain)->IsExactMatch(compareAndSet));
-    EXPECT_TRUE(vh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kWeakCompareAndSet)->IsExactMatch(compareAndSet));
-    EXPECT_TRUE(vh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kWeakCompareAndSetAcquire)->IsExactMatch(compareAndSet));
-    EXPECT_TRUE(vh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kWeakCompareAndSetRelease)->IsExactMatch(compareAndSet));
-    EXPECT_TRUE(vh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kGetAndSet)->IsExactMatch(getAndUpdate));
-    EXPECT_TRUE(vh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kGetAndSetAcquire)->IsExactMatch(getAndUpdate));
-    EXPECT_TRUE(vh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kGetAndSetRelease)->IsExactMatch(getAndUpdate));
-    EXPECT_TRUE(vh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kGetAndAdd)->IsExactMatch(getAndUpdate));
-    EXPECT_TRUE(vh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kGetAndAddAcquire)->IsExactMatch(getAndUpdate));
-    EXPECT_TRUE(vh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kGetAndAddRelease)->IsExactMatch(getAndUpdate));
-    EXPECT_TRUE(vh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kGetAndBitwiseOr)->IsExactMatch(getAndUpdate));
-    EXPECT_TRUE(vh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kGetAndBitwiseOrRelease)->IsExactMatch(getAndUpdate));
-    EXPECT_TRUE(vh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kGetAndBitwiseOrAcquire)->IsExactMatch(getAndUpdate));
-    EXPECT_TRUE(vh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kGetAndBitwiseAnd)->IsExactMatch(getAndUpdate));
-    EXPECT_TRUE(vh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kGetAndBitwiseAndRelease)->IsExactMatch(getAndUpdate));
-    EXPECT_TRUE(vh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kGetAndBitwiseAndAcquire)->IsExactMatch(getAndUpdate));
-    EXPECT_TRUE(vh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kGetAndBitwiseXor)->IsExactMatch(getAndUpdate));
-    EXPECT_TRUE(vh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kGetAndBitwiseXorRelease)->IsExactMatch(getAndUpdate));
-    EXPECT_TRUE(vh->GetMethodTypeForAccessMode(self, VarHandle::AccessMode::kGetAndBitwiseXorAcquire)->IsExactMatch(getAndUpdate));
+    Handle<MethodType> get = hs.NewHandle(MethodTypeOf("(Ljava/nio/ByteBuffer;I)D"));
+    Handle<MethodType> set = hs.NewHandle(MethodTypeOf("(Ljava/nio/ByteBuffer;ID)V"));
+    Handle<MethodType> compareAndSet = hs.NewHandle(MethodTypeOf("(Ljava/nio/ByteBuffer;IDD)Z"));
+    Handle<MethodType> compareAndExchange =
+        hs.NewHandle(MethodTypeOf("(Ljava/nio/ByteBuffer;IDD)D"));
+    Handle<MethodType> getAndUpdate = hs.NewHandle(MethodTypeOf("(Ljava/nio/ByteBuffer;ID)D"));
+    auto test_mode = [=](VarHandle::AccessMode access_mode, Handle<MethodType> method_type)
+        REQUIRES_SHARED(Locks::mutator_lock_) {
+      return vh->GetMethodTypeForAccessMode(self, access_mode)->IsExactMatch(method_type.Get());
+    };
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kGet, get));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kSet, set));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kGetVolatile, get));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kSetVolatile, set));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kGetAcquire, get));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kSetRelease, set));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kGetOpaque, get));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kSetOpaque, set));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kCompareAndSet, compareAndSet));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kCompareAndExchange, compareAndExchange));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kCompareAndExchangeAcquire, compareAndExchange));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kCompareAndExchangeRelease, compareAndExchange));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kWeakCompareAndSetPlain, compareAndSet));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kWeakCompareAndSet, compareAndSet));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kWeakCompareAndSetAcquire, compareAndSet));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kWeakCompareAndSetRelease, compareAndSet));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kGetAndSet, getAndUpdate));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kGetAndSetAcquire, getAndUpdate));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kGetAndSetRelease, getAndUpdate));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kGetAndAdd, getAndUpdate));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kGetAndAddAcquire, getAndUpdate));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kGetAndAddRelease, getAndUpdate));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kGetAndBitwiseOr, getAndUpdate));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kGetAndBitwiseOrRelease, getAndUpdate));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kGetAndBitwiseOrAcquire, getAndUpdate));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kGetAndBitwiseAnd, getAndUpdate));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kGetAndBitwiseAndRelease, getAndUpdate));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kGetAndBitwiseAndAcquire, getAndUpdate));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kGetAndBitwiseXor, getAndUpdate));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kGetAndBitwiseXorRelease, getAndUpdate));
+    EXPECT_TRUE(test_mode(VarHandle::AccessMode::kGetAndBitwiseXorAcquire, getAndUpdate));
   }
 }
 

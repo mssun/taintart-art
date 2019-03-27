@@ -20,7 +20,7 @@
 #include "dex/dex_instruction.h"
 #include "handle.h"
 #include "method_handles-inl.h"
-#include "mirror/method_type.h"
+#include "mirror/method_type-inl.h"
 #include "mirror/var_handle.h"
 
 namespace art {

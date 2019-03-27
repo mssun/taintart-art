@@ -25,7 +25,7 @@
 #include "mirror/class-inl.h"
 #include "mirror/emulated_stack_frame-inl.h"
 #include "mirror/method_handle_impl-inl.h"
-#include "mirror/method_type.h"
+#include "mirror/method_type-inl.h"
 #include "mirror/var_handle.h"
 #include "reflection-inl.h"
 #include "reflection.h"

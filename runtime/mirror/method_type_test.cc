@@ -38,8 +38,8 @@ static std::string FullyQualifiedType(const std::string& shorthand) {
   return "Ljava/lang/" + shorthand + ";";
 }
 
-static mirror::MethodType* CreateMethodType(const std::string& return_type,
-                                            const std::vector<std::string>& param_types) {
+static ObjPtr<mirror::MethodType> CreateMethodType(const std::string& return_type,
+                                                   const std::vector<std::string>& param_types) {
   CHECK_LT(param_types.size(), 3u);
 
   Runtime* const runtime = Runtime::Current();
