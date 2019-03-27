@@ -42,9 +42,7 @@ class MANAGED Field : public AccessibleObject {
     return GetField32(OFFSET_OF_OBJECT_MEMBER(Field, dex_field_index_));
   }
 
-  mirror::Class* GetDeclaringClass() REQUIRES_SHARED(Locks::mutator_lock_) {
-    return GetFieldObject<Class>(OFFSET_OF_OBJECT_MEMBER(Field, declaring_class_));
-  }
+  ObjPtr<mirror::Class> GetDeclaringClass() REQUIRES_SHARED(Locks::mutator_lock_);
 
   uint32_t GetAccessFlags() REQUIRES_SHARED(Locks::mutator_lock_) {
     return GetField32(OFFSET_OF_OBJECT_MEMBER(Field, access_flags_));
@@ -64,9 +62,7 @@ class MANAGED Field : public AccessibleObject {
 
   ALWAYS_INLINE Primitive::Type GetTypeAsPrimitiveType() REQUIRES_SHARED(Locks::mutator_lock_);
 
-  mirror::Class* GetType() REQUIRES_SHARED(Locks::mutator_lock_) {
-    return GetFieldObject<mirror::Class>(OFFSET_OF_OBJECT_MEMBER(Field, type_));
-  }
+  ObjPtr<mirror::Class> GetType() REQUIRES_SHARED(Locks::mutator_lock_);
 
   int32_t GetOffset() REQUIRES_SHARED(Locks::mutator_lock_) {
     return GetField32(OFFSET_OF_OBJECT_MEMBER(Field, offset_));
@@ -76,8 +72,9 @@ class MANAGED Field : public AccessibleObject {
   ArtField* GetArtField() REQUIRES_SHARED(Locks::mutator_lock_);
 
   template <PointerSize kPointerSize, bool kTransactionActive = false>
-  static mirror::Field* CreateFromArtField(Thread* self, ArtField* field,
-                                           bool force_resolve)
+  static ObjPtr<mirror::Field> CreateFromArtField(Thread* self,
+                                                  ArtField* field,
+                                                  bool force_resolve)
       REQUIRES_SHARED(Locks::mutator_lock_) REQUIRES(!Roles::uninterruptible_);
 
  private:

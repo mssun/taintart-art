@@ -50,7 +50,7 @@
 #include "image_space_fs.h"
 #include "intern_table-inl.h"
 #include "mirror/class-inl.h"
-#include "mirror/executable.h"
+#include "mirror/executable-inl.h"
 #include "mirror/object-inl.h"
 #include "mirror/object-refvisitor-inl.h"
 #include "oat_file.h"

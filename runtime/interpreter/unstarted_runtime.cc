@@ -47,6 +47,7 @@
 #include "mirror/array-alloc-inl.h"
 #include "mirror/array-inl.h"
 #include "mirror/class-alloc-inl.h"
+#include "mirror/executable-inl.h"
 #include "mirror/field-inl.h"
 #include "mirror/method.h"
 #include "mirror/object-inl.h"
@@ -358,7 +359,7 @@ void UnstartedRuntime::UnstartedClassGetDeclaredField(
   }
   Runtime* runtime = Runtime::Current();
   PointerSize pointer_size = runtime->GetClassLinker()->GetImagePointerSize();
-  mirror::Field* field;
+  ObjPtr<mirror::Field> field;
   if (runtime->IsActiveTransaction()) {
     if (pointer_size == PointerSize::k64) {
       field = mirror::Field::CreateFromArtField<PointerSize::k64, true>(
