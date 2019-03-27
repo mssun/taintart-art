@@ -95,8 +95,8 @@ ObjPtr<MethodType> MethodType::CollectTrailingArguments(Thread* self,
   return Create(self, dst_rtype, dst_ptypes);
 }
 
-size_t MethodType::NumberOfVRegs() REQUIRES_SHARED(Locks::mutator_lock_) {
-  ObjPtr<ObjectArray<Class>> const p_types = GetPTypes();
+size_t MethodType::NumberOfVRegs() {
+  const ObjPtr<ObjectArray<Class>> p_types = GetPTypes();
   const int32_t p_types_length = p_types->GetLength();
 
   // Initialize |num_vregs| with number of parameters and only increment it for
@@ -112,10 +112,10 @@ size_t MethodType::NumberOfVRegs() REQUIRES_SHARED(Locks::mutator_lock_) {
 }
 
 bool MethodType::IsExactMatch(ObjPtr<MethodType> target) {
-  ObjPtr<ObjectArray<Class>> const p_types = GetPTypes();
+  const ObjPtr<ObjectArray<Class>> p_types = GetPTypes();
   const int32_t params_length = p_types->GetLength();
 
-  ObjPtr<ObjectArray<Class>> const target_p_types = target->GetPTypes();
+  const ObjPtr<ObjectArray<Class>> target_p_types = target->GetPTypes();
   if (params_length != target_p_types->GetLength()) {
     return false;
   }
@@ -128,10 +128,10 @@ bool MethodType::IsExactMatch(ObjPtr<MethodType> target) {
 }
 
 bool MethodType::IsConvertible(ObjPtr<MethodType> target) {
-  ObjPtr<ObjectArray<Class>> const p_types = GetPTypes();
+  const ObjPtr<ObjectArray<Class>> p_types = GetPTypes();
   const int32_t params_length = p_types->GetLength();
 
-  ObjPtr<ObjectArray<Class>> const target_p_types = target->GetPTypes();
+  const ObjPtr<ObjectArray<Class>> target_p_types = target->GetPTypes();
   if (params_length != target_p_types->GetLength()) {
     return false;
   }
@@ -152,11 +152,11 @@ bool MethodType::IsConvertible(ObjPtr<MethodType> target) {
   return true;
 }
 
-std::string MethodType::PrettyDescriptor() REQUIRES_SHARED(Locks::mutator_lock_) {
+std::string MethodType::PrettyDescriptor() {
   std::ostringstream ss;
   ss << "(";
 
-  ObjPtr<ObjectArray<Class>> const p_types = GetPTypes();
+  const ObjPtr<ObjectArray<Class>> p_types = GetPTypes();
   const int32_t params_length = p_types->GetLength();
   for (int32_t i = 0; i < params_length; ++i) {
     ss << p_types->GetWithoutChecks(i)->PrettyDescriptor();

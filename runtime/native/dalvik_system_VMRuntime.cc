@@ -519,7 +519,7 @@ static void PreloadDexCachesStatsFilled(DexCacheStats* filled)
     if (!class_linker->IsDexFileRegistered(self, *dex_file)) {
       continue;
     }
-    ObjPtr<mirror::DexCache> const dex_cache = class_linker->FindDexCache(self, *dex_file);
+    const ObjPtr<mirror::DexCache> dex_cache = class_linker->FindDexCache(self, *dex_file);
     DCHECK(dex_cache != nullptr);  // Boot class path dex caches are never unloaded.
     for (size_t j = 0, num_strings = dex_cache->NumStrings(); j < num_strings; ++j) {
       auto pair = dex_cache->GetStrings()[j].load(std::memory_order_relaxed);

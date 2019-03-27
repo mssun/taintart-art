@@ -29,7 +29,8 @@
 namespace art {
 namespace mirror {
 
-ObjPtr<MethodHandlesLookup> MethodHandlesLookup::Create(Thread* const self, Handle<Class> lookup_class)
+ObjPtr<MethodHandlesLookup> MethodHandlesLookup::Create(Thread* const self,
+                                                        Handle<Class> lookup_class)
   REQUIRES_SHARED(Locks::mutator_lock_) REQUIRES(!Roles::uninterruptible_) {
   static constexpr uint32_t kAllModes = kAccPublic | kAccPrivate | kAccProtected | kAccStatic;
 

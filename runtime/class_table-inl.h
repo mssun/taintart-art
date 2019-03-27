@@ -91,8 +91,8 @@ bool ClassTable::Visit(const Visitor& visitor) {
 template<ReadBarrierOption kReadBarrierOption>
 inline mirror::Class* ClassTable::TableSlot::Read() const {
   const uint32_t before = data_.load(std::memory_order_relaxed);
-  ObjPtr<mirror::Class> const before_ptr(ExtractPtr(before));
-  ObjPtr<mirror::Class> const after_ptr(
+  const ObjPtr<mirror::Class> before_ptr(ExtractPtr(before));
+  const ObjPtr<mirror::Class> after_ptr(
       GcRoot<mirror::Class>(before_ptr).Read<kReadBarrierOption>());
   if (kReadBarrierOption != kWithoutReadBarrier && before_ptr != after_ptr) {
     // If another thread raced and updated the reference, do not store the read barrier updated

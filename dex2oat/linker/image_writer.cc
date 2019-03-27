@@ -1831,7 +1831,7 @@ void ImageWriter::DumpImageClasses() {
 mirror::String* ImageWriter::FindInternedString(mirror::String* string) {
   Thread* const self = Thread::Current();
   for (const ImageInfo& image_info : image_infos_) {
-    ObjPtr<mirror::String> const found = image_info.intern_table_->LookupStrong(self, string);
+    const ObjPtr<mirror::String> found = image_info.intern_table_->LookupStrong(self, string);
     DCHECK(image_info.intern_table_->LookupWeak(self, string) == nullptr)
         << string->ToModifiedUtf8();
     if (found != nullptr) {

@@ -2353,7 +2353,7 @@ class VisitClassLoaderClassesVisitor : public ClassLoaderVisitor {
       return (*visitor_)(klass);
     }
 
-    ObjPtr<mirror::ClassLoader> const defining_class_loader_;
+    const ObjPtr<mirror::ClassLoader> defining_class_loader_;
     ClassVisitor* const visitor_;
   };
 
@@ -4241,7 +4241,7 @@ ObjPtr<mirror::Class> ClassLinker::InsertClass(const char* descriptor,
   }
   {
     WriterMutexLock mu(Thread::Current(), *Locks::classlinker_classes_lock_);
-    ObjPtr<mirror::ClassLoader> const class_loader = klass->GetClassLoader();
+    const ObjPtr<mirror::ClassLoader> class_loader = klass->GetClassLoader();
     ClassTable* const class_table = InsertClassTableForClassLoader(class_loader);
     ObjPtr<mirror::Class> existing = class_table->Lookup(descriptor, hash);
     if (existing != nullptr) {
@@ -5851,10 +5851,10 @@ bool ClassLinker::LinkClass(Thread* self,
 
     {
       WriterMutexLock mu(self, *Locks::classlinker_classes_lock_);
-      ObjPtr<mirror::ClassLoader> const class_loader = h_new_class.Get()->GetClassLoader();
+      const ObjPtr<mirror::ClassLoader> class_loader = h_new_class.Get()->GetClassLoader();
       ClassTable* const table = InsertClassTableForClassLoader(class_loader);
-      ObjPtr<mirror::Class> existing = table->UpdateClass(descriptor, h_new_class.Get(),
-                                                   ComputeModifiedUtf8Hash(descriptor));
+      const ObjPtr<mirror::Class> existing =
+          table->UpdateClass(descriptor, h_new_class.Get(), ComputeModifiedUtf8Hash(descriptor));
       if (class_loader != nullptr) {
         // We updated the class in the class table, perform the write barrier so that the GC knows
         // about the change.

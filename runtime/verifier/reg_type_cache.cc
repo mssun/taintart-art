@@ -243,7 +243,7 @@ const RegType* RegTypeCache::FindClass(ObjPtr<mirror::Class> klass, bool precise
     return &RegTypeFromPrimitiveType(klass->GetPrimitiveType());
   }
   for (auto& pair : klass_entries_) {
-    ObjPtr<mirror::Class> const reg_klass = pair.first.Read();
+    const ObjPtr<mirror::Class> reg_klass = pair.first.Read();
     if (reg_klass == klass) {
       const RegType* reg_type = pair.second;
       if (MatchingPrecisionForClass(reg_type, precise)) {
