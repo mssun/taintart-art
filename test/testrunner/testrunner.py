@@ -46,6 +46,7 @@ In the end, the script will print the failed and skipped tests if any.
 """
 import argparse
 import collections
+import contextlib
 import fnmatch
 import itertools
 import json
@@ -118,6 +119,7 @@ gdb = False
 gdb_arg = ''
 runtime_option = ''
 with_agent = []
+zipapex_loc = None
 run_test_option = []
 stop_testrunner = False
 dex2oat_jobs = -1   # -1 corresponds to default threads for dex2oat
@@ -360,7 +362,7 @@ def run_tests(tests):
       'debuggable': [''], 'jvmti': [''],
       'cdex_level': ['']})
 
-  def start_combination(config_tuple, address_size):
+  def start_combination(config_tuple, global_options, address_size):
       test, target, run, prebuild, compiler, relocate, trace, gc, \
       jni, image, debuggable, jvmti, cdex_level = config_tuple
 
@@ -393,7 +395,7 @@ def run_tests(tests):
       variant_set = {target, run, prebuild, compiler, relocate, trace, gc, jni,
                      image, debuggable, jvmti, cdex_level, address_size}
 
-      options_test = options_all
+      options_test = global_options
 
       if target == 'host':
         options_test += ' --host'
@@ -502,17 +504,36 @@ def run_tests(tests):
       worker.daemon = True
       worker.start()
 
-  for config_tuple in config:
-    target = config_tuple[1]
-    for address_size in _user_input_variants['address_sizes_target'][target]:
-      start_combination(config_tuple, address_size)
+  #  Use a context-manager to handle cleaning up the extracted zipapex if needed.
+  with handle_zipapex(zipapex_loc) as zipapex_opt:
+    options_all += zipapex_opt
+    for config_tuple in config:
+      target = config_tuple[1]
+      for address_size in _user_input_variants['address_sizes_target'][target]:
+        start_combination(config_tuple, options_all, address_size)
 
-  for config_tuple in uncombinated_config:
-      start_combination(config_tuple, "")  # no address size
+    for config_tuple in uncombinated_config:
+        start_combination(config_tuple, options_all, "")  # no address size
 
-  while threading.active_count() > 2:
-    time.sleep(0.1)
+    while threading.active_count() > 2:
+      time.sleep(0.1)
 
+@contextlib.contextmanager
+def handle_zipapex(ziploc):
+  """Extracts the zipapex (if present) and handles cleanup.
+
+  If we are running out of a zipapex we want to unzip it once and have all the tests use the same
+  extracted contents. This extracts the files and handles cleanup if needed. It returns the
+  required extra arguments to pass to the run-test.
+  """
+  if ziploc is not None:
+    with tempfile.TemporaryDirectory() as tmpdir:
+      subprocess.check_call(["unzip", "-qq", ziploc, "apex_payload.zip", "-d", tmpdir])
+      subprocess.check_call(
+        ["unzip", "-qq", os.path.join(tmpdir, "apex_payload.zip"), "-d", tmpdir])
+      yield " --runtime-extracted-zipapex " + tmpdir
+  else:
+    yield ""
 
 def run_test(command, test, test_variant, test_name):
   """Runs the test.
@@ -912,6 +933,7 @@ def parse_option():
   global dex2oat_jobs
   global run_all_configs
   global with_agent
+  global zipapex_loc
 
   parser = argparse.ArgumentParser(description="Runs all or a subset of the ART test suite.")
   parser.add_argument('-t', '--test', action='append', dest='tests', help='name(s) of the test(s)')
@@ -952,6 +974,8 @@ def parse_option():
                             example '--runtime-option=-Xjitthreshold:0'.""")
   global_group.add_argument('--dex2oat-jobs', type=int, dest='dex2oat_jobs',
                             help='Number of dex2oat jobs')
+  global_group.add_argument('--runtime-zipapex', dest='runtime_zipapex', default=None,
+                            help='Location for runtime zipapex.')
   global_group.add_argument('-a', '--all', action='store_true', dest='run_all',
                             help="Run all the possible configurations for the input test set")
   for variant_type, variant_set in VARIANT_TYPE_DICT.items():
@@ -996,6 +1020,7 @@ def parse_option():
   runtime_option = options['runtime_option'];
   with_agent = options['with_agent'];
   run_test_option = sum(map(shlex.split, options['run_test_option']), [])
+  zipapex_loc = options['runtime_zipapex']
 
   timeout = options['timeout']
   if options['dex2oat_jobs']:
