@@ -14,22 +14,21 @@
  * limitations under the License.
  */
 
+#ifndef ART_RUNTIME_MIRROR_CALL_SITE_INL_H_
+#define ART_RUNTIME_MIRROR_CALL_SITE_INL_H_
+
 #include "call_site.h"
 
-#include "class-alloc-inl.h"
-#include "class_root.h"
-#include "obj_ptr-inl.h"
+#include "object-inl.h"
 
 namespace art {
 namespace mirror {
 
-mirror::CallSite* CallSite::Create(Thread* const self, Handle<MethodHandle> target) {
-  ObjPtr<mirror::CallSite> cs =
-      ObjPtr<CallSite>::DownCast(GetClassRoot<CallSite>()->AllocObject(self));
-  CHECK(!Runtime::Current()->IsActiveTransaction());
-  cs->SetFieldObject<false>(TargetOffset(), target.Get());
-  return cs.Ptr();
+inline ObjPtr<MethodHandle> CallSite::GetTarget() {
+  return GetFieldObject<MethodHandle>(TargetOffset());
 }
 
 }  // namespace mirror
 }  // namespace art
+
+#endif  // ART_RUNTIME_MIRROR_CALL_SITE_INL_H_

@@ -125,7 +125,6 @@ libart_cc_defaults {
         "managed_stack.cc",
         "method_handles.cc",
         "mirror/array.cc",
-        "mirror/call_site.cc",
         "mirror/class.cc",
         "mirror/class_ext.cc",
         "mirror/dex_cache.cc",
