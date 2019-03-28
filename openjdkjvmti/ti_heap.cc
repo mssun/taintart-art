@@ -1073,7 +1073,7 @@ class FollowReferencesHelper final {
       REQUIRES_SHARED(art::Locks::mutator_lock_)
       REQUIRES(!*tag_table_->GetAllowDisallowLock()) {
     if (obj->IsClass()) {
-      VisitClass(obj->AsClass());
+      VisitClass(obj->AsClass().Ptr());
       return;
     }
     if (obj->IsArrayInstance()) {
@@ -1138,7 +1138,7 @@ class FollowReferencesHelper final {
     }
 
     if (array->IsObjectArray()) {
-      art::mirror::ObjectArray<art::mirror::Object>* obj_array =
+      art::ObjPtr<art::mirror::ObjectArray<art::mirror::Object>> obj_array =
           array->AsObjectArray<art::mirror::Object>();
       int32_t length = obj_array->GetLength();
       for (int32_t i = 0; i != length; ++i) {

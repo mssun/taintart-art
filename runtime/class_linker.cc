@@ -1757,10 +1757,10 @@ bool ClassLinker::OpenImageDexFiles(gc::space::ImageSpace* space,
   const ImageHeader& header = space->GetImageHeader();
   ObjPtr<mirror::Object> dex_caches_object = header.GetImageRoot(ImageHeader::kDexCaches);
   DCHECK(dex_caches_object != nullptr);
-  mirror::ObjectArray<mirror::DexCache>* dex_caches =
+  ObjPtr<mirror::ObjectArray<mirror::DexCache>> dex_caches =
       dex_caches_object->AsObjectArray<mirror::DexCache>();
   const OatFile* oat_file = space->GetOatFile();
-  for (int32_t i = 0; i < dex_caches->GetLength(); i++) {
+  for (int32_t i = 0, length = dex_caches->GetLength(); i != length; ++i) {
     ObjPtr<mirror::DexCache> dex_cache = dex_caches->Get(i);
     std::string dex_file_location(dex_cache->GetLocation()->ToModifiedUtf8());
     std::unique_ptr<const DexFile> dex_file = OpenOatDexFile(oat_file,

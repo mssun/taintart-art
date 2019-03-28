@@ -53,7 +53,7 @@ class SpaceTest : public Super {
     heap->SetSpaceAsDefault(space);
   }
 
-  mirror::Class* GetByteArrayClass(Thread* self) REQUIRES_SHARED(Locks::mutator_lock_) {
+  ObjPtr<mirror::Class> GetByteArrayClass(Thread* self) REQUIRES_SHARED(Locks::mutator_lock_) {
     if (byte_array_class_ == nullptr) {
       ObjPtr<mirror::Class> byte_array_class =
           Runtime::Current()->GetClassLinker()->FindSystemClass(self, "[B");
@@ -112,7 +112,7 @@ class SpaceTest : public Super {
       // the correct read barrier state.
       o->AssertReadBarrierState();
     }
-    mirror::Array* arr = o->AsArray<kVerifyNone>();
+    ObjPtr<mirror::Array> arr = o->AsArray<kVerifyNone>();
     size_t header_size = SizeOfZeroLengthByteArray();
     int32_t length = size - header_size;
     arr->SetLength(length);

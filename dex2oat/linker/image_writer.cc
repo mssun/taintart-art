@@ -1140,7 +1140,7 @@ void ImageWriter::AssignImageBinSlot(mirror::Object* object, size_t oat_index) {
     //
     if (object->IsClass()) {
       bin = Bin::kClassVerified;
-      mirror::Class* klass = object->AsClass();
+      ObjPtr<mirror::Class> klass = object->AsClass();
 
       // Add non-embedded vtable to the pointer array table if there is one.
       ObjPtr<mirror::PointerArray> vtable = klass->GetVTable();
@@ -1810,7 +1810,7 @@ std::vector<ObjPtr<mirror::DexCache>> ImageWriter::FindDexCaches(Thread* self) {
 void ImageWriter::CheckNonImageClassesRemoved() {
   auto visitor = [&](Object* obj) REQUIRES_SHARED(Locks::mutator_lock_) {
     if (obj->IsClass() && !IsInBootImage(obj)) {
-      Class* klass = obj->AsClass();
+      ObjPtr<Class> klass = obj->AsClass();
       if (!KeepClass(klass)) {
         DumpImageClasses();
         CHECK(KeepClass(klass))
@@ -1978,7 +1978,7 @@ mirror::Object* ImageWriter::TryAssignBinSlot(WorkStack& work_stack,
     if (obj->IsString()) {
       // Need to check if the string is already interned in another image info so that we don't have
       // the intern tables of two different images contain the same string.
-      mirror::String* interned = FindInternedString(obj->AsString());
+      mirror::String* interned = FindInternedString(obj->AsString().Ptr());
       if (interned == nullptr) {
         // Not in another image space, insert to our table.
         interned =
@@ -2103,7 +2103,7 @@ mirror::Object* ImageWriter::TryAssignBinSlot(WorkStack& work_stack,
     } else if (obj->IsClassLoader()) {
       // Register the class loader if it has a class table.
       // The fake boot class loader should not get registered.
-      mirror::ClassLoader* class_loader = obj->AsClassLoader();
+      ObjPtr<mirror::ClassLoader> class_loader = obj->AsClassLoader();
       if (class_loader->GetClassTable() != nullptr) {
         DCHECK(compiler_options_.IsAppImage());
         if (class_loader == GetAppClassLoader()) {
@@ -2120,7 +2120,7 @@ mirror::Object* ImageWriter::TryAssignBinSlot(WorkStack& work_stack,
   }
   if (obj->IsString()) {
     // Always return the interned string if there exists one.
-    mirror::String* interned = FindInternedString(obj->AsString());
+    mirror::String* interned = FindInternedString(obj->AsString().Ptr());
     if (interned != nullptr) {
       return interned;
     }
@@ -3188,7 +3188,7 @@ void ImageWriter::FixupObject(Object* orig, Object* copy) {
     }
   }
   if (orig->IsClass()) {
-    FixupClass(orig->AsClass<kVerifyNone>(), down_cast<mirror::Class*>(copy));
+    FixupClass(orig->AsClass<kVerifyNone>().Ptr(), down_cast<mirror::Class*>(copy));
   } else {
     ObjPtr<mirror::ObjectArray<mirror::Class>> class_roots =
         Runtime::Current()->GetClassLinker()->GetClassRoots();

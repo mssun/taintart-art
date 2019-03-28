@@ -489,13 +489,15 @@ class ImageSpace::PatchObjectVisitor final {
   }
 
   // Visitor for VisitReferences().
-  ALWAYS_INLINE void operator()(mirror::Object* object, MemberOffset field_offset, bool is_static)
+  ALWAYS_INLINE void operator()(ObjPtr<mirror::Object> object,
+                                MemberOffset field_offset,
+                                bool is_static)
       const REQUIRES_SHARED(Locks::mutator_lock_) {
     DCHECK(!is_static);
     PatchReferenceField(object, field_offset);
   }
   // Visitor for VisitReferences(), java.lang.ref.Reference case.
-  ALWAYS_INLINE void operator()(ObjPtr<mirror::Class> klass, mirror::Reference* ref) const
+  ALWAYS_INLINE void operator()(ObjPtr<mirror::Class> klass, ObjPtr<mirror::Reference> ref) const
       REQUIRES_SHARED(Locks::mutator_lock_) {
     DCHECK(klass->IsTypeOfReferenceClass());
     this->operator()(ref, mirror::Reference::ReferentOffset(), /*is_static=*/ false);
@@ -1260,8 +1262,9 @@ class ImageSpace::Loader {
       image_header.RelocateImageObjects(app_image_objects.Delta());
       CHECK_EQ(image_header.GetImageBegin(), target_base);
       // Fix up dex cache DexFile pointers.
-      auto* dex_caches = image_header.GetImageRoot<kWithoutReadBarrier>(ImageHeader::kDexCaches)->
-          AsObjectArray<mirror::DexCache, kVerifyNone>();
+      ObjPtr<mirror::ObjectArray<mirror::DexCache>> dex_caches =
+          image_header.GetImageRoot<kWithoutReadBarrier>(ImageHeader::kDexCaches)
+              ->AsObjectArray<mirror::DexCache, kVerifyNone>();
       for (int32_t i = 0, count = dex_caches->GetLength(); i < count; ++i) {
         ObjPtr<mirror::DexCache> dex_cache = dex_caches->Get<kVerifyNone, kWithoutReadBarrier>(i);
         CHECK(dex_cache != nullptr);
@@ -1674,10 +1677,11 @@ class ImageSpace::BootImageLoader {
         if (!patched_objects->Test(object)) {
           // This is the last pass over objects, so we do not need to Set().
           patch_object_visitor.VisitObject(object);
-          mirror::Class* klass = object->GetClass<kVerifyNone, kWithoutReadBarrier>();
+          ObjPtr<mirror::Class> klass = object->GetClass<kVerifyNone, kWithoutReadBarrier>();
           if (klass->IsDexCacheClass<kVerifyNone>()) {
             // Patch dex cache array pointers and elements.
-            mirror::DexCache* dex_cache = object->AsDexCache<kVerifyNone, kWithoutReadBarrier>();
+            ObjPtr<mirror::DexCache> dex_cache =
+                object->AsDexCache<kVerifyNone, kWithoutReadBarrier>();
             patch_object_visitor.VisitDexCacheArrays(dex_cache);
           } else if (klass == method_class || klass == constructor_class) {
             // Patch the ArtMethod* in the mirror::Executable subobject.

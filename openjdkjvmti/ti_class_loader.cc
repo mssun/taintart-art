@@ -92,8 +92,6 @@ void ClassLoaderHelper::UpdateJavaDexFile(art::ObjPtr<art::mirror::Object> java_
   art::ArtField* cookie_field = java_dex_file->GetClass()->FindDeclaredInstanceField(
       "mCookie", "Ljava/lang/Object;");
   CHECK(internal_cookie_field != nullptr);
-  art::ObjPtr<art::mirror::LongArray> orig_internal_cookie(
-      internal_cookie_field->GetObject(java_dex_file)->AsLongArray());
   art::ObjPtr<art::mirror::LongArray> orig_cookie(
       cookie_field->GetObject(java_dex_file)->AsLongArray());
   internal_cookie_field->SetObject<false>(java_dex_file, new_cookie);

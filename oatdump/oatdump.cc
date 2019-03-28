@@ -2033,12 +2033,15 @@ class ImageDumper {
     if (value == nullptr) {
       os << StringPrintf("null   %s\n", type->PrettyDescriptor().c_str());
     } else if (type->IsStringClass()) {
-      mirror::String* string = value->AsString();
-      os << StringPrintf("%p   String: %s\n", string,
+      ObjPtr<mirror::String> string = value->AsString();
+      os << StringPrintf("%p   String: %s\n",
+                         string.Ptr(),
                          PrintableString(string->ToModifiedUtf8().c_str()).c_str());
     } else if (type->IsClassClass()) {
-      mirror::Class* klass = value->AsClass();
-      os << StringPrintf("%p   Class: %s\n", klass, mirror::Class::PrettyDescriptor(klass).c_str());
+      ObjPtr<mirror::Class> klass = value->AsClass();
+      os << StringPrintf("%p   Class: %s\n",
+                         klass.Ptr(),
+                         mirror::Class::PrettyDescriptor(klass).c_str());
     } else {
       os << StringPrintf("%p   %s\n", value.Ptr(), type->PrettyDescriptor().c_str());
     }
@@ -2156,17 +2159,19 @@ class ImageDumper {
 
     std::ostream& os = vios_.Stream();
 
-    mirror::Class* obj_class = obj->GetClass();
+    ObjPtr<mirror::Class> obj_class = obj->GetClass();
     if (obj_class->IsArrayClass()) {
       os << StringPrintf("%p: %s length:%d\n", obj, obj_class->PrettyDescriptor().c_str(),
                          obj->AsArray()->GetLength());
     } else if (obj->IsClass()) {
-      mirror::Class* klass = obj->AsClass();
-      os << StringPrintf("%p: java.lang.Class \"%s\" (", obj,
+      ObjPtr<mirror::Class> klass = obj->AsClass();
+      os << StringPrintf("%p: java.lang.Class \"%s\" (",
+                         obj,
                          mirror::Class::PrettyDescriptor(klass).c_str())
          << klass->GetStatus() << ")\n";
     } else if (obj_class->IsStringClass()) {
-      os << StringPrintf("%p: java.lang.String %s\n", obj,
+      os << StringPrintf("%p: java.lang.String %s\n",
+                         obj,
                          PrintableString(obj->AsString()->ToModifiedUtf8().c_str()).c_str());
     } else {
       os << StringPrintf("%p: %s\n", obj, obj_class->PrettyDescriptor().c_str());
@@ -2175,7 +2180,7 @@ class ImageDumper {
     DumpFields(os, obj, obj_class);
     const PointerSize image_pointer_size = image_header_.GetPointerSize();
     if (obj->IsObjectArray()) {
-      auto* obj_array = obj->AsObjectArray<mirror::Object>();
+      ObjPtr<mirror::ObjectArray<mirror::Object>> obj_array = obj->AsObjectArray<mirror::Object>();
       for (int32_t i = 0, length = obj_array->GetLength(); i < length; i++) {
         ObjPtr<mirror::Object> value = obj_array->Get(i);
         size_t run = 0;

@@ -3226,7 +3226,7 @@ class VerifyReferenceCardVisitor {
 
           // Print which field of the object is dead.
           if (!obj->IsObjectArray()) {
-            mirror::Class* klass = is_static ? obj->AsClass() : obj->GetClass();
+            ObjPtr<mirror::Class> klass = is_static ? obj->AsClass() : obj->GetClass();
             CHECK(klass != nullptr);
             for (ArtField& field : (is_static ? klass->GetSFields() : klass->GetIFields())) {
               if (field.GetOffset().Int32Value() == offset.Int32Value()) {
@@ -3236,7 +3236,7 @@ class VerifyReferenceCardVisitor {
               }
             }
           } else {
-            mirror::ObjectArray<mirror::Object>* object_array =
+            ObjPtr<mirror::ObjectArray<mirror::Object>> object_array =
                 obj->AsObjectArray<mirror::Object>();
             for (int32_t i = 0; i < object_array->GetLength(); ++i) {
               if (object_array->Get(i) == ref) {

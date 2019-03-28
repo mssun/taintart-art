@@ -164,7 +164,7 @@ bool FillArrayData(ObjPtr<mirror::Object> obj, const Instruction::ArrayDataPaylo
     ThrowNullPointerException("null array in FILL_ARRAY_DATA");
     return false;
   }
-  mirror::Array* array = obj->AsArray();
+  ObjPtr<mirror::Array> array = obj->AsArray();
   DCHECK(!array->IsObjectArray());
   if (UNLIKELY(static_cast<int32_t>(payload->element_count) > array->GetLength())) {
     Thread* self = Thread::Current();

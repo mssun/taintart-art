@@ -1172,9 +1172,9 @@ void Hprof::DumpHeapObject(mirror::Object* obj) {
     // allocated which hasn't been initialized yet.
   } else {
     if (obj->IsClass()) {
-      DumpHeapClass(obj->AsClass());
+      DumpHeapClass(obj->AsClass().Ptr());
     } else if (c->IsArrayClass()) {
-      DumpHeapArray(obj->AsArray(), c);
+      DumpHeapArray(obj->AsArray().Ptr(), c);
     } else {
       DumpHeapInstanceObject(obj, c, visitor.GetRoots());
     }
@@ -1439,7 +1439,7 @@ void Hprof::DumpHeapArray(mirror::Array* obj, mirror::Class* klass) {
     __ AddClassId(LookupClassId(klass));
 
     // Dump the elements, which are always objects or null.
-    __ AddIdList(obj->AsObjectArray<mirror::Object>());
+    __ AddIdList(obj->AsObjectArray<mirror::Object>().Ptr());
   } else {
     size_t size;
     HprofBasicType t = SignatureToBasicTypeAndSize(
@@ -1525,11 +1525,11 @@ void Hprof::DumpHeapInstanceObject(mirror::Object* obj,
     }
     // Add value field for String if necessary.
     if (klass->IsStringClass()) {
-      mirror::String* s = obj->AsString();
+      ObjPtr<mirror::String> s = obj->AsString();
       if (s->GetLength() == 0) {
         // If string is empty, use an object-aligned address within the string for the value.
         string_value = reinterpret_cast<mirror::Object*>(
-            reinterpret_cast<uintptr_t>(s) + kObjectAlignment);
+            reinterpret_cast<uintptr_t>(s.Ptr()) + kObjectAlignment);
       } else {
         if (s->IsCompressed()) {
           string_value = reinterpret_cast<mirror::Object*>(s->GetValueCompressed());
@@ -1553,7 +1553,7 @@ void Hprof::DumpHeapInstanceObject(mirror::Object* obj,
   // Output native value character array for strings.
   CHECK_EQ(obj->IsString(), string_value != nullptr);
   if (string_value != nullptr) {
-    mirror::String* s = obj->AsString();
+    ObjPtr<mirror::String> s = obj->AsString();
     __ AddU1(HPROF_PRIMITIVE_ARRAY_DUMP);
     __ AddObjectId(string_value);
     __ AddStackTraceSerialNumber(LookupStackTraceSerialNumber(obj));

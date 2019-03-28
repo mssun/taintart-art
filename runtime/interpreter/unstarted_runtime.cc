@@ -172,7 +172,9 @@ static void CheckExceptionGenerateClassNotFound(Thread* self)
   }
 }
 
-static mirror::String* GetClassName(Thread* self, ShadowFrame* shadow_frame, size_t arg_offset)
+static ObjPtr<mirror::String> GetClassName(Thread* self,
+                                           ShadowFrame* shadow_frame,
+                                           size_t arg_offset)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   mirror::Object* param = shadow_frame->GetVRegReference(arg_offset);
   if (param == nullptr) {
@@ -205,15 +207,16 @@ void UnstartedRuntime::UnstartedClassForNameCommon(Thread* self,
                                                    size_t arg_offset,
                                                    bool long_form,
                                                    const char* caller) {
-  mirror::String* class_name = GetClassName(self, shadow_frame, arg_offset);
+  ObjPtr<mirror::String> class_name = GetClassName(self, shadow_frame, arg_offset);
   if (class_name == nullptr) {
     return;
   }
   bool initialize_class;
-  mirror::ClassLoader* class_loader;
+  ObjPtr<mirror::ClassLoader> class_loader;
   if (long_form) {
     initialize_class = shadow_frame->GetVReg(arg_offset + 1) != 0;
-    class_loader = down_cast<mirror::ClassLoader*>(shadow_frame->GetVRegReference(arg_offset + 2));
+    class_loader =
+        ObjPtr<mirror::ClassLoader>::DownCast(shadow_frame->GetVRegReference(arg_offset + 2));
   } else {
     initialize_class = true;
     // TODO: This is really only correct for the boot classpath, and for robustness we should
@@ -428,7 +431,7 @@ void UnstartedRuntime::UnstartedClassGetDeclaredConstructor(
     ThrowNullPointerExceptionForMethodAccess(shadow_frame->GetMethod(), InvokeType::kVirtual);
     return;
   }
-  mirror::ObjectArray<mirror::Class>* args =
+  ObjPtr<mirror::ObjectArray<mirror::Class>> args =
       shadow_frame->GetVRegReference(arg_offset + 1)->AsObjectArray<mirror::Class>();
   Runtime* runtime = Runtime::Current();
   bool transaction = runtime->IsActiveTransaction();
@@ -561,7 +564,7 @@ static void GetResourceAsStream(Thread* self,
     return;
   }
   CHECK(resource_obj->IsString());
-  mirror::String* resource_name = resource_obj->AsString();
+  ObjPtr<mirror::String> resource_name = resource_obj->AsString();
 
   std::string resource_name_str = resource_name->ToModifiedUtf8();
   if (resource_name_str.empty() || resource_name_str == "/") {
@@ -746,9 +749,9 @@ void UnstartedRuntime::UnstartedConstructorNewInstance0(
 
 void UnstartedRuntime::UnstartedVmClassLoaderFindLoadedClass(
     Thread* self, ShadowFrame* shadow_frame, JValue* result, size_t arg_offset) {
-  mirror::String* class_name = shadow_frame->GetVRegReference(arg_offset + 1)->AsString();
-  mirror::ClassLoader* class_loader =
-      down_cast<mirror::ClassLoader*>(shadow_frame->GetVRegReference(arg_offset));
+  ObjPtr<mirror::String> class_name = shadow_frame->GetVRegReference(arg_offset + 1)->AsString();
+  ObjPtr<mirror::ClassLoader> class_loader =
+      ObjPtr<mirror::ClassLoader>::DownCast(shadow_frame->GetVRegReference(arg_offset));
   StackHandleScope<2> hs(self);
   Handle<mirror::String> h_class_name(hs.NewHandle(class_name));
   Handle<mirror::ClassLoader> h_class_loader(hs.NewHandle(class_loader));
@@ -769,8 +772,10 @@ void UnstartedRuntime::UnstartedVmClassLoaderFindLoadedClass(
 
 template <typename T>
 static void PrimitiveArrayCopy(Thread* self,
-                               mirror::Array* src_array, int32_t src_pos,
-                               mirror::Array* dst_array, int32_t dst_pos,
+                               ObjPtr<mirror::Array> src_array,
+                               int32_t src_pos,
+                               ObjPtr<mirror::Array> dst_array,
+                               int32_t dst_pos,
                                int32_t length)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   if (src_array->GetClass()->GetComponentType() != dst_array->GetClass()->GetComponentType()) {
@@ -782,8 +787,8 @@ static void PrimitiveArrayCopy(Thread* self,
                                dst_array->GetClass()->GetComponentType()).c_str());
     return;
   }
-  mirror::PrimitiveArray<T>* src = down_cast<mirror::PrimitiveArray<T>*>(src_array);
-  mirror::PrimitiveArray<T>* dst = down_cast<mirror::PrimitiveArray<T>*>(dst_array);
+  ObjPtr<mirror::PrimitiveArray<T>> src = ObjPtr<mirror::PrimitiveArray<T>>::DownCast(src_array);
+  ObjPtr<mirror::PrimitiveArray<T>> dst = ObjPtr<mirror::PrimitiveArray<T>>::DownCast(dst_array);
   const bool copy_forward = (dst_pos < src_pos) || (dst_pos - src_pos >= length);
   if (copy_forward) {
     for (int32_t i = 0; i < length; ++i) {
@@ -820,8 +825,8 @@ void UnstartedRuntime::UnstartedSystemArraycopy(
     return;
   }
 
-  mirror::Array* src_array = src_obj->AsArray();
-  mirror::Array* dst_array = dst_obj->AsArray();
+  ObjPtr<mirror::Array> src_array = src_obj->AsArray();
+  ObjPtr<mirror::Array> dst_array = dst_obj->AsArray();
 
   // Bounds checking. Throw IndexOutOfBoundsException.
   if (UNLIKELY(src_pos < 0) || UNLIKELY(dst_pos < 0) || UNLIKELY(length < 0) ||
@@ -851,8 +856,8 @@ void UnstartedRuntime::UnstartedSystemArraycopy(
       return;
     }
 
-    mirror::ObjectArray<mirror::Object>* src = src_array->AsObjectArray<mirror::Object>();
-    mirror::ObjectArray<mirror::Object>* dst = dst_array->AsObjectArray<mirror::Object>();
+    ObjPtr<mirror::ObjectArray<mirror::Object>> src = src_array->AsObjectArray<mirror::Object>();
+    ObjPtr<mirror::ObjectArray<mirror::Object>> dst = dst_array->AsObjectArray<mirror::Object>();
     if (src == dst) {
       // Can overlap, but not have type mismatches.
       // We cannot use ObjectArray::MemMove here, as it doesn't support transactions.
@@ -1246,7 +1251,7 @@ static void UnstartedMemoryPeekArray(
     Runtime::Current()->AbortTransactionAndThrowAbortError(self, "Null pointer in peekArray");
     return;
   }
-  mirror::Array* array = obj->AsArray();
+  ObjPtr<mirror::Array> array = obj->AsArray();
 
   int offset = shadow_frame->GetVReg(arg_offset + 3);
   int count = shadow_frame->GetVReg(arg_offset + 4);
@@ -1260,7 +1265,7 @@ static void UnstartedMemoryPeekArray(
   switch (type) {
     case Primitive::kPrimByte: {
       int8_t* address = reinterpret_cast<int8_t*>(static_cast<intptr_t>(address_long));
-      mirror::ByteArray* byte_array = array->AsByteArray();
+      ObjPtr<mirror::ByteArray> byte_array = array->AsByteArray();
       for (int32_t i = 0; i < count; ++i, ++address) {
         byte_array->SetWithoutChecks<true>(i + offset, *address);
       }
@@ -1297,7 +1302,7 @@ void UnstartedRuntime::UnstartedStringGetCharsNoCheck(
   jint start = shadow_frame->GetVReg(arg_offset + 1);
   jint end = shadow_frame->GetVReg(arg_offset + 2);
   jint index = shadow_frame->GetVReg(arg_offset + 4);
-  mirror::String* string = shadow_frame->GetVRegReference(arg_offset)->AsString();
+  ObjPtr<mirror::String> string = shadow_frame->GetVRegReference(arg_offset)->AsString();
   if (string == nullptr) {
     AbortTransactionOrFail(self, "String.getCharsNoCheck with null object");
     return;
@@ -1318,7 +1323,7 @@ void UnstartedRuntime::UnstartedStringGetCharsNoCheck(
 void UnstartedRuntime::UnstartedStringCharAt(
     Thread* self, ShadowFrame* shadow_frame, JValue* result, size_t arg_offset) {
   jint index = shadow_frame->GetVReg(arg_offset + 1);
-  mirror::String* string = shadow_frame->GetVRegReference(arg_offset)->AsString();
+  ObjPtr<mirror::String> string = shadow_frame->GetVRegReference(arg_offset)->AsString();
   if (string == nullptr) {
     AbortTransactionOrFail(self, "String.charAt with null object");
     return;
@@ -1359,7 +1364,7 @@ void UnstartedRuntime::UnstartedStringFactoryNewStringFromChars(
 // This allows creating the new style of String objects during compilation.
 void UnstartedRuntime::UnstartedStringFactoryNewStringFromString(
     Thread* self, ShadowFrame* shadow_frame, JValue* result, size_t arg_offset) {
-  mirror::String* to_copy = shadow_frame->GetVRegReference(arg_offset)->AsString();
+  ObjPtr<mirror::String> to_copy = shadow_frame->GetVRegReference(arg_offset)->AsString();
   if (to_copy == nullptr) {
     AbortTransactionOrFail(self, "StringFactory.newStringFromString with null object");
     return;
@@ -1392,7 +1397,7 @@ void UnstartedRuntime::UnstartedStringFastSubstring(
 void UnstartedRuntime::UnstartedStringToCharArray(
     Thread* self, ShadowFrame* shadow_frame, JValue* result, size_t arg_offset)
     REQUIRES_SHARED(Locks::mutator_lock_) {
-  mirror::String* string = shadow_frame->GetVRegReference(arg_offset)->AsString();
+  ObjPtr<mirror::String> string = shadow_frame->GetVRegReference(arg_offset)->AsString();
   if (string == nullptr) {
     AbortTransactionOrFail(self, "String.charAt with null object");
     return;

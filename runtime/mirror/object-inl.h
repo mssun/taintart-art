@@ -148,9 +148,9 @@ inline bool Object::IsClass() {
 }
 
 template<VerifyObjectFlags kVerifyFlags>
-inline Class* Object::AsClass() {
+inline ObjPtr<Class> Object::AsClass() {
   DCHECK((IsClass<kVerifyFlags>()));
-  return down_cast<Class*>(this);
+  return ObjPtr<Class>::DownCast(this);
 }
 
 template<VerifyObjectFlags kVerifyFlags>
@@ -164,9 +164,9 @@ inline bool Object::IsObjectArray() {
 }
 
 template<class T, VerifyObjectFlags kVerifyFlags>
-inline ObjectArray<T>* Object::AsObjectArray() {
+inline ObjPtr<ObjectArray<T>> Object::AsObjectArray() {
   DCHECK((IsObjectArray<kVerifyFlags>()));
-  return down_cast<ObjectArray<T>*>(this);
+  return ObjPtr<ObjectArray<T>>::DownCast(this);
 }
 
 template<VerifyObjectFlags kVerifyFlags>
@@ -182,15 +182,15 @@ inline bool Object::IsReferenceInstance() {
 }
 
 template<VerifyObjectFlags kVerifyFlags, ReadBarrierOption kReadBarrierOption>
-inline Reference* Object::AsReference() {
+inline ObjPtr<Reference> Object::AsReference() {
   DCHECK((IsReferenceInstance<kVerifyFlags, kReadBarrierOption>()));
-  return down_cast<Reference*>(this);
+  return ObjPtr<Reference>::DownCast(this);
 }
 
 template<VerifyObjectFlags kVerifyFlags>
-inline Array* Object::AsArray() {
+inline ObjPtr<Array> Object::AsArray() {
   DCHECK((IsArrayInstance<kVerifyFlags>()));
-  return down_cast<Array*>(this);
+  return ObjPtr<Array>::DownCast(this);
 }
 
 template<VerifyObjectFlags kVerifyFlags, Primitive::Type kType>
@@ -210,9 +210,9 @@ inline bool Object::IsBooleanArray() {
 }
 
 template<VerifyObjectFlags kVerifyFlags>
-inline BooleanArray* Object::AsBooleanArray() {
+inline ObjPtr<BooleanArray> Object::AsBooleanArray() {
   DCHECK(IsBooleanArray<kVerifyFlags>());
-  return down_cast<BooleanArray*>(this);
+  return ObjPtr<BooleanArray>::DownCast(this);
 }
 
 template<VerifyObjectFlags kVerifyFlags>
@@ -221,9 +221,9 @@ inline bool Object::IsByteArray() {
 }
 
 template<VerifyObjectFlags kVerifyFlags>
-inline ByteArray* Object::AsByteArray() {
+inline ObjPtr<ByteArray> Object::AsByteArray() {
   DCHECK(IsByteArray<kVerifyFlags>());
-  return down_cast<ByteArray*>(this);
+  return ObjPtr<ByteArray>::DownCast(this);
 }
 
 template<VerifyObjectFlags kVerifyFlags>
@@ -232,9 +232,9 @@ inline bool Object::IsCharArray() {
 }
 
 template<VerifyObjectFlags kVerifyFlags>
-inline CharArray* Object::AsCharArray() {
+inline ObjPtr<CharArray> Object::AsCharArray() {
   DCHECK(IsCharArray<kVerifyFlags>());
-  return down_cast<CharArray*>(this);
+  return ObjPtr<CharArray>::DownCast(this);
 }
 
 template<VerifyObjectFlags kVerifyFlags>
@@ -243,9 +243,9 @@ inline bool Object::IsShortArray() {
 }
 
 template<VerifyObjectFlags kVerifyFlags>
-inline ShortArray* Object::AsShortArray() {
+inline ObjPtr<ShortArray> Object::AsShortArray() {
   DCHECK(IsShortArray<kVerifyFlags>());
-  return down_cast<ShortArray*>(this);
+  return ObjPtr<ShortArray>::DownCast(this);
 }
 
 template<VerifyObjectFlags kVerifyFlags>
@@ -254,11 +254,11 @@ inline bool Object::IsIntArray() {
 }
 
 template<VerifyObjectFlags kVerifyFlags>
-inline IntArray* Object::AsIntArrayUnchecked() {
-  return down_cast<IntArray*>(this);
+inline ObjPtr<IntArray> Object::AsIntArrayUnchecked() {
+  return ObjPtr<IntArray>::DownCast(this);
 }
 template<VerifyObjectFlags kVerifyFlags>
-inline IntArray* Object::AsIntArray() {
+inline ObjPtr<IntArray> Object::AsIntArray() {
   DCHECK((IsIntArray<kVerifyFlags>()));
   return AsIntArrayUnchecked<kVerifyFlags>();
 }
@@ -269,11 +269,11 @@ inline bool Object::IsLongArray() {
 }
 
 template<VerifyObjectFlags kVerifyFlags>
-inline LongArray* Object::AsLongArrayUnchecked() {
-  return down_cast<LongArray*>(this);
+inline ObjPtr<LongArray> Object::AsLongArrayUnchecked() {
+  return ObjPtr<LongArray>::DownCast(this);
 }
 template<VerifyObjectFlags kVerifyFlags>
-inline LongArray* Object::AsLongArray() {
+inline ObjPtr<LongArray> Object::AsLongArray() {
   DCHECK((IsLongArray<kVerifyFlags>()));
   return AsLongArrayUnchecked<kVerifyFlags>();
 }
@@ -284,9 +284,9 @@ inline bool Object::IsFloatArray() {
 }
 
 template<VerifyObjectFlags kVerifyFlags>
-inline FloatArray* Object::AsFloatArray() {
+inline ObjPtr<FloatArray> Object::AsFloatArray() {
   DCHECK(IsFloatArray<kVerifyFlags>());
-  return down_cast<FloatArray*>(this);
+  return ObjPtr<FloatArray>::DownCast(this);
 }
 
 template<VerifyObjectFlags kVerifyFlags>
@@ -295,9 +295,9 @@ inline bool Object::IsDoubleArray() {
 }
 
 template<VerifyObjectFlags kVerifyFlags>
-inline DoubleArray* Object::AsDoubleArray() {
+inline ObjPtr<DoubleArray> Object::AsDoubleArray() {
   DCHECK(IsDoubleArray<kVerifyFlags>());
-  return down_cast<DoubleArray*>(this);
+  return ObjPtr<DoubleArray>::DownCast(this);
 }
 
 template<VerifyObjectFlags kVerifyFlags, ReadBarrierOption kReadBarrierOption>
@@ -306,15 +306,15 @@ inline bool Object::IsString() {
 }
 
 template<VerifyObjectFlags kVerifyFlags, ReadBarrierOption kReadBarrierOption>
-inline String* Object::AsString() {
+inline ObjPtr<String> Object::AsString() {
   DCHECK((IsString<kVerifyFlags, kReadBarrierOption>()));
-  return down_cast<String*>(this);
+  return ObjPtr<String>::DownCast(this);
 }
 
 template<VerifyObjectFlags kVerifyFlags>
-inline Throwable* Object::AsThrowable() {
+inline ObjPtr<Throwable> Object::AsThrowable() {
   DCHECK(GetClass<kVerifyFlags>()->IsThrowableClass());
-  return down_cast<Throwable*>(this);
+  return ObjPtr<Throwable>::DownCast(this);
 }
 
 template<VerifyObjectFlags kVerifyFlags>
@@ -333,9 +333,9 @@ inline bool Object::IsFinalizerReferenceInstance() {
 }
 
 template<VerifyObjectFlags kVerifyFlags>
-inline FinalizerReference* Object::AsFinalizerReference() {
+inline ObjPtr<FinalizerReference> Object::AsFinalizerReference() {
   DCHECK(IsFinalizerReferenceInstance<kVerifyFlags>());
-  return down_cast<FinalizerReference*>(this);
+  return ObjPtr<FinalizerReference>::DownCast(this);
 }
 
 template<VerifyObjectFlags kVerifyFlags>
@@ -918,9 +918,9 @@ inline bool Object::IsClassLoader() {
 }
 
 template<VerifyObjectFlags kVerifyFlags, ReadBarrierOption kReadBarrierOption>
-inline mirror::ClassLoader* Object::AsClassLoader() {
+inline ObjPtr<ClassLoader> Object::AsClassLoader() {
   DCHECK((IsClassLoader<kVerifyFlags, kReadBarrierOption>()));
-  return down_cast<mirror::ClassLoader*>(this);
+  return ObjPtr<ClassLoader>::DownCast(this);
 }
 
 template<VerifyObjectFlags kVerifyFlags, ReadBarrierOption kReadBarrierOption>
@@ -929,9 +929,9 @@ inline bool Object::IsDexCache() {
 }
 
 template<VerifyObjectFlags kVerifyFlags, ReadBarrierOption kReadBarrierOption>
-inline mirror::DexCache* Object::AsDexCache() {
+inline ObjPtr<mirror::DexCache> Object::AsDexCache() {
   DCHECK((IsDexCache<kVerifyFlags, kReadBarrierOption>()));
-  return down_cast<mirror::DexCache*>(this);
+  return ObjPtr<DexCache>::DownCast(this);
 }
 
 template<bool kTransactionActive, bool kCheckTransaction>

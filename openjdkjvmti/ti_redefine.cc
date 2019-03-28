@@ -468,7 +468,7 @@ jvmtiError Redefiner::AddRedefinition(ArtJvmTiEnv* env, const ArtClassDefinition
   return OK;
 }
 
-art::mirror::Class* Redefiner::ClassRedefinition::GetMirrorClass() {
+art::ObjPtr<art::mirror::Class> Redefiner::ClassRedefinition::GetMirrorClass() {
   return driver_->self_->DecodeJObject(klass_)->AsClass();
 }
 
@@ -1239,7 +1239,7 @@ bool Redefiner::ClassRedefinition::FinishRemainingAllocations(
 }
 
 void Redefiner::ClassRedefinition::UnregisterJvmtiBreakpoints() {
-  BreakpointUtil::RemoveBreakpointsInClass(driver_->env_, GetMirrorClass());
+  BreakpointUtil::RemoveBreakpointsInClass(driver_->env_, GetMirrorClass().Ptr());
 }
 
 void Redefiner::ClassRedefinition::UnregisterBreakpoints() {
