@@ -25,7 +25,7 @@
 #include "interpreter/shadow_frame-inl.h"
 #include "jvalue-inl.h"
 #include "mirror/class.h"
-#include "mirror/method_type.h"
+#include "mirror/method_type-inl.h"
 #include "mirror/object.h"
 #include "reflection.h"
 #include "stack.h"

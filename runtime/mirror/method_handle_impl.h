@@ -21,6 +21,7 @@
 #include "art_method.h"
 #include "class.h"
 #include "method_type.h"
+#include "obj_ptr.h"
 #include "object.h"
 
 namespace art {
@@ -66,9 +67,9 @@ class MANAGED MethodHandle : public Object {
     return static_cast<Kind>(handle_kind);
   }
 
-  ALWAYS_INLINE mirror::MethodType* GetMethodType() REQUIRES_SHARED(Locks::mutator_lock_);
+  ALWAYS_INLINE ObjPtr<mirror::MethodType> GetMethodType() REQUIRES_SHARED(Locks::mutator_lock_);
 
-  ALWAYS_INLINE mirror::MethodType* GetNominalType() REQUIRES_SHARED(Locks::mutator_lock_);
+  ALWAYS_INLINE ObjPtr<mirror::MethodType> GetNominalType() REQUIRES_SHARED(Locks::mutator_lock_);
 
   ArtField* GetTargetField() REQUIRES_SHARED(Locks::mutator_lock_) {
     return reinterpret_cast<ArtField*>(
@@ -121,10 +122,10 @@ class MANAGED MethodHandle : public Object {
 // C++ mirror of java.lang.invoke.MethodHandleImpl
 class MANAGED MethodHandleImpl : public MethodHandle {
  public:
-  static mirror::MethodHandleImpl* Create(Thread* const self,
-                                          uintptr_t art_field_or_method,
-                                          MethodHandle::Kind kind,
-                                          Handle<MethodType> method_type)
+  static ObjPtr<mirror::MethodHandleImpl> Create(Thread* const self,
+                                                 uintptr_t art_field_or_method,
+                                                 MethodHandle::Kind kind,
+                                                 Handle<MethodType> method_type)
       REQUIRES_SHARED(Locks::mutator_lock_) REQUIRES(!Roles::uninterruptible_);
 
  private:

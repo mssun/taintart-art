@@ -25,11 +25,11 @@
 namespace art {
 namespace mirror {
 
-inline mirror::MethodType* MethodHandle::GetMethodType() {
+inline ObjPtr<mirror::MethodType> MethodHandle::GetMethodType() {
   return GetFieldObject<mirror::MethodType>(OFFSET_OF_OBJECT_MEMBER(MethodHandle, method_type_));
 }
 
-inline mirror::MethodType* MethodHandle::GetNominalType() {
+inline ObjPtr<mirror::MethodType> MethodHandle::GetNominalType() {
   return GetFieldObject<mirror::MethodType>(OFFSET_OF_OBJECT_MEMBER(MethodHandle, nominal_type_));
 }
 

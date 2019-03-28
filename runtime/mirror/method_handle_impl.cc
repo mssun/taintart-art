@@ -42,10 +42,10 @@ void MethodHandle::Initialize(uintptr_t art_field_or_method,
   SetField64<false>(ArtFieldOrMethodOffset(), art_field_or_method);
 }
 
-mirror::MethodHandleImpl* MethodHandleImpl::Create(Thread* const self,
-                                                   uintptr_t art_field_or_method,
-                                                   MethodHandle::Kind kind,
-                                                   Handle<MethodType> method_type)
+ObjPtr<mirror::MethodHandleImpl> MethodHandleImpl::Create(Thread* const self,
+                                                          uintptr_t art_field_or_method,
+                                                          MethodHandle::Kind kind,
+                                                          Handle<MethodType> method_type)
     REQUIRES_SHARED(Locks::mutator_lock_) REQUIRES(!Roles::uninterruptible_) {
   StackHandleScope<1> hs(self);
   Handle<mirror::MethodHandleImpl> mh(hs.NewHandle(ObjPtr<MethodHandleImpl>::DownCast(

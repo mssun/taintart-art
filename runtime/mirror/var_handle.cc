@@ -26,7 +26,7 @@
 #include "jni/jni_internal.h"
 #include "jvalue-inl.h"
 #include "method_handles-inl.h"
-#include "method_type.h"
+#include "method_type-inl.h"
 #include "object_array-alloc-inl.h"
 #include "obj_ptr-inl.h"
 #include "well_known_classes.h"
@@ -1423,7 +1423,7 @@ int32_t VarHandle::GetAccessModesBitMask() {
 }
 
 VarHandle::MatchKind VarHandle::GetMethodTypeMatchForAccessMode(AccessMode access_mode,
-                                                                MethodType* method_type) {
+                                                                ObjPtr<MethodType> method_type) {
   MatchKind match = MatchKind::kExact;
 
   ObjPtr<VarHandle> vh = this;
@@ -1469,7 +1469,7 @@ VarHandle::MatchKind VarHandle::GetMethodTypeMatchForAccessMode(AccessMode acces
 }
 
 bool VarHandle::IsInvokerMethodTypeCompatible(AccessMode access_mode,
-                                              MethodType* method_type) {
+                                              ObjPtr<MethodType> method_type) {
   StackHandleScope<3> hs(Thread::Current());
   Handle<Class> mt_rtype(hs.NewHandle(method_type->GetRType()));
   Handle<VarHandle> vh(hs.NewHandle(this));

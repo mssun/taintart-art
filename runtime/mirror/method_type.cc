@@ -14,11 +14,12 @@
  * limitations under the License.
  */
 
-#include "method_type.h"
+#include "method_type-inl.h"
 
 #include "class-alloc-inl.h"
 #include "class_root.h"
 #include "method_handles.h"
+#include "obj_ptr-inl.h"
 #include "object_array-alloc-inl.h"
 #include "object_array-inl.h"
 
@@ -35,9 +36,9 @@ ObjPtr<ObjectArray<Class>> AllocatePTypesArray(Thread* self, int count)
 
 }  // namespace
 
-MethodType* MethodType::Create(Thread* const self,
-                               Handle<Class> return_type,
-                               Handle<ObjectArray<Class>> parameter_types) {
+ObjPtr<MethodType> MethodType::Create(Thread* const self,
+                                      Handle<Class> return_type,
+                                      Handle<ObjectArray<Class>> parameter_types) {
   StackHandleScope<1> hs(self);
   Handle<MethodType> mt(
       hs.NewHandle(ObjPtr<MethodType>::DownCast(GetClassRoot<MethodType>()->AllocObject(self))));
@@ -54,8 +55,8 @@ MethodType* MethodType::Create(Thread* const self,
   return mt.Get();
 }
 
-MethodType* MethodType::CloneWithoutLeadingParameter(Thread* const self,
-                                                     ObjPtr<MethodType> method_type) {
+ObjPtr<MethodType> MethodType::CloneWithoutLeadingParameter(Thread* const self,
+                                                            ObjPtr<MethodType> method_type) {
   StackHandleScope<3> hs(self);
   Handle<ObjectArray<Class>> src_ptypes = hs.NewHandle(method_type->GetPTypes());
   Handle<Class> dst_rtype = hs.NewHandle(method_type->GetRType());
@@ -70,13 +71,13 @@ MethodType* MethodType::CloneWithoutLeadingParameter(Thread* const self,
   return Create(self, dst_rtype, dst_ptypes);
 }
 
-MethodType* MethodType::CollectTrailingArguments(Thread* self,
-                                                 ObjPtr<MethodType> method_type,
-                                                 ObjPtr<Class> collector_array_class,
-                                                 int32_t start_index) {
+ObjPtr<MethodType> MethodType::CollectTrailingArguments(Thread* self,
+                                                        ObjPtr<MethodType> method_type,
+                                                        ObjPtr<Class> collector_array_class,
+                                                        int32_t start_index) {
   int32_t ptypes_length = method_type->GetNumberOfPTypes();
   if (start_index > ptypes_length) {
-    return method_type.Ptr();
+    return method_type;
   }
 
   StackHandleScope<4> hs(self);
@@ -95,7 +96,7 @@ MethodType* MethodType::CollectTrailingArguments(Thread* self,
 }
 
 size_t MethodType::NumberOfVRegs() REQUIRES_SHARED(Locks::mutator_lock_) {
-  ObjectArray<Class>* const p_types = GetPTypes();
+  ObjPtr<ObjectArray<Class>> const p_types = GetPTypes();
   const int32_t p_types_length = p_types->GetLength();
 
   // Initialize |num_vregs| with number of parameters and only increment it for
@@ -110,11 +111,11 @@ size_t MethodType::NumberOfVRegs() REQUIRES_SHARED(Locks::mutator_lock_) {
   return num_vregs;
 }
 
-bool MethodType::IsExactMatch(MethodType* target) REQUIRES_SHARED(Locks::mutator_lock_) {
-  ObjectArray<Class>* const p_types = GetPTypes();
+bool MethodType::IsExactMatch(ObjPtr<MethodType> target) {
+  ObjPtr<ObjectArray<Class>> const p_types = GetPTypes();
   const int32_t params_length = p_types->GetLength();
 
-  ObjectArray<Class>* const target_p_types = target->GetPTypes();
+  ObjPtr<ObjectArray<Class>> const target_p_types = target->GetPTypes();
   if (params_length != target_p_types->GetLength()) {
     return false;
   }
@@ -126,11 +127,11 @@ bool MethodType::IsExactMatch(MethodType* target) REQUIRES_SHARED(Locks::mutator
   return GetRType() == target->GetRType();
 }
 
-bool MethodType::IsConvertible(MethodType* target) REQUIRES_SHARED(Locks::mutator_lock_) {
-  ObjectArray<Class>* const p_types = GetPTypes();
+bool MethodType::IsConvertible(ObjPtr<MethodType> target) {
+  ObjPtr<ObjectArray<Class>> const p_types = GetPTypes();
   const int32_t params_length = p_types->GetLength();
 
-  ObjectArray<Class>* const target_p_types = target->GetPTypes();
+  ObjPtr<ObjectArray<Class>> const target_p_types = target->GetPTypes();
   if (params_length != target_p_types->GetLength()) {
     return false;
   }
@@ -155,7 +156,7 @@ std::string MethodType::PrettyDescriptor() REQUIRES_SHARED(Locks::mutator_lock_)
   std::ostringstream ss;
   ss << "(";
 
-  ObjectArray<Class>* const p_types = GetPTypes();
+  ObjPtr<ObjectArray<Class>> const p_types = GetPTypes();
   const int32_t params_length = p_types->GetLength();
   for (int32_t i = 0; i < params_length; ++i) {
     ss << p_types->GetWithoutChecks(i)->PrettyDescriptor();

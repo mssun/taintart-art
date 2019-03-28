@@ -35,18 +35,17 @@ class MethodType;
 // C++ mirror of java.lang.invoke.MethodHandles.Lookup
 class MANAGED MethodHandlesLookup : public Object {
  public:
-  static mirror::MethodHandlesLookup* Create(Thread* const self,
-                                             Handle<Class> lookup_class)
+  static ObjPtr<mirror::MethodHandlesLookup> Create(Thread* const self, Handle<Class> lookup_class)
       REQUIRES_SHARED(Locks::mutator_lock_) REQUIRES(!Roles::uninterruptible_);
 
   // Returns the result of java.lang.invoke.MethodHandles.lookup().
-  static mirror::MethodHandlesLookup* GetDefault(Thread* const self)
+  static ObjPtr<mirror::MethodHandlesLookup> GetDefault(Thread* const self)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
   // Find constructor using java.lang.invoke.MethodHandles$Lookup.findConstructor().
-  mirror::MethodHandle* FindConstructor(Thread* const self,
-                                        Handle<Class> klass,
-                                        Handle<MethodType> method_type)
+  ObjPtr<mirror::MethodHandle> FindConstructor(Thread* const self,
+                                               Handle<Class> klass,
+                                               Handle<MethodType> method_type)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
  private:
