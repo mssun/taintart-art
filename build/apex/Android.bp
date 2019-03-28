@@ -23,23 +23,27 @@ art_runtime_base_binaries_prefer32 = [
 // TODO(b/121117762): Remove this note when both the ART Buildbot and Golem use
 // the Runtime APEX.
 art_runtime_base_native_shared_libs = [
-    "libadbconnection",
-    "libart",
-    "libart-compiler",
+    // External API (having APEX stubs).
     "libdexfile_external",
     "libnativebridge",
     "libnativehelper",
     "libnativeloader",
-    "libopenjdkjvm",
-    "libopenjdkjvmti",
-    // TODO(b/124439236): Clean up the following libraries once "required"
+    // libadbconnection is internal and loaded with dlopen(), but it cannot use
+    // "required" because of cyclic dependency (b/124505714).
+    "libadbconnection",
+    // TODO(b/124476339): Clean up the following libraries once "required"
     // dependencies work with APEX libraries.
+    "libart",
+    "libart-compiler",
     "libdt_fd_forward",
     "libdt_socket",
     "libjdwp",
     "libnpt",
+    "libopenjdkjvm",
+    "libopenjdkjvmti",
 ]
 bionic_native_shared_libs = [
+    // External API (having APEX stubs).
     "libc",
     "libm",
     "libdl",
@@ -66,9 +70,6 @@ art_runtime_debug_native_shared_libs = [
     "libartd-compiler",
     "libopenjdkjvmd",
     "libopenjdkjvmtid",
-]
-libcore_debug_native_shared_libs = [
-    "libopenjdkd",
 ]
 
 // Data files associated with bionic / managed core library APIs.
@@ -105,7 +106,6 @@ art_tools_host_only_binaries = [
     // (same issue as for `libart_fake` above).
     //"ahat",
     "hprof-conv",
-    // ...
 ]
 
 art_tools_device_binaries = art_tools_common_binaries + art_tools_device_only_binaries
@@ -137,18 +137,22 @@ libcore_java_libs = [
 // TODO(b/121117762): Remove this note when both the ART Buildbot and Golem use
 // the Runtime APEX.
 libcore_native_shared_libs = [
+    // External API (having APEX stubs).
     "libandroidicu",
     "libandroidio",
+    // TODO(b/124476339): Clean up the following libraries once "required"
+    // dependencies work with APEX libraries.
     "libexpat",
     "libicui18n",
     "libicuuc",
     "libjavacore",
     "libopenjdk",
-    "libz",
-    "libziparchive",
+]
+libcore_debug_native_shared_libs = [
+    "libopenjdkd",
 ]
 
-libcore_native_device_only_shared_libs = libcore_native_shared_libs + [
+libcore_native_device_only_shared_libs = [
     // TODO(b/122876336): Remove libpac.so once it's migrated to Webview.
     // libpac is used by frameworks, not by ART host.
     "libpac",
@@ -192,7 +196,8 @@ apex_defaults {
     java_libs: libcore_java_libs,
     native_shared_libs: art_runtime_base_native_shared_libs
         + bionic_native_shared_libs
-        + libcore_native_device_only_shared_libs,
+        + libcore_native_device_only_shared_libs
+        + libcore_native_shared_libs,
     multilib: {
         both: {
             binaries: art_runtime_base_binaries_both
