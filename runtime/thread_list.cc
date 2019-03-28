@@ -203,6 +203,8 @@ class DumpCheckpoint final : public Closure {
  public:
   DumpCheckpoint(std::ostream* os, bool dump_native_stack)
       : os_(os),
+        // Avoid verifying count in case a thread doesn't end up passing through the barrier.
+        // This avoids a SIGABRT that would otherwise happen in the destructor.
         barrier_(0, /*verify_count_on_shutdown=*/false),
         backtrace_map_(dump_native_stack ? BacktraceMap::Create(getpid()) : nullptr),
         dump_native_stack_(dump_native_stack) {
