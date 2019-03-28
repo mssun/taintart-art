@@ -18,9 +18,12 @@
 import java.lang.reflect.Method;
 import java.util.Map;
 
+import dalvik.system.VMDebug;
+
 public class Main implements Runnable {
     static final int numberOfThreads = 4;
     static final int totalOperations = 1000;
+    static final int maxStackDepth = 128;
     static Method enableAllocTrackingMethod;
     static Object holder;
     static volatile boolean trackingThreadDone = false;
@@ -56,6 +59,7 @@ public class Main implements Runnable {
         if (threadIndex == 0) {
             for (int i = 0; i < totalOperations; ++i) {
                 try {
+                    VMDebug.setAllocTrackerStackDepth(i % (maxStackDepth + 1));
                     enableAllocTrackingMethod.invoke(null, true);
                     holder = new Object();
                     enableAllocTrackingMethod.invoke(null, false);

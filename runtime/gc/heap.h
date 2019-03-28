@@ -835,8 +835,17 @@ class Heap {
     alloc_tracking_enabled_.store(enabled, std::memory_order_relaxed);
   }
 
-  AllocRecordObjectMap* GetAllocationRecords() const
-      REQUIRES(Locks::alloc_tracker_lock_) {
+  // Return the current stack depth of allocation records.
+  size_t GetAllocTrackerStackDepth() const {
+    return alloc_record_depth_;
+  }
+
+  // Return the current stack depth of allocation records.
+  void SetAllocTrackerStackDepth(size_t alloc_record_depth) {
+    alloc_record_depth_ = alloc_record_depth;
+  }
+
+  AllocRecordObjectMap* GetAllocationRecords() const REQUIRES(Locks::alloc_tracker_lock_) {
     return allocation_records_.get();
   }
 
@@ -1520,6 +1529,7 @@ class Heap {
   // Allocation tracking support
   Atomic<bool> alloc_tracking_enabled_;
   std::unique_ptr<AllocRecordObjectMap> allocation_records_;
+  size_t alloc_record_depth_;
 
   // GC stress related data structures.
   Mutex* backtrace_lock_ DEFAULT_MUTEX_ACQUIRED_AFTER;
