@@ -107,7 +107,7 @@ Barrier::~Barrier() {
   if (count_ != 0) {
     // Only check when not aborting and if we verify the count on shutdown.
     LOG((gAborting == 0 && verify_count_on_shutdown_) ? FATAL : WARNING)
-        << "Attempted to destroy barrier with non zero count" << count_;
+        << "Attempted to destroy barrier with non zero count " << count_;
   }
 }
 

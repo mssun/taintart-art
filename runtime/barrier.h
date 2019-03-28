@@ -45,7 +45,7 @@ class Barrier {
   };
 
   // If verify_count_on_shutdown is true, the destructor verifies that the count is zero in the
-  // destructor. This means that all expected threads have went through the barrier.
+  // destructor. This means that all expected threads went through the barrier.
   explicit Barrier(int count, bool verify_count_on_shutdown = true);
   virtual ~Barrier();
 
