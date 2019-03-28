@@ -23,13 +23,28 @@
 #include "class-alloc-inl.h"
 #include "class_root.h"
 #include "dex_cache-inl.h"
+#include "object-inl.h"
 
 namespace art {
 
 namespace mirror {
 
+inline ObjPtr<mirror::Class> Field::GetDeclaringClass() REQUIRES_SHARED(Locks::mutator_lock_) {
+  return GetFieldObject<Class>(OFFSET_OF_OBJECT_MEMBER(Field, declaring_class_));
+}
+
+inline Primitive::Type Field::GetTypeAsPrimitiveType() {
+  return GetType()->GetPrimitiveType();
+}
+
+inline ObjPtr<mirror::Class> Field::GetType() {
+  return GetFieldObject<mirror::Class>(OFFSET_OF_OBJECT_MEMBER(Field, type_));
+}
+
 template <PointerSize kPointerSize, bool kTransactionActive>
-inline mirror::Field* Field::CreateFromArtField(Thread* self, ArtField* field, bool force_resolve) {
+inline ObjPtr<mirror::Field> Field::CreateFromArtField(Thread* self,
+                                                       ArtField* field,
+                                                       bool force_resolve) {
   StackHandleScope<2> hs(self);
   // Try to resolve type before allocating since this is a thread suspension point.
   Handle<mirror::Class> type = hs.NewHandle(field->ResolveType());
@@ -87,10 +102,6 @@ inline void Field::SetDeclaringClass(ObjPtr<mirror::Class> c) {
 template<bool kTransactionActive>
 inline void Field::SetType(ObjPtr<mirror::Class> type) {
   SetFieldObject<kTransactionActive>(OFFSET_OF_OBJECT_MEMBER(Field, type_), type);
-}
-
-inline Primitive::Type Field::GetTypeAsPrimitiveType() {
-  return GetType()->GetPrimitiveType();
 }
 
 }  // namespace mirror

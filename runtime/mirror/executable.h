@@ -18,7 +18,7 @@
 #define ART_RUNTIME_MIRROR_EXECUTABLE_H_
 
 #include "accessible_object.h"
-#include "object-inl.h"
+#include "object.h"
 #include "read_barrier_option.h"
 
 namespace art {
@@ -44,12 +44,9 @@ class MANAGED Executable : public AccessibleObject {
   template <bool kTransactionActive = false,
             bool kCheckTransaction = true,
             VerifyObjectFlags kVerifyFlags = kDefaultVerifyFlags>
-  void SetArtMethod(ArtMethod* method) REQUIRES_SHARED(Locks::mutator_lock_) {
-    SetField64<kTransactionActive, kCheckTransaction, kVerifyFlags>(
-        ArtMethodOffset(), reinterpret_cast64<uint64_t>(method));
-  }
+  void SetArtMethod(ArtMethod* method) REQUIRES_SHARED(Locks::mutator_lock_);
 
-  mirror::Class* GetDeclaringClass() REQUIRES_SHARED(Locks::mutator_lock_);
+  ObjPtr<mirror::Class> GetDeclaringClass() REQUIRES_SHARED(Locks::mutator_lock_);
 
   static MemberOffset ArtMethodOffset() {
     return MemberOffset(OFFSETOF_MEMBER(Executable, art_method_));

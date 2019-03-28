@@ -14,9 +14,10 @@
  * limitations under the License.
  */
 
-#include "executable.h"
+#include "executable-inl.h"
 
 #include "art_method-inl.h"
+#include "object-inl.h"
 
 namespace art {
 namespace mirror {
@@ -37,10 +38,6 @@ template bool Executable::CreateFromArtMethod<PointerSize::k32, false>(ArtMethod
 template bool Executable::CreateFromArtMethod<PointerSize::k32, true>(ArtMethod* method);
 template bool Executable::CreateFromArtMethod<PointerSize::k64, false>(ArtMethod* method);
 template bool Executable::CreateFromArtMethod<PointerSize::k64, true>(ArtMethod* method);
-
-mirror::Class* Executable::GetDeclaringClass() {
-  return GetFieldObject<mirror::Class>(DeclaringClassOffset());
-}
 
 }  // namespace mirror
 }  // namespace art

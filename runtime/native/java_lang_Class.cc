@@ -282,9 +282,8 @@ static ObjPtr<mirror::ObjectArray<mirror::Field>> GetDeclaredFields(
   }
   for (ArtField& field : ifields) {
     if (IsDiscoverable(public_only, hiddenapi_context, &field)) {
-      auto* reflect_field = mirror::Field::CreateFromArtField<kRuntimePointerSize>(self,
-                                                                                   &field,
-                                                                                   force_resolve);
+      ObjPtr<mirror::Field> reflect_field =
+          mirror::Field::CreateFromArtField<kRuntimePointerSize>(self, &field, force_resolve);
       if (reflect_field == nullptr) {
         if (kIsDebugBuild) {
           self->AssertPendingException();
@@ -297,9 +296,8 @@ static ObjPtr<mirror::ObjectArray<mirror::Field>> GetDeclaredFields(
   }
   for (ArtField& field : sfields) {
     if (IsDiscoverable(public_only, hiddenapi_context, &field)) {
-      auto* reflect_field = mirror::Field::CreateFromArtField<kRuntimePointerSize>(self,
-                                                                                   &field,
-                                                                                   force_resolve);
+      ObjPtr<mirror::Field> reflect_field =
+          mirror::Field::CreateFromArtField<kRuntimePointerSize>(self, &field, force_resolve);
       if (reflect_field == nullptr) {
         if (kIsDebugBuild) {
           self->AssertPendingException();
@@ -380,9 +378,9 @@ ALWAYS_INLINE static inline ArtField* FindFieldByName(ObjPtr<mirror::String> nam
   return nullptr;
 }
 
-ALWAYS_INLINE static inline mirror::Field* GetDeclaredField(Thread* self,
-                                                            ObjPtr<mirror::Class> c,
-                                                            ObjPtr<mirror::String> name)
+ALWAYS_INLINE static inline ObjPtr<mirror::Field> GetDeclaredField(Thread* self,
+                                                                   ObjPtr<mirror::Class> c,
+                                                                   ObjPtr<mirror::String> name)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   ArtField* art_field = FindFieldByName(name, c->GetIFieldsPtr());
   if (art_field != nullptr) {
@@ -395,7 +393,7 @@ ALWAYS_INLINE static inline mirror::Field* GetDeclaredField(Thread* self,
   return nullptr;
 }
 
-static mirror::Field* GetPublicFieldRecursive(
+static ObjPtr<mirror::Field> GetPublicFieldRecursive(
     Thread* self, ObjPtr<mirror::Class> clazz, ObjPtr<mirror::String> name)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   DCHECK(clazz != nullptr);
@@ -408,7 +406,7 @@ static mirror::Field* GetPublicFieldRecursive(
 
   // We search the current class, its direct interfaces then its superclass.
   while (h_clazz != nullptr) {
-    mirror::Field* result = GetDeclaredField(self, h_clazz.Get(), h_name.Get());
+    ObjPtr<mirror::Field> result = GetDeclaredField(self, h_clazz.Get(), h_name.Get());
     if ((result != nullptr) && (result->GetAccessFlags() & kAccPublic)) {
       return result;
     } else if (UNLIKELY(self->IsExceptionPending())) {

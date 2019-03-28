@@ -25,7 +25,7 @@ namespace art {
 namespace mirror {
 
 ArtField* Field::GetArtField() {
-  mirror::Class* declaring_class = GetDeclaringClass();
+  ObjPtr<mirror::Class> declaring_class = GetDeclaringClass();
   if (UNLIKELY(declaring_class->IsProxyClass())) {
     DCHECK(IsStatic());
     DCHECK_EQ(declaring_class->NumStaticFields(), 2U);
