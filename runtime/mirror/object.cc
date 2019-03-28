@@ -71,7 +71,7 @@ class CopyReferenceFieldsWithReadBarrierVisitor {
   void VisitRoot(mirror::CompressedReference<mirror::Object>* root ATTRIBUTE_UNUSED) const {}
 
  private:
-  ObjPtr<Object> const dest_obj_;
+  const ObjPtr<Object> dest_obj_;
 };
 
 Object* Object::CopyObject(ObjPtr<mirror::Object> dest,

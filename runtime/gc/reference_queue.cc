@@ -181,7 +181,7 @@ void ReferenceQueue::ForwardSoftReferences(MarkObjectVisitor* visitor) {
   if (UNLIKELY(IsEmpty())) {
     return;
   }
-  ObjPtr<mirror::Reference> const head = list_;
+  const ObjPtr<mirror::Reference> head = list_;
   ObjPtr<mirror::Reference> ref = head;
   do {
     mirror::HeapReference<mirror::Object>* referent_addr = ref->GetReferentReferenceAddr();

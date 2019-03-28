@@ -91,7 +91,7 @@ ObjPtr<mirror::Object> ReferenceProcessor::GetReferent(Thread* self,
     // Under read barrier / concurrent copying collector, it's not safe to call GetReferent() when
     // weak ref access is disabled as the call includes a read barrier which may push a ref onto the
     // mark stack and interfere with termination of marking.
-    ObjPtr<mirror::Object> const referent = reference->GetReferent();
+    const ObjPtr<mirror::Object> referent = reference->GetReferent();
     // If the referent is null then it is already cleared, we can just return null since there is no
     // scenario where it becomes non-null during the reference processing phase.
     if (UNLIKELY(!SlowPathEnabled()) || referent == nullptr) {

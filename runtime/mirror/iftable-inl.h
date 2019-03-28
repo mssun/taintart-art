@@ -27,7 +27,7 @@ namespace mirror {
 template<VerifyObjectFlags kVerifyFlags,
          ReadBarrierOption kReadBarrierOption>
 inline ObjPtr<Class> IfTable::GetInterface(int32_t i) {
-  Class* interface =
+  ObjPtr<Class> interface =
       GetWithoutChecks<kVerifyFlags, kReadBarrierOption>((i * kMax) + kInterface)->AsClass();
   DCHECK(interface != nullptr);
   return interface;
@@ -37,7 +37,7 @@ inline void IfTable::SetInterface(int32_t i, ObjPtr<Class> interface) {
   DCHECK(interface != nullptr);
   DCHECK(interface->IsInterface());
   const size_t idx = i * kMax + kInterface;
-  DCHECK_EQ(Get(idx), static_cast<Object*>(nullptr));
+  DCHECK(Get(idx) == nullptr);
   SetWithoutChecks<false>(idx, interface);
 }
 

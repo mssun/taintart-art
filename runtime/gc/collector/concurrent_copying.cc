@@ -705,7 +705,7 @@ class ConcurrentCopying::VerifyNoMissingCardMarkVisitor {
 
  private:
   ConcurrentCopying* const cc_;
-  ObjPtr<mirror::Object> const holder_;
+  const ObjPtr<mirror::Object> holder_;
 };
 
 void ConcurrentCopying::VerifyNoMissingCardMarks() {

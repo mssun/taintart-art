@@ -956,9 +956,9 @@ static bool GetDexFilesFromDexElementsArray(
       jni::DecodeArtField(WellKnownClasses::dalvik_system_DexFile_cookie);
   ArtField* const dex_file_field =
       jni::DecodeArtField(WellKnownClasses::dalvik_system_DexPathList__Element_dexFile);
-  ObjPtr<mirror::Class> const element_class = soa.Decode<mirror::Class>(
+  const ObjPtr<mirror::Class> element_class = soa.Decode<mirror::Class>(
       WellKnownClasses::dalvik_system_DexPathList__Element);
-  ObjPtr<mirror::Class> const dexfile_class = soa.Decode<mirror::Class>(
+  const ObjPtr<mirror::Class> dexfile_class = soa.Decode<mirror::Class>(
       WellKnownClasses::dalvik_system_DexFile);
 
   for (int32_t i = 0; i < dex_elements->GetLength(); ++i) {

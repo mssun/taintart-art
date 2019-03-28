@@ -197,9 +197,9 @@ template<VerifyObjectFlags kVerifyFlags, Primitive::Type kType>
 ALWAYS_INLINE bool Object::IsSpecificPrimitiveArray() {
   // We do not need a read barrier here as the primitive type is constant, both from-space
   // and to-space component type classes shall yield the same result. See ReadBarrierOption.
-  ObjPtr<Class> klass = GetClass<kVerifyFlags, kWithoutReadBarrier>();
+  const ObjPtr<Class> klass = GetClass<kVerifyFlags, kWithoutReadBarrier>();
   constexpr VerifyObjectFlags kNewFlags = RemoveThisFlags(kVerifyFlags);
-  ObjPtr<Class> const component_type = klass->GetComponentType<kNewFlags, kWithoutReadBarrier>();
+  const ObjPtr<Class> component_type = klass->GetComponentType<kNewFlags, kWithoutReadBarrier>();
   return component_type != nullptr &&
          component_type->GetPrimitiveType<kNewFlags>() == kType;
 }

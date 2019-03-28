@@ -80,11 +80,11 @@ bool Throwable::IsError() {
 }
 
 int32_t Throwable::GetStackDepth() {
-  ObjPtr<Object> stack_state = GetStackState();
+  const ObjPtr<Object> stack_state = GetStackState();
   if (stack_state == nullptr || !stack_state->IsObjectArray()) {
     return -1;
   }
-  ObjPtr<mirror::ObjectArray<Object>> const trace = stack_state->AsObjectArray<Object>();
+  const ObjPtr<mirror::ObjectArray<Object>> trace = stack_state->AsObjectArray<Object>();
   const int32_t array_len = trace->GetLength();
   DCHECK_GT(array_len, 0);
   // See method BuildInternalStackTraceVisitor::Init for the format.
