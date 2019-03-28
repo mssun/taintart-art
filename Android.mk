@@ -446,7 +446,8 @@ include $(BUILD_PHONY_PACKAGE)
 
 include $(CLEAR_VARS)
 LOCAL_MODULE := art-tools
-LOCAL_HOST_REQUIRED_MODULES := \
+LOCAL_IS_HOST_MODULE := true
+LOCAL_REQUIRED_MODULES := \
     ahat \
     dexdump \
     hprof-conv \
@@ -455,7 +456,7 @@ LOCAL_HOST_REQUIRED_MODULES := \
 # they are not supported on host (b/129323791). This is likely due to art_apex disabling host
 # APEX builds when HOST_PREFER_32_BIT is set (b/120617876).
 ifneq ($(HOST_PREFER_32_BIT),true)
-LOCAL_HOST_REQUIRED_MODULES += \
+LOCAL_REQUIRED_MODULES += \
     dexdiag \
     dexlist \
     oatdump \
