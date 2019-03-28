@@ -30,8 +30,7 @@ ObjPtr<Method> Method::CreateFromArtMethod(Thread* self, ArtMethod* method) {
   DCHECK(!method->IsConstructor()) << method->PrettyMethod();
   ObjPtr<Method> ret = ObjPtr<Method>::DownCast(GetClassRoot<Method>()->AllocObject(self));
   if (LIKELY(ret != nullptr)) {
-    ObjPtr<Executable>(ret)->
-        CreateFromArtMethod<kPointerSize, kTransactionActive>(method);
+    ret->Executable::CreateFromArtMethod<kPointerSize, kTransactionActive>(method);
   }
   return ret;
 }
@@ -51,8 +50,7 @@ ObjPtr<Constructor> Constructor::CreateFromArtMethod(Thread* self, ArtMethod* me
   ObjPtr<Constructor> ret =
       ObjPtr<Constructor>::DownCast(GetClassRoot<Constructor>()->AllocObject(self));
   if (LIKELY(ret != nullptr)) {
-    ObjPtr<Executable>(ret)->
-        CreateFromArtMethod<kPointerSize, kTransactionActive>(method);
+    ret->Executable::CreateFromArtMethod<kPointerSize, kTransactionActive>(method);
   }
   return ret;
 }

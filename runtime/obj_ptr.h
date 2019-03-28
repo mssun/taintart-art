@@ -101,6 +101,10 @@ class ObjPtr {
   template <typename SourceType>
   static ObjPtr<MirrorType> DownCast(ObjPtr<SourceType> ptr) REQUIRES_SHARED(Locks::mutator_lock_);
 
+  // Static function to be friendly with null pointers.
+  template <typename SourceType>
+  static ObjPtr<MirrorType> DownCast(SourceType* ptr) REQUIRES_SHARED(Locks::mutator_lock_);
+
  private:
   // Trim off high bits of thread local cookie.
   OBJPTR_INLINE static uintptr_t GetCurrentTrimedCookie();
@@ -181,12 +185,6 @@ template<class MirrorType>
 OBJPTR_INLINE bool operator!=(std::nullptr_t, ObjPtr<MirrorType> ptr) {
   return !(nullptr == ptr);
 }
-
-template<class MirrorType>
-static OBJPTR_INLINE ObjPtr<MirrorType> MakeObjPtr(MirrorType* ptr);
-
-template<class MirrorType>
-static OBJPTR_INLINE ObjPtr<MirrorType> MakeObjPtr(ObjPtr<MirrorType> ptr);
 
 template<class MirrorType>
 OBJPTR_INLINE std::ostream& operator<<(std::ostream& os, ObjPtr<MirrorType> ptr);
