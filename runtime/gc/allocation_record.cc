@@ -41,40 +41,8 @@ const char* AllocRecord::GetClassDescriptor(std::string* storage) const {
 
 void AllocRecordObjectMap::SetProperties() {
 #ifdef ART_TARGET_ANDROID
-  // Check whether there's a system property overriding the max number of records.
-  const char* propertyName = "dalvik.vm.allocTrackerMax";
-  std::string allocMaxString = android::base::GetProperty(propertyName, "");
-  if (!allocMaxString.empty()) {
-    char* end;
-    size_t value = strtoul(allocMaxString.c_str(), &end, 10);
-    if (*end != '\0') {
-      LOG(ERROR) << "Ignoring  " << propertyName << " '" << allocMaxString
-                 << "' --- invalid";
-    } else {
-      alloc_record_max_ = value;
-      if (recent_record_max_ > value) {
-        recent_record_max_ = value;
-      }
-    }
-  }
-  // Check whether there's a system property overriding the number of recent records.
-  propertyName = "dalvik.vm.recentAllocMax";
-  std::string recentAllocMaxString = android::base::GetProperty(propertyName, "");
-  if (!recentAllocMaxString.empty()) {
-    char* end;
-    size_t value = strtoul(recentAllocMaxString.c_str(), &end, 10);
-    if (*end != '\0') {
-      LOG(ERROR) << "Ignoring  " << propertyName << " '" << recentAllocMaxString
-                 << "' --- invalid";
-    } else if (value > alloc_record_max_) {
-      LOG(ERROR) << "Ignoring  " << propertyName << " '" << recentAllocMaxString
-                 << "' --- should be less than " << alloc_record_max_;
-    } else {
-      recent_record_max_ = value;
-    }
-  }
   // Check whether there's a system property overriding the max depth of stack trace.
-  propertyName = "debug.allocTracker.stackDepth";
+  const char* propertyName = "debug.allocTracker.stackDepth";
   std::string stackDepthString = android::base::GetProperty(propertyName, "");
   if (!stackDepthString.empty()) {
     char* end;
