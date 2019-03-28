@@ -25,10 +25,11 @@
 
 namespace art {
 
-Barrier::Barrier(int count)
+Barrier::Barrier(int count, bool verify_count_on_shutdown)
     : count_(count),
       lock_(new Mutex("GC barrier lock", kThreadSuspendCountLock)),
-      condition_(new ConditionVariable("GC barrier condition", *lock_)) {
+      condition_(new ConditionVariable("GC barrier condition", *lock_)),
+      verify_count_on_shutdown_(verify_count_on_shutdown) {
 }
 
 template void Barrier::Increment<Barrier::kAllowHoldingLocks>(Thread* self, int delta);
@@ -103,13 +104,10 @@ void Barrier::SetCountLocked(Thread* self, int count) {
 }
 
 Barrier::~Barrier() {
-  if (gAborting == 0) {
-    // Only check when not aborting.
-    CHECK_EQ(count_, 0) << "Attempted to destroy barrier with non zero count";
-  } else {
-    if (count_ != 0) {
-      LOG(WARNING) << "Attempted to destroy barrier with non zero count " << count_;
-    }
+  if (count_ != 0) {
+    // Only check when not aborting and if we verify the count on shutdown.
+    LOG((gAborting == 0 && verify_count_on_shutdown_) ? FATAL : WARNING)
+        << "Attempted to destroy barrier with non zero count" << count_;
   }
 }
 

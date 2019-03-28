@@ -44,7 +44,9 @@ class Barrier {
     kDisallowHoldingLocks,
   };
 
-  explicit Barrier(int count);
+  // If verify_count_on_shutdown is true, the destructor verifies that the count is zero in the
+  // destructor. This means that all expected threads have went through the barrier.
+  explicit Barrier(int count, bool verify_count_on_shutdown = true);
   virtual ~Barrier();
 
   // Pass through the barrier, decrement the count but do not block.
@@ -86,6 +88,7 @@ class Barrier {
 
   std::unique_ptr<Mutex> lock_ ACQUIRED_AFTER(Locks::abort_lock_);
   std::unique_ptr<ConditionVariable> condition_ GUARDED_BY(GetLock());
+  const bool verify_count_on_shutdown_;
 };
 
 }  // namespace art
