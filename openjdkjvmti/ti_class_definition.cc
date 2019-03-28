@@ -40,7 +40,7 @@
 #include "handle.h"
 #include "handle_scope-inl.h"
 #include "mirror/class-inl.h"
-#include "mirror/class_ext.h"
+#include "mirror/class_ext-inl.h"
 #include "mirror/object-inl.h"
 #include "reflection.h"
 #include "thread.h"

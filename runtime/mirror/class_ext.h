@@ -42,25 +42,15 @@ class MANAGED ClassExt : public Object {
 
   void SetVerifyError(ObjPtr<Object> obj) REQUIRES_SHARED(Locks::mutator_lock_);
 
-  Object* GetVerifyError() REQUIRES_SHARED(Locks::mutator_lock_) {
-    return GetFieldObject<ClassExt>(OFFSET_OF_OBJECT_MEMBER(ClassExt, verify_error_));
-  }
+  ObjPtr<Object> GetVerifyError() REQUIRES_SHARED(Locks::mutator_lock_);
 
-  ObjectArray<DexCache>* GetObsoleteDexCaches() REQUIRES_SHARED(Locks::mutator_lock_) {
-    return GetFieldObject<ObjectArray<DexCache>>(
-        OFFSET_OF_OBJECT_MEMBER(ClassExt, obsolete_dex_caches_));
-  }
+  ObjPtr<ObjectArray<DexCache>> GetObsoleteDexCaches() REQUIRES_SHARED(Locks::mutator_lock_);
 
   template<VerifyObjectFlags kVerifyFlags = kDefaultVerifyFlags,
            ReadBarrierOption kReadBarrierOption = kWithReadBarrier>
-  inline PointerArray* GetObsoleteMethods() REQUIRES_SHARED(Locks::mutator_lock_) {
-    return GetFieldObject<PointerArray, kVerifyFlags, kReadBarrierOption>(
-        OFFSET_OF_OBJECT_MEMBER(ClassExt, obsolete_methods_));
-  }
+  ObjPtr<PointerArray> GetObsoleteMethods() REQUIRES_SHARED(Locks::mutator_lock_);
 
-  Object* GetOriginalDexFile() REQUIRES_SHARED(Locks::mutator_lock_) {
-    return GetFieldObject<Object>(OFFSET_OF_OBJECT_MEMBER(ClassExt, original_dex_file_));
-  }
+  ObjPtr<Object> GetOriginalDexFile() REQUIRES_SHARED(Locks::mutator_lock_);
 
   void SetOriginalDexFile(ObjPtr<Object> bytes) REQUIRES_SHARED(Locks::mutator_lock_);
 
@@ -89,7 +79,7 @@ class MANAGED ClassExt : public Object {
   inline void VisitNativeRoots(Visitor& visitor, PointerSize pointer_size)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
-  static ClassExt* Alloc(Thread* self) REQUIRES_SHARED(Locks::mutator_lock_);
+  static ObjPtr<ClassExt> Alloc(Thread* self) REQUIRES_SHARED(Locks::mutator_lock_);
 
  private:
   // Field order required by test "ValidateFieldOrderOfJavaCppUnionClasses".

@@ -61,7 +61,7 @@
 #include "lock_word.h"
 #include "mirror/array-inl.h"
 #include "mirror/class-inl.h"
-#include "mirror/class_ext.h"
+#include "mirror/class_ext-inl.h"
 #include "mirror/class_loader.h"
 #include "mirror/dex_cache-inl.h"
 #include "mirror/dex_cache.h"
