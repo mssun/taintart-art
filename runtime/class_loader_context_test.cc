@@ -29,7 +29,7 @@
 #include "handle_scope-inl.h"
 #include "jni/jni_internal.h"
 #include "mirror/class.h"
-#include "mirror/class_loader.h"
+#include "mirror/class_loader-inl.h"
 #include "mirror/object-inl.h"
 #include "mirror/object_array-alloc-inl.h"
 #include "oat_file_assistant.h"

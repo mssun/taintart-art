@@ -40,9 +40,7 @@ class MANAGED ClassLoader : public Object {
     return sizeof(ClassLoader);
   }
 
-  ClassLoader* GetParent() REQUIRES_SHARED(Locks::mutator_lock_) {
-    return GetFieldObject<ClassLoader>(OFFSET_OF_OBJECT_MEMBER(ClassLoader, parent_));
-  }
+  ObjPtr<ClassLoader> GetParent() REQUIRES_SHARED(Locks::mutator_lock_);
 
   template<VerifyObjectFlags kVerifyFlags = kDefaultVerifyFlags>
   ClassTable* GetClassTable() REQUIRES_SHARED(Locks::mutator_lock_) {
