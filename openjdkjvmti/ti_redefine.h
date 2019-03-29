@@ -115,7 +115,7 @@ class Redefiner {
       other.driver_ = nullptr;
     }
 
-    art::mirror::Class* GetMirrorClass() REQUIRES_SHARED(art::Locks::mutator_lock_);
+    art::ObjPtr<art::mirror::Class> GetMirrorClass() REQUIRES_SHARED(art::Locks::mutator_lock_);
     art::ObjPtr<art::mirror::ClassLoader> GetClassLoader()
         REQUIRES_SHARED(art::Locks::mutator_lock_);
 

@@ -1833,12 +1833,12 @@ bool DoFilledNewArray(const Instruction* inst,
 
 // TODO: Use ObjPtr here.
 template<typename T>
-static void RecordArrayElementsInTransactionImpl(mirror::PrimitiveArray<T>* array,
+static void RecordArrayElementsInTransactionImpl(ObjPtr<mirror::PrimitiveArray<T>> array,
                                                  int32_t count)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   Runtime* runtime = Runtime::Current();
   for (int32_t i = 0; i < count; ++i) {
-    runtime->RecordWriteArray(array, i, array->GetWithoutChecks(i));
+    runtime->RecordWriteArray(array.Ptr(), i, array->GetWithoutChecks(i));
   }
 }
 

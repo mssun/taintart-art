@@ -127,9 +127,9 @@ static void System_arraycopy(JNIEnv* env, jclass, jobject javaSrc, jint srcPos, 
             dstPos, ObjPtr<mirror::LongArray>::DownCast(srcArray), srcPos, count);
         return;
       case Primitive::kPrimNot: {
-        mirror::ObjectArray<mirror::Object>* dstObjArray =
+        ObjPtr<mirror::ObjectArray<mirror::Object>> dstObjArray =
             dstArray->AsObjectArray<mirror::Object>();
-        mirror::ObjectArray<mirror::Object>* srcObjArray =
+        ObjPtr<mirror::ObjectArray<mirror::Object>> srcObjArray =
             srcArray->AsObjectArray<mirror::Object>();
         dstObjArray->AssignableMemmove(dstPos, srcObjArray, srcPos, count);
         return;

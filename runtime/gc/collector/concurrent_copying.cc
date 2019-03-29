@@ -3237,7 +3237,7 @@ void ConcurrentCopying::FillWithDummyObject(Thread* const self,
     dummy_obj->SetClass(int_array_class);
     CHECK(dummy_obj->IsArrayInstance<kVerifyNone>());
     int32_t length = (byte_size - data_offset) / component_size;
-    mirror::Array* dummy_arr = dummy_obj->AsArray<kVerifyNone>();
+    ObjPtr<mirror::Array> dummy_arr = dummy_obj->AsArray<kVerifyNone>();
     dummy_arr->SetLength(length);
     CHECK_EQ(dummy_arr->GetLength(), length)
         << "byte_size=" << byte_size << " length=" << length

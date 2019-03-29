@@ -1347,7 +1347,7 @@ void Thread::Dump(std::ostream& os, bool dump_native_stack, BacktraceMap* backtr
   DumpStack(os, dump_native_stack, backtrace_map, force_dump_stack);
 }
 
-mirror::String* Thread::GetThreadName() const {
+ObjPtr<mirror::String> Thread::GetThreadName() const {
   ArtField* f = jni::DecodeArtField(WellKnownClasses::java_lang_Thread_name);
   if (tlsPtr_.opeer == nullptr) {
     return nullptr;

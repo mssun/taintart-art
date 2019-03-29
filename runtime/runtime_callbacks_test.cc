@@ -448,14 +448,14 @@ class MonitorWaitCallbacksTest : public RuntimeCallbacksTest {
         return false;
       }
       std::lock_guard<std::mutex> lock(ref_guard_);
-      mirror::Class* k = obj->AsClass();
+      ObjPtr<mirror::Class> k = obj->AsClass();
       ClassReference test = { &k->GetDexFile(), k->GetDexClassDefIndex() };
       return ref_ == test;
     }
 
     void SetInterestingObject(mirror::Object* obj) REQUIRES_SHARED(art::Locks::mutator_lock_) {
       std::lock_guard<std::mutex> lock(ref_guard_);
-      mirror::Class* k = obj->AsClass();
+      ObjPtr<mirror::Class> k = obj->AsClass();
       ref_ = { &k->GetDexFile(), k->GetDexClassDefIndex() };
     }
 

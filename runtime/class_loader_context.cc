@@ -865,7 +865,7 @@ static bool CollectDexFilesFromJavaDexFile(ObjPtr<mirror::Object> java_dex_file,
     return true;
   }
   // On the Java side, the dex files are stored in the cookie field.
-  mirror::LongArray* long_array = cookie_field->GetObject(java_dex_file)->AsLongArray();
+  ObjPtr<mirror::LongArray> long_array = cookie_field->GetObject(java_dex_file)->AsLongArray();
   if (long_array == nullptr) {
     // This should never happen so log a warning.
     LOG(ERROR) << "Unexpected null cookie";

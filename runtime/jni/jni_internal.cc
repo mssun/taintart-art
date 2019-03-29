@@ -1973,7 +1973,7 @@ class JNI {
       soa.Vm()->JniAbortF("GetArrayLength", "not an array: %s", obj->PrettyTypeOf().c_str());
       return 0;
     }
-    mirror::Array* array = obj->AsArray();
+    ObjPtr<mirror::Array> array = obj->AsArray();
     return array->GetLength();
   }
 

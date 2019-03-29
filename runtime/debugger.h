@@ -74,13 +74,23 @@ struct InternalDebuggerControlCallback : public DebuggerControlCallback {
  * Invoke-during-breakpoint support.
  */
 struct DebugInvokeReq {
-  DebugInvokeReq(uint32_t invoke_request_id, JDWP::ObjectId invoke_thread_id,
-                 mirror::Object* invoke_receiver, mirror::Class* invoke_class,
-                 ArtMethod* invoke_method, uint32_t invoke_options,
-                 uint64_t args[], uint32_t args_count)
-      : request_id(invoke_request_id), thread_id(invoke_thread_id), receiver(invoke_receiver),
-        klass(invoke_class), method(invoke_method), arg_count(args_count), arg_values(args),
-        options(invoke_options), reply(JDWP::expandBufAlloc()) {
+  DebugInvokeReq(uint32_t invoke_request_id,
+                 JDWP::ObjectId invoke_thread_id,
+                 ObjPtr<mirror::Object> invoke_receiver,
+                 ObjPtr<mirror::Class> invoke_class,
+                 ArtMethod* invoke_method,
+                 uint32_t invoke_options,
+                 uint64_t args[],
+                 uint32_t args_count)
+      : request_id(invoke_request_id),
+        thread_id(invoke_thread_id),
+        receiver(invoke_receiver),
+        klass(invoke_class),
+        method(invoke_method),
+        arg_count(args_count),
+        arg_values(args),
+        options(invoke_options),
+        reply(JDWP::expandBufAlloc()) {
   }
 
   ~DebugInvokeReq() {
@@ -285,7 +295,7 @@ class Dbg {
    */
   static std::string GetClassName(JDWP::RefTypeId id)
       REQUIRES_SHARED(Locks::mutator_lock_);
-  static std::string GetClassName(mirror::Class* klass)
+  static std::string GetClassName(ObjPtr<mirror::Class> klass)
       REQUIRES_SHARED(Locks::mutator_lock_);
   static JDWP::JdwpError GetClassObject(JDWP::RefTypeId id, JDWP::ObjectId* class_object_id)
       REQUIRES_SHARED(Locks::mutator_lock_);
@@ -319,7 +329,9 @@ class Dbg {
 
   static JDWP::JdwpError GetArrayLength(JDWP::ObjectId array_id, int32_t* length)
       REQUIRES_SHARED(Locks::mutator_lock_);
-  static JDWP::JdwpError OutputArray(JDWP::ObjectId array_id, int offset, int count,
+  static JDWP::JdwpError OutputArray(JDWP::ObjectId array_id,
+                                     int offset,
+                                     int count,
                                      JDWP::ExpandBuf* pReply)
       REQUIRES_SHARED(Locks::mutator_lock_);
   static JDWP::JdwpError SetArrayElements(JDWP::ObjectId array_id, int offset, int count,

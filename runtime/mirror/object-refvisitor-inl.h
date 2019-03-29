@@ -58,12 +58,13 @@ inline void Object::VisitReferences(const Visitor& visitor,
         VisitInstanceFieldsReferences<kVerifyFlags, kReadBarrierOption>(klass, visitor);
         ref_visitor(klass, AsReference<kVerifyFlags, kReadBarrierOption>());
       } else if (class_flags == kClassFlagDexCache) {
-        mirror::DexCache* const dex_cache = AsDexCache<kVerifyFlags, kReadBarrierOption>();
+        ObjPtr<mirror::DexCache> const dex_cache = AsDexCache<kVerifyFlags, kReadBarrierOption>();
         dex_cache->VisitReferences<kVisitNativeRoots,
                                    kVerifyFlags,
                                    kReadBarrierOption>(klass, visitor);
       } else {
-        mirror::ClassLoader* const class_loader = AsClassLoader<kVerifyFlags, kReadBarrierOption>();
+        ObjPtr<mirror::ClassLoader> const class_loader =
+            AsClassLoader<kVerifyFlags, kReadBarrierOption>();
         class_loader->VisitReferences<kVisitNativeRoots,
                                       kVerifyFlags,
                                       kReadBarrierOption>(klass, visitor);

@@ -57,7 +57,7 @@ class CopyReferenceFieldsWithReadBarrierVisitor {
     dest_obj_->SetFieldObjectWithoutWriteBarrier<false, false>(offset, ref);
   }
 
-  void operator()(ObjPtr<mirror::Class> klass, mirror::Reference* ref) const
+  void operator()(ObjPtr<mirror::Class> klass, ObjPtr<mirror::Reference> ref) const
       ALWAYS_INLINE REQUIRES_SHARED(Locks::mutator_lock_) {
     // Copy java.lang.ref.Reference.referent which isn't visited in
     // Object::VisitReferences().
@@ -125,7 +125,7 @@ Object* Object::CopyObject(ObjPtr<mirror::Object> dest,
   ObjPtr<Class> c = src->GetClass();
   if (c->IsArrayClass()) {
     if (!c->GetComponentType()->IsPrimitive()) {
-      ObjectArray<Object>* array = dest->AsObjectArray<Object>();
+      ObjPtr<ObjectArray<Object>> array = dest->AsObjectArray<Object>();
       WriteBarrier::ForArrayWrite(dest, 0, array->GetLength());
     }
   } else {

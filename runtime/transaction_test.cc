@@ -357,7 +357,7 @@ TEST_F(TransactionTest, InstanceFieldsTest) {
 // Tests static array fields are reset to their default value after transaction rollback.
 TEST_F(TransactionTest, StaticArrayFieldsTest) {
   ScopedObjectAccess soa(Thread::Current());
-  StackHandleScope<4> hs(soa.Self());
+  StackHandleScope<13> hs(soa.Self());
   Handle<mirror::ClassLoader> class_loader(
       hs.NewHandle(soa.Decode<mirror::ClassLoader>(LoadDex("Transaction"))));
   ASSERT_TRUE(class_loader != nullptr);
@@ -373,65 +373,73 @@ TEST_F(TransactionTest, StaticArrayFieldsTest) {
   // Lookup fields.
   ArtField* booleanArrayField = h_klass->FindDeclaredStaticField("booleanArrayField", "[Z");
   ASSERT_TRUE(booleanArrayField != nullptr);
-  mirror::BooleanArray* booleanArray = booleanArrayField->GetObject(h_klass.Get())->AsBooleanArray();
+  Handle<mirror::BooleanArray> booleanArray = hs.NewHandle(
+      booleanArrayField->GetObject(h_klass.Get())->AsBooleanArray());
   ASSERT_TRUE(booleanArray != nullptr);
   ASSERT_EQ(booleanArray->GetLength(), 1);
   ASSERT_EQ(booleanArray->GetWithoutChecks(0), false);
 
   ArtField* byteArrayField = h_klass->FindDeclaredStaticField("byteArrayField", "[B");
   ASSERT_TRUE(byteArrayField != nullptr);
-  mirror::ByteArray* byteArray = byteArrayField->GetObject(h_klass.Get())->AsByteArray();
+  Handle<mirror::ByteArray> byteArray =
+      hs.NewHandle(byteArrayField->GetObject(h_klass.Get())->AsByteArray());
   ASSERT_TRUE(byteArray != nullptr);
   ASSERT_EQ(byteArray->GetLength(), 1);
   ASSERT_EQ(byteArray->GetWithoutChecks(0), 0);
 
   ArtField* charArrayField = h_klass->FindDeclaredStaticField("charArrayField", "[C");
   ASSERT_TRUE(charArrayField != nullptr);
-  mirror::CharArray* charArray = charArrayField->GetObject(h_klass.Get())->AsCharArray();
+  Handle<mirror::CharArray> charArray =
+      hs.NewHandle(charArrayField->GetObject(h_klass.Get())->AsCharArray());
   ASSERT_TRUE(charArray != nullptr);
   ASSERT_EQ(charArray->GetLength(), 1);
   ASSERT_EQ(charArray->GetWithoutChecks(0), 0u);
 
   ArtField* shortArrayField = h_klass->FindDeclaredStaticField("shortArrayField", "[S");
   ASSERT_TRUE(shortArrayField != nullptr);
-  mirror::ShortArray* shortArray = shortArrayField->GetObject(h_klass.Get())->AsShortArray();
+  Handle<mirror::ShortArray> shortArray =
+      hs.NewHandle(shortArrayField->GetObject(h_klass.Get())->AsShortArray());
   ASSERT_TRUE(shortArray != nullptr);
   ASSERT_EQ(shortArray->GetLength(), 1);
   ASSERT_EQ(shortArray->GetWithoutChecks(0), 0);
 
   ArtField* intArrayField = h_klass->FindDeclaredStaticField("intArrayField", "[I");
   ASSERT_TRUE(intArrayField != nullptr);
-  mirror::IntArray* intArray = intArrayField->GetObject(h_klass.Get())->AsIntArray();
+  Handle<mirror::IntArray> intArray =
+      hs.NewHandle(intArrayField->GetObject(h_klass.Get())->AsIntArray());
   ASSERT_TRUE(intArray != nullptr);
   ASSERT_EQ(intArray->GetLength(), 1);
   ASSERT_EQ(intArray->GetWithoutChecks(0), 0);
 
   ArtField* longArrayField = h_klass->FindDeclaredStaticField("longArrayField", "[J");
   ASSERT_TRUE(longArrayField != nullptr);
-  mirror::LongArray* longArray = longArrayField->GetObject(h_klass.Get())->AsLongArray();
+  Handle<mirror::LongArray> longArray =
+      hs.NewHandle(longArrayField->GetObject(h_klass.Get())->AsLongArray());
   ASSERT_TRUE(longArray != nullptr);
   ASSERT_EQ(longArray->GetLength(), 1);
   ASSERT_EQ(longArray->GetWithoutChecks(0), static_cast<int64_t>(0));
 
   ArtField* floatArrayField = h_klass->FindDeclaredStaticField("floatArrayField", "[F");
   ASSERT_TRUE(floatArrayField != nullptr);
-  mirror::FloatArray* floatArray = floatArrayField->GetObject(h_klass.Get())->AsFloatArray();
+  Handle<mirror::FloatArray> floatArray =
+      hs.NewHandle(floatArrayField->GetObject(h_klass.Get())->AsFloatArray());
   ASSERT_TRUE(floatArray != nullptr);
   ASSERT_EQ(floatArray->GetLength(), 1);
   ASSERT_FLOAT_EQ(floatArray->GetWithoutChecks(0), static_cast<float>(0.0f));
 
   ArtField* doubleArrayField = h_klass->FindDeclaredStaticField("doubleArrayField", "[D");
   ASSERT_TRUE(doubleArrayField != nullptr);
-  mirror::DoubleArray* doubleArray = doubleArrayField->GetObject(h_klass.Get())->AsDoubleArray();
+  Handle<mirror::DoubleArray> doubleArray =
+      hs.NewHandle(doubleArrayField->GetObject(h_klass.Get())->AsDoubleArray());
   ASSERT_TRUE(doubleArray != nullptr);
   ASSERT_EQ(doubleArray->GetLength(), 1);
   ASSERT_DOUBLE_EQ(doubleArray->GetWithoutChecks(0), static_cast<double>(0.0f));
 
-  ArtField* objectArrayField = h_klass->FindDeclaredStaticField("objectArrayField",
-                                                                           "[Ljava/lang/Object;");
+  ArtField* objectArrayField =
+      h_klass->FindDeclaredStaticField("objectArrayField", "[Ljava/lang/Object;");
   ASSERT_TRUE(objectArrayField != nullptr);
-  mirror::ObjectArray<mirror::Object>* objectArray =
-      objectArrayField->GetObject(h_klass.Get())->AsObjectArray<mirror::Object>();
+  Handle<mirror::ObjectArray<mirror::Object>> objectArray =
+      hs.NewHandle(objectArrayField->GetObject(h_klass.Get())->AsObjectArray<mirror::Object>());
   ASSERT_TRUE(objectArray != nullptr);
   ASSERT_EQ(objectArray->GetLength(), 1);
   ASSERT_EQ(objectArray->GetWithoutChecks(0), nullptr);
