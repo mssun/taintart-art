@@ -848,20 +848,21 @@ JDWP::JdwpError Dbg::GetModifiers(JDWP::RefTypeId id, JDWP::ExpandBuf* pReply) {
 
 JDWP::JdwpError Dbg::GetMonitorInfo(JDWP::ObjectId object_id, JDWP::ExpandBuf* reply) {
   JDWP::JdwpError error;
-  ObjPtr<mirror::Object> o = gRegistry->Get<mirror::Object*>(object_id, &error);
+  Thread* self = Thread::Current();
+  StackHandleScope<1u> hs(self);
+  Handle<mirror::Object> o = hs.NewHandle(gRegistry->Get<mirror::Object*>(object_id, &error));
   if (o == nullptr) {
     return JDWP::ERR_INVALID_OBJECT;
   }
 
   // Ensure all threads are suspended while we read objects' lock words.
-  Thread* self = Thread::Current();
   CHECK_EQ(self->GetState(), kRunnable);
 
   MonitorInfo monitor_info;
   {
     ScopedThreadSuspension sts(self, kSuspended);
     ScopedSuspendAll ssa(__FUNCTION__);
-    monitor_info = MonitorInfo(o.Ptr());
+    monitor_info = MonitorInfo(o.Get());
   }
   if (monitor_info.owner_ != nullptr) {
     expandBufAddObjectId(reply, gRegistry->Add(monitor_info.owner_->GetPeerFromOtherThread()));
