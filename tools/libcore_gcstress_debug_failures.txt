@@ -35,7 +35,12 @@
   description: "Timeouts on host with gcstress and debug.",
   result: EXEC_FAILED,
   modes: [host],
-  names: ["jsr166.StampedLockTest#testWriteAfterReadLock"]
+  names: ["jsr166.StampedLockTest#testWriteAfterReadLock",
+          "jsr166.StampedLockTest#testReadTryLock_Interruptible",
+          "jsr166.StampedLockTest#testReadLockInterruptibly_Interruptible",
+          "jsr166.StampedLockTest#testReadLockInterruptibly",
+          "org.apache.harmony.tests.java.lang.ProcessManagerTest#testSleep"
+  ]
 },
 {
   description: "Sometimes times out with gcstress and debug.",
