@@ -102,8 +102,8 @@ bool ClassExt::ExtendObsoleteArrays(Thread* self, uint32_t increase) {
   return true;
 }
 
-ClassExt* ClassExt::Alloc(Thread* self) {
-  return down_cast<ClassExt*>(GetClassRoot<ClassExt>()->AllocObject(self).Ptr());
+ObjPtr<ClassExt> ClassExt::Alloc(Thread* self) {
+  return ObjPtr<ClassExt>::DownCast(GetClassRoot<ClassExt>()->AllocObject(self));
 }
 
 void ClassExt::SetVerifyError(ObjPtr<Object> err) {

@@ -20,9 +20,30 @@
 #include "class_ext.h"
 
 #include "art_method-inl.h"
+#include "object-inl.h"
 
 namespace art {
 namespace mirror {
+
+inline ObjPtr<Object> ClassExt::GetVerifyError() {
+  return GetFieldObject<ClassExt>(OFFSET_OF_OBJECT_MEMBER(ClassExt, verify_error_));
+}
+
+inline ObjPtr<ObjectArray<DexCache>> ClassExt::GetObsoleteDexCaches() {
+  return GetFieldObject<ObjectArray<DexCache>>(
+      OFFSET_OF_OBJECT_MEMBER(ClassExt, obsolete_dex_caches_));
+}
+
+template<VerifyObjectFlags kVerifyFlags,
+         ReadBarrierOption kReadBarrierOption>
+inline ObjPtr<PointerArray> ClassExt::GetObsoleteMethods() {
+  return GetFieldObject<PointerArray, kVerifyFlags, kReadBarrierOption>(
+      OFFSET_OF_OBJECT_MEMBER(ClassExt, obsolete_methods_));
+}
+
+inline ObjPtr<Object> ClassExt::GetOriginalDexFile() {
+  return GetFieldObject<Object>(OFFSET_OF_OBJECT_MEMBER(ClassExt, original_dex_file_));
+}
 
 template<ReadBarrierOption kReadBarrierOption, class Visitor>
 void ClassExt::VisitNativeRoots(Visitor& visitor, PointerSize pointer_size) {

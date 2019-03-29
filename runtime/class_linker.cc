@@ -175,7 +175,7 @@ static bool HasInitWithString(Thread* self, ClassLinker* class_linker, const cha
   return exception_init_method != nullptr;
 }
 
-static mirror::Object* GetVerifyError(ObjPtr<mirror::Class> c)
+static ObjPtr<mirror::Object> GetVerifyError(ObjPtr<mirror::Class> c)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   ObjPtr<mirror::ClassExt> ext(c->GetExtData());
   if (ext == nullptr) {
@@ -241,8 +241,8 @@ void ClassLinker::ThrowEarlierClassFailure(ObjPtr<mirror::Class> c,
   Runtime* const runtime = Runtime::Current();
   if (!runtime->IsAotCompiler()) {  // Give info if this occurs at runtime.
     std::string extra;
-    if (GetVerifyError(c) != nullptr) {
-      ObjPtr<mirror::Object> verify_error = GetVerifyError(c);
+    ObjPtr<mirror::Object> verify_error = GetVerifyError(c);
+    if (verify_error != nullptr) {
       if (verify_error->IsClass()) {
         extra = mirror::Class::PrettyDescriptor(verify_error->AsClass());
       } else {
@@ -262,14 +262,15 @@ void ClassLinker::ThrowEarlierClassFailure(ObjPtr<mirror::Class> c,
     ObjPtr<mirror::Throwable> pre_allocated = runtime->GetPreAllocatedNoClassDefFoundError();
     self->SetException(pre_allocated);
   } else {
-    if (GetVerifyError(c) != nullptr) {
+    ObjPtr<mirror::Object> verify_error = GetVerifyError(c);
+    if (verify_error != nullptr) {
       // Rethrow stored error.
       HandleEarlierVerifyError(self, this, c);
     }
     // TODO This might be wrong if we hit an OOME while allocating the ClassExt. In that case we
     // might have meant to go down the earlier if statement with the original error but it got
     // swallowed by the OOM so we end up here.
-    if (GetVerifyError(c) == nullptr || wrap_in_no_class_def) {
+    if (verify_error == nullptr || wrap_in_no_class_def) {
       // If there isn't a recorded earlier error, or this is a repeat throw from initialization,
       // the top-level exception must be a NoClassDefFoundError. The potentially already pending
       // exception will be a cause.

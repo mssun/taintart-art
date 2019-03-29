@@ -40,7 +40,7 @@
 #include "jit/profiling_info.h"
 #include "jni/jni_internal.h"
 #include "mirror/class-inl.h"
-#include "mirror/class_ext.h"
+#include "mirror/class_ext-inl.h"
 #include "mirror/executable.h"
 #include "mirror/object-inl.h"
 #include "mirror/object_array-inl.h"
