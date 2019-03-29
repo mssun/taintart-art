@@ -29,8 +29,8 @@ extern "C" int artLockObjectFromCode(mirror::Object* obj, Thread* self)
     ThrowNullPointerException("Null reference used for synchronization (monitor-enter)");
     return -1;  // Failure.
   } else {
-    obj = obj->MonitorEnter(self);  // May block
-    DCHECK(self->HoldsLock(obj));
+    ObjPtr<mirror::Object> object = obj->MonitorEnter(self);  // May block
+    DCHECK(self->HoldsLock(object));
     // Exceptions can be thrown by monitor event listeners. This is expected to be rare however.
     if (UNLIKELY(self->IsExceptionPending())) {
       // TODO Remove this DCHECK if we expand the use of monitor callbacks.
@@ -38,11 +38,11 @@ extern "C" int artLockObjectFromCode(mirror::Object* obj, Thread* self)
           << "Exceptions are only expected to be thrown by plugin code which doesn't seem to be "
           << "loaded.";
       // We need to get rid of the lock
-      bool unlocked = obj->MonitorExit(self);
+      bool unlocked = object->MonitorExit(self);
       DCHECK(unlocked);
       return -1;  // Failure.
     } else {
-      DCHECK(self->HoldsLock(obj));
+      DCHECK(self->HoldsLock(object));
       return 0;  // Success.
     }
   }

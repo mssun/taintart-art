@@ -79,11 +79,11 @@ inline uint32_t Object::GetLockOwnerThreadId() {
   return Monitor::GetLockOwnerThreadId(this);
 }
 
-inline mirror::Object* Object::MonitorEnter(Thread* self) {
+inline ObjPtr<mirror::Object> Object::MonitorEnter(Thread* self) {
   return Monitor::MonitorEnter(self, this, /*trylock=*/false);
 }
 
-inline mirror::Object* Object::MonitorTryEnter(Thread* self) {
+inline ObjPtr<mirror::Object> Object::MonitorTryEnter(Thread* self) {
   return Monitor::MonitorEnter(self, this, /*trylock=*/true);
 }
 

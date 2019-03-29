@@ -27,6 +27,7 @@
 #include "mirror/object-inl.h"
 #include "mirror/string.h"
 #include "monitor.h"
+#include "obj_ptr-inl.h"
 #include "scoped_thread_state_change-inl.h"
 #include "stack.h"
 #include "thread-current-inl.h"
@@ -59,7 +60,7 @@ extern "C" JNIEXPORT void JNICALL Java_Main_testVisitLocks(JNIEnv*, jclass) {
       return true;
     }
 
-    static void Callback(mirror::Object* obj, void*) REQUIRES_SHARED(Locks::mutator_lock_) {
+    static void Callback(ObjPtr<mirror::Object> obj, void*) REQUIRES_SHARED(Locks::mutator_lock_) {
       CHECK(obj != nullptr);
       CHECK(obj->IsString());
       std::cerr << obj->AsString()->ToModifiedUtf8() << std::endl;

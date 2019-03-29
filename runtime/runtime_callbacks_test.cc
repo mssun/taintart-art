@@ -37,9 +37,9 @@
 #include "handle_scope-inl.h"
 #include "mirror/class-inl.h"
 #include "mirror/class_loader.h"
-#include "monitor.h"
+#include "monitor-inl.h"
 #include "nativehelper/scoped_local_ref.h"
-#include "obj_ptr.h"
+#include "obj_ptr-inl.h"
 #include "runtime.h"
 #include "scoped_thread_state_change-inl.h"
 #include "thread-inl.h"
@@ -443,7 +443,8 @@ class MonitorWaitCallbacksTest : public RuntimeCallbacksTest {
   }
 
   struct Callback : public MonitorCallback {
-    bool IsInterestingObject(mirror::Object* obj) REQUIRES_SHARED(art::Locks::mutator_lock_) {
+    bool IsInterestingObject(ObjPtr<mirror::Object> obj)
+        REQUIRES_SHARED(art::Locks::mutator_lock_) {
       if (!obj->IsClass()) {
         return false;
       }
@@ -453,7 +454,8 @@ class MonitorWaitCallbacksTest : public RuntimeCallbacksTest {
       return ref_ == test;
     }
 
-    void SetInterestingObject(mirror::Object* obj) REQUIRES_SHARED(art::Locks::mutator_lock_) {
+    void SetInterestingObject(ObjPtr<mirror::Object> obj)
+        REQUIRES_SHARED(art::Locks::mutator_lock_) {
       std::lock_guard<std::mutex> lock(ref_guard_);
       ObjPtr<mirror::Class> k = obj->AsClass();
       ref_ = { &k->GetDexFile(), k->GetDexClassDefIndex() };
@@ -501,11 +503,11 @@ TEST_F(MonitorWaitCallbacksTest, WaitUnlocked) {
     {
       ScopedObjectAccess soa(self);
       cb_.SetInterestingObject(
-          soa.Decode<mirror::Class>(WellKnownClasses::java_util_Collections).Ptr());
+          soa.Decode<mirror::Class>(WellKnownClasses::java_util_Collections));
       Monitor::Wait(
           self,
           // Just a random class
-          soa.Decode<mirror::Class>(WellKnownClasses::java_util_Collections).Ptr(),
+          soa.Decode<mirror::Class>(WellKnownClasses::java_util_Collections),
           /*ms=*/0,
           /*ns=*/0,
           /*interruptShouldThrow=*/false,

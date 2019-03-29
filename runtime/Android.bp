@@ -141,6 +141,7 @@ libart_cc_defaults {
         "mirror/throwable.cc",
         "mirror/var_handle.cc",
         "monitor.cc",
+        "monitor_objects_stack_visitor.cc",
         "native_bridge_art_interface.cc",
         "native_stack_dump.cc",
         "native/dalvik_system_DexFile.cc",

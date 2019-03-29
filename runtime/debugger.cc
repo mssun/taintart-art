@@ -900,7 +900,7 @@ JDWP::JdwpError Dbg::GetOwnedMonitors(JDWP::ObjectId thread_id,
       return true;
     }
 
-    static void AppendOwnedMonitors(mirror::Object* owned_monitor, void* arg)
+    static void AppendOwnedMonitors(ObjPtr<mirror::Object> owned_monitor, void* arg)
         REQUIRES_SHARED(Locks::mutator_lock_) {
       OwnedMonitorVisitor* visitor = reinterpret_cast<OwnedMonitorVisitor*>(arg);
       visitor->monitors->push_back(gRegistry->Add(owned_monitor));
@@ -939,7 +939,7 @@ JDWP::JdwpError Dbg::GetContendedMonitor(JDWP::ObjectId thread_id,
   if (!IsSuspendedForDebugger(soa, thread)) {
     return JDWP::ERR_THREAD_NOT_SUSPENDED;
   }
-  mirror::Object* contended_monitor_obj = Monitor::GetContendedMonitor(thread);
+  ObjPtr<mirror::Object> contended_monitor_obj = Monitor::GetContendedMonitor(thread);
   // Add() requires the thread_list_lock_ not held to avoid the lock
   // level violation.
   *contended_monitor = gRegistry->Add(contended_monitor_obj);

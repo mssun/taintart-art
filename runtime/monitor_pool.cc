@@ -105,7 +105,9 @@ void MonitorPool::FreeInternal() {
   }
 }
 
-Monitor* MonitorPool::CreateMonitorInPool(Thread* self, Thread* owner, mirror::Object* obj,
+Monitor* MonitorPool::CreateMonitorInPool(Thread* self,
+                                          Thread* owner,
+                                          ObjPtr<mirror::Object> obj,
                                           int32_t hash_code)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   // We are gonna allocate, so acquire the writer lock.
