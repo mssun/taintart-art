@@ -31,10 +31,9 @@ namespace art {
 class HiddenApiTest : public CommonRuntimeTest {
  protected:
   std::string GetHiddenApiCmd() {
-    std::string file_path = GetTestAndroidRoot();
-    file_path += "/bin/hiddenapi";
+    std::string file_path = GetAndroidRuntimeBinDir() + "/hiddenapi";
     if (kIsDebugBuild) {
-      file_path += "d";
+      file_path += 'd';
     }
     if (!OS::FileExists(file_path.c_str())) {
       LOG(FATAL) << "Could not find binary " << file_path;

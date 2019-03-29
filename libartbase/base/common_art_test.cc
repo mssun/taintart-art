@@ -400,15 +400,6 @@ std::string CommonArtTestImpl::GetClassPathOption(const char* option,
   return option + android::base::Join(class_path, ':');
 }
 
-std::string CommonArtTestImpl::GetTestAndroidRoot() {
-  if (IsHost()) {
-    const char* host_dir = getenv("ANDROID_HOST_OUT");
-    CHECK(host_dir != nullptr);
-    return host_dir;
-  }
-  return GetAndroidRoot();
-}
-
 // Check that for target builds we have ART_TARGET_NATIVETEST_DIR set.
 #ifdef ART_TARGET
 #ifndef ART_TARGET_NATIVETEST_DIR

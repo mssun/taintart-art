@@ -271,6 +271,17 @@ std::string GetAndroidRuntimeRoot() {
   return ret;
 }
 
+std::string GetAndroidRuntimeBinDir() {
+  // Environment variable `ANDROID_RUNTIME_ROOT` is defined as
+  // `$ANDROID_HOST_OUT/com.android.runtime` on host. However, host ART binaries
+  // are still installed in `$ANDROID_HOST_OUT/bin` (i.e. outside the Android
+  // Runtime Root). The situation is cleaner on target, where
+  // `ANDROID_RUNTIME_ROOT` is `$ANDROID_ROOT/apex/com.android.runtime` and ART
+  // binaries are installed in `$ANDROID_ROOT/apex/com.android.runtime/bin`.
+  std::string android_runtime_root = kIsTargetBuild ? GetAndroidRuntimeRoot() : GetAndroidRoot();
+  return android_runtime_root + "/bin";
+}
+
 std::string GetAndroidDataSafe(std::string* error_msg) {
   const char* android_dir = GetAndroidDirSafe(kAndroidDataEnvVar,
                                               kAndroidDataDefaultPath,

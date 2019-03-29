@@ -61,22 +61,17 @@ class ImgDiagTest : public CommonRuntimeTest {
 
   // Path to the imgdiag(d?)[32|64] binary.
   std::string GetImgDiagFilePath() {
-    std::string root = GetTestAndroidRoot();
-
-    root += "/bin/";
-    root += kImgDiagBinaryName;
-
+    std::string path = GetAndroidRuntimeBinDir() + '/' + kImgDiagBinaryName;
     if (kIsDebugBuild) {
-      root += "d";
+      path += 'd';
     }
-
-    std::string root32 = root + "32";
+    std::string path32 = path + "32";
     // If we have both a 32-bit and a 64-bit build, the 32-bit file will have a 32 suffix.
-    if (OS::FileExists(root32.c_str()) && !Is64BitInstructionSet(kRuntimeISA)) {
-      return root32;
+    if (OS::FileExists(path32.c_str()) && !Is64BitInstructionSet(kRuntimeISA)) {
+      return path32;
     // Only a single build exists, so the filename never has an extra suffix.
     } else {
-      return root;
+      return path;
     }
   }
 
