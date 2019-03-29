@@ -100,6 +100,10 @@ art_global_defaults {
         // We use it to implement OFFSETOF_MEMBER - see macros.h.
         "-Wno-invalid-offsetof",
 
+        // Enable inconsistent-missing-override warning. This warning is disabled by default in
+        // Android.
+        "-Winconsistent-missing-override",
+
         // Enable thread annotations for std::mutex, etc.
         "-D_LIBCPP_ENABLE_THREAD_SAFETY_ANNOTATIONS",
     ],

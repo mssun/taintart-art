@@ -158,7 +158,7 @@ class SemiSpace : public GarbageCollector {
 
   // Schedules an unmarked object for reference processing.
   void DelayReferenceReferent(ObjPtr<mirror::Class> klass, ObjPtr<mirror::Reference> reference)
-      REQUIRES_SHARED(Locks::heap_bitmap_lock_, Locks::mutator_lock_);
+      override REQUIRES_SHARED(Locks::heap_bitmap_lock_, Locks::mutator_lock_);
 
  protected:
   // Returns null if the object is not marked, otherwise returns the forwarding address (same as
@@ -192,14 +192,14 @@ class SemiSpace : public GarbageCollector {
       REQUIRES_SHARED(Locks::mutator_lock_);
 
   // Recursively blackens objects on the mark stack.
-  void ProcessMarkStack()
+  void ProcessMarkStack() override
       REQUIRES(Locks::mutator_lock_, Locks::heap_bitmap_lock_);
 
   inline mirror::Object* GetForwardingAddressInFromSpace(mirror::Object* obj) const
       REQUIRES_SHARED(Locks::mutator_lock_);
 
   // Revoke all the thread-local buffers.
-  void RevokeAllThreadLocalBuffers();
+  void RevokeAllThreadLocalBuffers() override;
 
   // Current space, we check this space first to avoid searching for the appropriate space for an
   // object.

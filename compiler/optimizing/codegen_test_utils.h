@@ -176,7 +176,7 @@ class InternalCodeAllocator : public CodeAllocator {
  public:
   InternalCodeAllocator() : size_(0) { }
 
-  virtual uint8_t* Allocate(size_t size) {
+  uint8_t* Allocate(size_t size) override {
     size_ = size;
     memory_.reset(new uint8_t[size]);
     return memory_.get();

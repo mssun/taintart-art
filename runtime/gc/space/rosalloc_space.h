@@ -130,8 +130,8 @@ class RosAllocSpace : public MallocSpace {
   uint64_t GetBytesAllocated() override;
   uint64_t GetObjectsAllocated() override;
 
-  size_t RevokeThreadLocalBuffers(Thread* thread);
-  size_t RevokeAllThreadLocalBuffers();
+  size_t RevokeThreadLocalBuffers(Thread* thread) override;
+  size_t RevokeAllThreadLocalBuffers() override;
   void AssertThreadLocalBuffersAreRevoked(Thread* thread);
   void AssertAllThreadLocalBuffersAreRevoked();
 

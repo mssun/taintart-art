@@ -4235,7 +4235,7 @@ void Thread::SetReadBarrierEntrypoints() {
 
 void Thread::ClearAllInterpreterCaches() {
   static struct ClearInterpreterCacheClosure : Closure {
-    virtual void Run(Thread* thread) {
+    void Run(Thread* thread) override {
       thread->GetInterpreterCache()->Clear(thread);
     }
   } closure;

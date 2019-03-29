@@ -227,7 +227,7 @@ class MarkSweep : public GarbageCollector {
 
   // Schedules an unmarked object for reference processing.
   void DelayReferenceReferent(ObjPtr<mirror::Class> klass, ObjPtr<mirror::Reference> reference)
-      REQUIRES_SHARED(Locks::heap_bitmap_lock_, Locks::mutator_lock_);
+      override REQUIRES_SHARED(Locks::heap_bitmap_lock_, Locks::mutator_lock_);
 
  protected:
   // Returns object if the object is marked in the heap bitmap, otherwise null.
@@ -301,7 +301,7 @@ class MarkSweep : public GarbageCollector {
   void RevokeAllThreadLocalAllocationStacks(Thread* self) NO_THREAD_SAFETY_ANALYSIS;
 
   // Revoke all the thread-local buffers.
-  void RevokeAllThreadLocalBuffers();
+  void RevokeAllThreadLocalBuffers() override;
 
   // Whether or not we count how many of each type of object were scanned.
   static constexpr bool kCountScannedTypes = false;

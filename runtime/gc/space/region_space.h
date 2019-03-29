@@ -134,15 +134,15 @@ class RegionSpace final : public ContinuousMemMapAllocSpace {
   // growth limit.
   void ClampGrowthLimit(size_t new_capacity) REQUIRES(!region_lock_);
 
-  void Dump(std::ostream& os) const;
+  void Dump(std::ostream& os) const override;
   void DumpRegions(std::ostream& os) REQUIRES(!region_lock_);
   // Dump region containing object `obj`. Precondition: `obj` is in the region space.
   void DumpRegionForObject(std::ostream& os, mirror::Object* obj) REQUIRES(!region_lock_);
   void DumpNonFreeRegions(std::ostream& os) REQUIRES(!region_lock_);
 
-  size_t RevokeThreadLocalBuffers(Thread* thread) REQUIRES(!region_lock_);
+  size_t RevokeThreadLocalBuffers(Thread* thread) override REQUIRES(!region_lock_);
   void RevokeThreadLocalBuffersLocked(Thread* thread) REQUIRES(region_lock_);
-  size_t RevokeAllThreadLocalBuffers()
+  size_t RevokeAllThreadLocalBuffers() override
       REQUIRES(!Locks::runtime_shutdown_lock_, !Locks::thread_list_lock_, !region_lock_);
   void AssertThreadLocalBuffersAreRevoked(Thread* thread) REQUIRES(!region_lock_);
   void AssertAllThreadLocalBuffersAreRevoked()
@@ -165,10 +165,10 @@ class RegionSpace final : public ContinuousMemMapAllocSpace {
 
   template<RegionType kRegionType> uint64_t GetBytesAllocatedInternal() REQUIRES(!region_lock_);
   template<RegionType kRegionType> uint64_t GetObjectsAllocatedInternal() REQUIRES(!region_lock_);
-  uint64_t GetBytesAllocated() REQUIRES(!region_lock_) {
+  uint64_t GetBytesAllocated() override REQUIRES(!region_lock_) {
     return GetBytesAllocatedInternal<RegionType::kRegionTypeAll>();
   }
-  uint64_t GetObjectsAllocated() REQUIRES(!region_lock_) {
+  uint64_t GetObjectsAllocated() override REQUIRES(!region_lock_) {
     return GetObjectsAllocatedInternal<RegionType::kRegionTypeAll>();
   }
   uint64_t GetBytesAllocatedInFromSpace() REQUIRES(!region_lock_) {
@@ -194,7 +194,7 @@ class RegionSpace final : public ContinuousMemMapAllocSpace {
     return true;
   }
 
-  bool Contains(const mirror::Object* obj) const {
+  bool Contains(const mirror::Object* obj) const override {
     const uint8_t* byte_obj = reinterpret_cast<const uint8_t*>(obj);
     return byte_obj >= Begin() && byte_obj < Limit();
   }

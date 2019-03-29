@@ -440,7 +440,7 @@ class Mips64Assembler final : public Assembler, public JNIMacroAssembler<Pointer
   }
 
   size_t CodeSize() const override { return Assembler::CodeSize(); }
-  DebugFrameOpCodeWriterForAssembler& cfi() { return Assembler::cfi(); }
+  DebugFrameOpCodeWriterForAssembler& cfi() override { return Assembler::cfi(); }
 
   // Emit Machine Instructions.
   void Addu(GpuRegister rd, GpuRegister rs, GpuRegister rt);
@@ -1437,7 +1437,7 @@ class Mips64Assembler final : public Assembler, public JNIMacroAssembler<Pointer
   void FinalizeCode() override;
 
   // Emit branches and finalize all instructions.
-  void FinalizeInstructions(const MemoryRegion& region);
+  void FinalizeInstructions(const MemoryRegion& region) override;
 
   // Returns the (always-)current location of a label (can be used in class CodeGeneratorMIPS64,
   // must be used instead of Mips64Label::GetPosition()).

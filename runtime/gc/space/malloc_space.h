@@ -40,7 +40,7 @@ class MallocSpace : public ContinuousMemMapAllocSpace {
  public:
   typedef void(*WalkCallback)(void *start, void *end, size_t num_bytes, void* callback_arg);
 
-  SpaceType GetType() const {
+  SpaceType GetType() const override {
     return kSpaceTypeMallocSpace;
   }
 
@@ -49,14 +49,14 @@ class MallocSpace : public ContinuousMemMapAllocSpace {
                                           size_t* bytes_allocated, size_t* usable_size,
                                           size_t* bytes_tl_bulk_allocated) = 0;
   // Allocate num_bytes without allowing the underlying space to grow.
-  virtual mirror::Object* Alloc(Thread* self, size_t num_bytes, size_t* bytes_allocated,
-                                size_t* usable_size, size_t* bytes_tl_bulk_allocated) = 0;
+  mirror::Object* Alloc(Thread* self, size_t num_bytes, size_t* bytes_allocated,
+                        size_t* usable_size, size_t* bytes_tl_bulk_allocated) override = 0;
   // Return the storage space required by obj. If usable_size isn't null then it is set to the
   // amount of the storage space that may be used by obj.
-  virtual size_t AllocationSize(mirror::Object* obj, size_t* usable_size) = 0;
-  virtual size_t Free(Thread* self, mirror::Object* ptr)
+  size_t AllocationSize(mirror::Object* obj, size_t* usable_size) override = 0;
+  size_t Free(Thread* self, mirror::Object* ptr) override
       REQUIRES_SHARED(Locks::mutator_lock_) = 0;
-  virtual size_t FreeList(Thread* self, size_t num_ptrs, mirror::Object** ptrs)
+  size_t FreeList(Thread* self, size_t num_ptrs, mirror::Object** ptrs) override
       REQUIRES_SHARED(Locks::mutator_lock_) = 0;
 
   // Returns the maximum bytes that could be allocated for the given
@@ -98,12 +98,12 @@ class MallocSpace : public ContinuousMemMapAllocSpace {
   }
 
   // Override capacity so that we only return the possibly limited capacity
-  size_t Capacity() const {
+  size_t Capacity() const override {
     return growth_limit_;
   }
 
   // The total amount of memory reserved for the alloc space.
-  size_t NonGrowthLimitCapacity() const {
+  size_t NonGrowthLimitCapacity() const override {
     return GetMemMap()->Size();
   }
 
@@ -111,7 +111,7 @@ class MallocSpace : public ContinuousMemMapAllocSpace {
   // shrinking is supported.
   void ClampGrowthLimit();
 
-  void Dump(std::ostream& os) const;
+  void Dump(std::ostream& os) const override;
 
   void SetGrowthLimit(size_t growth_limit);
 
@@ -129,8 +129,8 @@ class MallocSpace : public ContinuousMemMapAllocSpace {
   // aggressive in releasing unused pages. Invalidates the space its called on.
   ZygoteSpace* CreateZygoteSpace(const char* alloc_space_name, bool low_memory_mode,
                                  MallocSpace** out_malloc_space) NO_THREAD_SAFETY_ANALYSIS;
-  virtual uint64_t GetBytesAllocated() = 0;
-  virtual uint64_t GetObjectsAllocated() = 0;
+  uint64_t GetBytesAllocated() override = 0;
+  uint64_t GetObjectsAllocated() override = 0;
 
   // Returns the class of a recently freed object.
   mirror::Class* FindRecentFreedObject(const mirror::Object* obj);
@@ -170,7 +170,7 @@ class MallocSpace : public ContinuousMemMapAllocSpace {
       REQUIRES_SHARED(Locks::mutator_lock_)
       REQUIRES(lock_);
 
-  virtual accounting::ContinuousSpaceBitmap::SweepCallback* GetSweepCallback() {
+  accounting::ContinuousSpaceBitmap::SweepCallback* GetSweepCallback() override {
     return &SweepCallback;
   }
 

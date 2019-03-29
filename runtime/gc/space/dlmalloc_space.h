@@ -102,7 +102,7 @@ class DlMallocSpace : public MallocSpace {
 
 #ifndef NDEBUG
   // Override only in the debug build.
-  void CheckMoreCoreForPrecondition();
+  void CheckMoreCoreForPrecondition() override;
 #endif
 
   void* GetMspace() const {
