@@ -107,7 +107,7 @@ class EmulatedStackFrameAccessor {
   }
 
   ALWAYS_INLINE ObjPtr<mirror::Object> GetReference() REQUIRES_SHARED(Locks::mutator_lock_) {
-    return ObjPtr<mirror::Object>(references_->Get(reference_idx_++));
+    return references_->Get(reference_idx_++);
   }
 
   ALWAYS_INLINE uint32_t Get() REQUIRES_SHARED(Locks::mutator_lock_) {

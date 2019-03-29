@@ -45,7 +45,7 @@ ObjPtr<MethodHandlesLookup> MethodHandlesLookup::GetDefault(Thread* const self) 
   ArtMethod* lookup = jni::DecodeArtMethod(WellKnownClasses::java_lang_invoke_MethodHandles_lookup);
   JValue result;
   lookup->Invoke(self, nullptr, 0, &result, "L");
-  return ObjPtr<MethodHandlesLookup>::DownCast(MakeObjPtr(result.GetL()));
+  return ObjPtr<MethodHandlesLookup>::DownCast(result.GetL());
 }
 
 ObjPtr<MethodHandle> MethodHandlesLookup::FindConstructor(Thread* const self,
@@ -60,7 +60,7 @@ ObjPtr<MethodHandle> MethodHandlesLookup::FindConstructor(Thread* const self,
   };
   JValue result;
   findConstructor->Invoke(self, args, sizeof(args), &result, "LLL");
-  return ObjPtr<MethodHandle>::DownCast(MakeObjPtr(result.GetL()));
+  return ObjPtr<MethodHandle>::DownCast(result.GetL());
 }
 
 }  // namespace mirror

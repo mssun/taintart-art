@@ -1653,8 +1653,8 @@ class ImageSpace::BootImageLoader {
       patch_object_visitor.VisitObject(image_roots.Ptr());
 
       ObjPtr<mirror::ObjectArray<mirror::Class>> class_roots =
-          ObjPtr<mirror::ObjectArray<mirror::Class>>::DownCast(MakeObjPtr(
-              image_header.GetImageRoot<kWithoutReadBarrier>(ImageHeader::kClassRoots)));
+          ObjPtr<mirror::ObjectArray<mirror::Class>>::DownCast(
+              image_header.GetImageRoot<kWithoutReadBarrier>(ImageHeader::kClassRoots));
       patched_objects->Set(class_roots.Ptr());
       patch_object_visitor.VisitObject(class_roots.Ptr());
 
@@ -1682,7 +1682,7 @@ class ImageSpace::BootImageLoader {
           } else if (klass == method_class || klass == constructor_class) {
             // Patch the ArtMethod* in the mirror::Executable subobject.
             ObjPtr<mirror::Executable> as_executable =
-                ObjPtr<mirror::Executable>::DownCast(MakeObjPtr(object));
+                ObjPtr<mirror::Executable>::DownCast(object);
             ArtMethod* unpatched_method = as_executable->GetArtMethod<kVerifyNone>();
             ArtMethod* patched_method = relocate_visitor(unpatched_method);
             as_executable->SetArtMethod</*kTransactionActive=*/ false,

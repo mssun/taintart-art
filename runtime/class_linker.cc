@@ -463,8 +463,8 @@ bool ClassLinker::InitWithoutImage(std::vector<std::unique_ptr<const DexFile>> b
   auto class_class_size = mirror::Class::ClassClassSize(image_pointer_size_);
   // Allocate the object as non-movable so that there are no cases where Object::IsClass returns
   // the incorrect result when comparing to-space vs from-space.
-  Handle<mirror::Class> java_lang_Class(hs.NewHandle(ObjPtr<mirror::Class>::DownCast(MakeObjPtr(
-      heap->AllocNonMovableObject<true>(self, nullptr, class_class_size, VoidFunctor())))));
+  Handle<mirror::Class> java_lang_Class(hs.NewHandle(ObjPtr<mirror::Class>::DownCast(
+      heap->AllocNonMovableObject<true>(self, nullptr, class_class_size, VoidFunctor()))));
   CHECK(java_lang_Class != nullptr);
   java_lang_Class->SetClassFlags(mirror::kClassFlagClass);
   java_lang_Class->SetClass(java_lang_Class.Get());
@@ -1053,8 +1053,8 @@ bool ClassLinker::InitFromBootImage(std::string* error_msg) {
   }
 
   class_roots_ = GcRoot<mirror::ObjectArray<mirror::Class>>(
-      ObjPtr<mirror::ObjectArray<mirror::Class>>::DownCast(MakeObjPtr(
-          spaces[0]->GetImageHeader().GetImageRoot(ImageHeader::kClassRoots))));
+      ObjPtr<mirror::ObjectArray<mirror::Class>>::DownCast(
+          spaces[0]->GetImageHeader().GetImageRoot(ImageHeader::kClassRoots)));
   DCHECK_EQ(GetClassRoot<mirror::Class>(this)->GetClassFlags(), mirror::kClassFlagClass);
 
   ObjPtr<mirror::Class> java_lang_Object = GetClassRoot<mirror::Object>(this);
@@ -6621,8 +6621,8 @@ bool ClassLinker::AllocateIfTableMethodArrays(Thread* self,
         DCHECK(if_table != nullptr);
         DCHECK(if_table->GetMethodArray(i) != nullptr);
         // If we are working on a super interface, try extending the existing method array.
-        method_array = ObjPtr<mirror::PointerArray>::DownCast(MakeObjPtr(
-            if_table->GetMethodArray(i)->Clone(self)));
+        method_array = ObjPtr<mirror::PointerArray>::DownCast(
+            if_table->GetMethodArray(i)->Clone(self));
       } else {
         method_array = AllocPointerArray(self, num_methods);
       }

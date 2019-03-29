@@ -671,8 +671,7 @@ static bool DoMethodHandleInvokeCommon(Thread* self,
   // and not the method that we'll dispatch to in the end.
   StackHandleScope<2> hs(self);
   Handle<mirror::MethodHandle> method_handle(hs.NewHandle(
-      ObjPtr<mirror::MethodHandle>::DownCast(
-          MakeObjPtr(shadow_frame.GetVRegReference(vRegC)))));
+      ObjPtr<mirror::MethodHandle>::DownCast(shadow_frame.GetVRegReference(vRegC))));
   if (UNLIKELY(method_handle == nullptr)) {
     // Note that the invoke type is kVirtual here because a call to a signature
     // polymorphic method is shaped like a virtual call at the bytecode level.
@@ -1411,8 +1410,7 @@ static ObjPtr<mirror::CallSite> InvokeBootstrapMethod(Thread* self,
   }
 
   // Check the call site target is not null as we're going to invoke it.
-  ObjPtr<mirror::CallSite> call_site =
-      ObjPtr<mirror::CallSite>::DownCast(ObjPtr<mirror::Object>(result.GetL()));
+  ObjPtr<mirror::CallSite> call_site = ObjPtr<mirror::CallSite>::DownCast(result.GetL());
   ObjPtr<mirror::MethodHandle> target = call_site->GetTarget();
   if (UNLIKELY(target == nullptr)) {
     ThrowClassCastException("Bootstrap method returned a CallSite with a null target");

@@ -122,6 +122,14 @@ inline ObjPtr<MirrorType> ObjPtr<MirrorType>::DownCast(ObjPtr<SourceType> ptr) {
 }
 
 template<class MirrorType>
+template <typename SourceType>
+inline ObjPtr<MirrorType> ObjPtr<MirrorType>::DownCast(SourceType* ptr) {
+  static_assert(std::is_base_of_v<SourceType, MirrorType>,
+                "Target type must be a subtype of source type");
+  return static_cast<MirrorType*>(ptr);
+}
+
+template<class MirrorType>
 size_t HashObjPtr::operator()(const ObjPtr<MirrorType>& ptr) const {
   return std::hash<MirrorType*>()(ptr.Ptr());
 }
@@ -166,16 +174,6 @@ inline std::enable_if_t<std::is_base_of_v<MirrorType1, MirrorType2> ||
                         std::is_base_of_v<MirrorType2, MirrorType1>, bool>
 operator!=(ObjPtr<MirrorType1> lhs, const MirrorType2* rhs) {
   return !(lhs == rhs);
-}
-
-template<class MirrorType>
-static inline ObjPtr<MirrorType> MakeObjPtr(MirrorType* ptr) {
-  return ObjPtr<MirrorType>(ptr);
-}
-
-template<class MirrorType>
-static inline ObjPtr<MirrorType> MakeObjPtr(ObjPtr<MirrorType> ptr) {
-  return ObjPtr<MirrorType>(ptr);
 }
 
 template<class MirrorType>

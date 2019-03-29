@@ -65,8 +65,8 @@ inline ObjPtr<Class> Class::GetSuperClass() {
   DCHECK(IsLoaded<kVerifyFlags>() ||
          IsErroneous<kVerifyFlags>() ||
          !Runtime::Current()->IsStarted()) << IsLoaded();
-  return ObjPtr<Class>(GetFieldObject<Class, kVerifyFlags, kReadBarrierOption>(
-      OFFSET_OF_OBJECT_MEMBER(Class, super_class_)));
+  return GetFieldObject<Class, kVerifyFlags, kReadBarrierOption>(
+      OFFSET_OF_OBJECT_MEMBER(Class, super_class_));
 }
 
 inline void Class::SetSuperClass(ObjPtr<Class> new_super_class) {

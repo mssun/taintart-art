@@ -1865,7 +1865,7 @@ class ConcurrentCopying::VerifyNoFromSpaceRefsFieldVisitor {
                   ObjPtr<mirror::Reference> ref) const
       REQUIRES_SHARED(Locks::mutator_lock_) ALWAYS_INLINE {
     CHECK(klass->IsTypeOfReferenceClass());
-    this->operator()(ObjPtr<mirror::Object>(ref), mirror::Reference::ReferentOffset(), false);
+    this->operator()(ref, mirror::Reference::ReferentOffset(), false);
   }
 
   void VisitRootIfNonNull(mirror::CompressedReference<mirror::Object>* root) const

@@ -2766,7 +2766,7 @@ class BuildInternalStackTraceVisitor : public StackVisitor {
   }
 
   ObjPtr<mirror::PointerArray> GetTraceMethodsAndPCs() const REQUIRES_SHARED(Locks::mutator_lock_) {
-    return ObjPtr<mirror::PointerArray>::DownCast(MakeObjPtr(trace_->Get(0)));
+    return ObjPtr<mirror::PointerArray>::DownCast(trace_->Get(0));
   }
 
   mirror::ObjectArray<mirror::Object>* GetInternalStackTrace() const {
@@ -2939,7 +2939,7 @@ jobjectArray Thread::InternalStackTraceToStackTraceElementArray(
     // Methods and dex PC trace is element 0.
     DCHECK(decoded_traces->Get(0)->IsIntArray() || decoded_traces->Get(0)->IsLongArray());
     const ObjPtr<mirror::PointerArray> method_trace =
-        ObjPtr<mirror::PointerArray>::DownCast(MakeObjPtr(decoded_traces->Get(0)));
+        ObjPtr<mirror::PointerArray>::DownCast(decoded_traces->Get(0));
     // Prepare parameters for StackTraceElement(String cls, String method, String file, int line)
     ArtMethod* method = method_trace->GetElementPtrSize<ArtMethod*>(i, kRuntimePointerSize);
     uint32_t dex_pc = method_trace->GetElementPtrSize<uint32_t>(

@@ -773,7 +773,7 @@ ALWAYS_INLINE bool MterpFieldAccessFast(Instruction* inst,
     }
     ObjPtr<mirror::Object> obj = kIsStatic
         ? reinterpret_cast<ArtField*>(tls_value)->GetDeclaringClass()
-        : MakeObjPtr(shadow_frame->GetVRegReference(inst->VRegB_22c(inst_data)));
+        : ObjPtr<mirror::Object>(shadow_frame->GetVRegReference(inst->VRegB_22c(inst_data)));
     if (LIKELY(obj != nullptr)) {
       MterpFieldAccess<PrimType, kAccessType>(
           inst, inst_data, shadow_frame, obj, MemberOffset(offset), /* is_volatile= */ false);

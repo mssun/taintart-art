@@ -190,12 +190,12 @@ inline ObjPtr<String> String::Alloc(Thread* self,
   }
 
   gc::Heap* heap = runtime->GetHeap();
-  return ObjPtr<String>::DownCast(MakeObjPtr(
+  return ObjPtr<String>::DownCast(
       heap->AllocObjectWithAllocator<kIsInstrumented, true>(self,
                                                             string_class,
                                                             alloc_size,
                                                             allocator_type,
-                                                            pre_fence_visitor)));
+                                                            pre_fence_visitor));
 }
 
 template <bool kIsInstrumented>

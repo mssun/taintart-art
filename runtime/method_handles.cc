@@ -478,8 +478,8 @@ static inline bool MethodHandleInvokeMethod(ArtMethod* called_method,
         // through from a transformer.
         size_t first_arg_register = operands->GetOperand(0);
         ObjPtr<mirror::EmulatedStackFrame> emulated_stack_frame(
-            ObjPtr<mirror::EmulatedStackFrame>::DownCast(MakeObjPtr(
-                shadow_frame.GetVRegReference(first_arg_register))));
+            ObjPtr<mirror::EmulatedStackFrame>::DownCast(
+                shadow_frame.GetVRegReference(first_arg_register)));
         if (!emulated_stack_frame->WriteToShadowFrame(self,
                                                       target_type,
                                                       first_dest_reg,
@@ -527,8 +527,8 @@ static inline bool MethodHandleInvokeMethod(ArtMethod* called_method,
     StackHandleScope<2> hs(self);
     size_t first_callee_register = operands->GetOperand(0);
     Handle<mirror::EmulatedStackFrame> emulated_stack_frame(
-        hs.NewHandle(ObjPtr<mirror::EmulatedStackFrame>::DownCast(MakeObjPtr(
-            shadow_frame.GetVRegReference(first_callee_register)))));
+        hs.NewHandle(ObjPtr<mirror::EmulatedStackFrame>::DownCast(
+            shadow_frame.GetVRegReference(first_callee_register))));
     Handle<mirror::MethodType> emulated_stack_type(hs.NewHandle(emulated_stack_frame->GetType()));
     JValue local_result;
     local_result.SetJ(result->GetJ());
@@ -580,8 +580,8 @@ static inline bool MethodHandleInvokeTransform(ArtMethod* called_method,
     // through the handle directly to the callee, instead of having to
     // instantiate a new stack frame based on the shadow frame.
     size_t first_callee_register = operands->GetOperand(0);
-    sf.Assign(ObjPtr<mirror::EmulatedStackFrame>::DownCast(MakeObjPtr(
-        shadow_frame.GetVRegReference(first_callee_register))));
+    sf.Assign(ObjPtr<mirror::EmulatedStackFrame>::DownCast(
+        shadow_frame.GetVRegReference(first_callee_register)));
   } else {
     sf.Assign(mirror::EmulatedStackFrame::CreateFromShadowFrameAndArgs(self,
                                                                        callsite_type,

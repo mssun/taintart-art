@@ -53,7 +53,7 @@ class HandleWrapperObjPtr : public MutableHandle<T> {
   HandleWrapperObjPtr(const HandleWrapperObjPtr&) = default;
 
   ~HandleWrapperObjPtr() {
-    *obj_ = ObjPtr<T>(MutableHandle<T>::Get());
+    *obj_ = MutableHandle<T>::Get();
   }
 
  private:

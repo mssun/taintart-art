@@ -767,7 +767,7 @@ void InvokeConstructor(const ScopedObjectAccessAlreadyRunnable& soa,
 
 ObjPtr<mirror::Object> BoxPrimitive(Primitive::Type src_class, const JValue& value) {
   if (src_class == Primitive::kPrimNot) {
-    return MakeObjPtr(value.GetL());
+    return value.GetL();
   }
   if (src_class == Primitive::kPrimVoid) {
     // There's no such thing as a void field, and void methods invoked via reflection return null.
