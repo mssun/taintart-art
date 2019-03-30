@@ -64,6 +64,7 @@ TEST_F(ParsedOptionsTest, ParsedOptions) {
   options.push_back(std::make_pair("-Xmx4k", nullptr));
   options.push_back(std::make_pair("-Xss1m", nullptr));
   options.push_back(std::make_pair("-XX:HeapTargetUtilization=0.75", nullptr));
+  options.push_back(std::make_pair("-XX:StopForNativeAllocs=200m", nullptr));
   options.push_back(std::make_pair("-Dfoo=bar", nullptr));
   options.push_back(std::make_pair("-Dbaz=qux", nullptr));
   options.push_back(std::make_pair("-verbose:gc,class,jni", nullptr));
@@ -90,6 +91,7 @@ TEST_F(ParsedOptionsTest, ParsedOptions) {
   EXPECT_PARSED_EQ(2048U, Opt::MemoryInitialSize);
   EXPECT_PARSED_EQ(4 * KB, Opt::MemoryMaximumSize);
   EXPECT_PARSED_EQ(1 * MB, Opt::StackSize);
+  EXPECT_PARSED_EQ(200 * MB, Opt::StopForNativeAllocs);
   EXPECT_DOUBLE_EQ(0.75, map.GetOrDefault(Opt::HeapTargetUtilization));
   EXPECT_TRUE(test_vfprintf == map.GetOrDefault(Opt::HookVfprintf));
   EXPECT_TRUE(test_exit == map.GetOrDefault(Opt::HookExit));
