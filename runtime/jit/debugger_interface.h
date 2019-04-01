@@ -36,6 +36,7 @@ typedef std::vector<uint8_t> PackElfFileForJITFunction(
     const InstructionSetFeatures* features,
     std::vector<ArrayRef<const uint8_t>>& added_elf_files,
     std::vector<const void*>& removed_symbols,
+    bool compress,
     /*out*/ size_t* num_symbols);
 
 // Notify native tools (e.g. libunwind) that DEX file has been opened.

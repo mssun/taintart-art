@@ -231,6 +231,7 @@ std::vector<uint8_t> PackElfFileForJIT(
     const InstructionSetFeatures* features ATTRIBUTE_UNUSED,
     std::vector<ArrayRef<const uint8_t>>& added_elf_files,
     std::vector<const void*>& removed_symbols,
+    bool compress,
     /*out*/ size_t* num_symbols) {
   using ElfTypes = ElfRuntimeTypes;
   using Elf_Addr = typename ElfTypes::Addr;
@@ -318,8 +319,8 @@ std::vector<uint8_t> PackElfFileForJIT(
   // Produce the outer ELF file.
   // It contains only the inner ELF file compressed as .gnu_debugdata section.
   // This extra wrapping is not necessary but the compression saves space.
-  std::vector<uint8_t> outer_elf_file;
-  {
+  if (compress) {
+    std::vector<uint8_t> outer_elf_file;
     std::vector<uint8_t> gnu_debugdata;
     gnu_debugdata.reserve(inner_elf_file.size() / 4);
     XzCompress(ArrayRef<const uint8_t>(inner_elf_file), &gnu_debugdata);
@@ -334,9 +335,10 @@ std::vector<uint8_t> PackElfFileForJIT(
     builder->WriteSection(".gnu_debugdata", &gnu_debugdata);
     builder->End();
     CHECK(builder->Good());
+    return outer_elf_file;
+  } else {
+    return inner_elf_file;
   }
-
-  return outer_elf_file;
 }
 
 std::vector<uint8_t> WriteDebugElfFileForClasses(
