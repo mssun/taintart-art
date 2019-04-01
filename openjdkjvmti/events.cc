@@ -50,7 +50,7 @@
 #include "jni/jni_internal.h"
 #include "mirror/class.h"
 #include "mirror/object-inl.h"
-#include "monitor.h"
+#include "monitor-inl.h"
 #include "nativehelper/scoped_local_ref.h"
 #include "runtime.h"
 #include "scoped_thread_state_change-inl.h"
@@ -236,7 +236,7 @@ static bool IsThreadControllable(ArtJvmtiEvent event) {
 }
 
 template<typename Type>
-static Type AddLocalRef(art::JNIEnvExt* e, art::mirror::Object* obj)
+static Type AddLocalRef(art::JNIEnvExt* e, art::ObjPtr<art::mirror::Object> obj)
     REQUIRES_SHARED(art::Locks::mutator_lock_) {
   return (obj == nullptr) ? nullptr : e->AddLocalReference<Type>(obj);
 }

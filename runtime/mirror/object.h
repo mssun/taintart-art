@@ -153,11 +153,11 @@ class MANAGED LOCKABLE Object {
   uint32_t GetLockOwnerThreadId();
 
   // Try to enter the monitor, returns non null if we succeeded.
-  mirror::Object* MonitorTryEnter(Thread* self)
+  ObjPtr<mirror::Object> MonitorTryEnter(Thread* self)
       EXCLUSIVE_LOCK_FUNCTION()
       REQUIRES(!Roles::uninterruptible_)
       REQUIRES_SHARED(Locks::mutator_lock_);
-  mirror::Object* MonitorEnter(Thread* self)
+  ObjPtr<mirror::Object> MonitorEnter(Thread* self)
       EXCLUSIVE_LOCK_FUNCTION()
       REQUIRES(!Roles::uninterruptible_)
       REQUIRES_SHARED(Locks::mutator_lock_);

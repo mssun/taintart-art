@@ -42,7 +42,10 @@ class MonitorPool {
 #endif
   }
 
-  static Monitor* CreateMonitor(Thread* self, Thread* owner, mirror::Object* obj, int32_t hash_code)
+  static Monitor* CreateMonitor(Thread* self,
+                                Thread* owner,
+                                ObjPtr<mirror::Object> obj,
+                                int32_t hash_code)
       REQUIRES_SHARED(Locks::mutator_lock_) {
 #ifndef __LP64__
     Monitor* mon = new Monitor(self, owner, obj, hash_code);
@@ -122,7 +125,10 @@ class MonitorPool {
   // so ignore thead-safety analysis.
   void FreeInternal() NO_THREAD_SAFETY_ANALYSIS;
 
-  Monitor* CreateMonitorInPool(Thread* self, Thread* owner, mirror::Object* obj, int32_t hash_code)
+  Monitor* CreateMonitorInPool(Thread* self,
+                               Thread* owner,
+                               ObjPtr<mirror::Object> obj,
+                               int32_t hash_code)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
   void ReleaseMonitorToPool(Thread* self, Monitor* monitor);
