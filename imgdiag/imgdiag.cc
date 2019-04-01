@@ -172,7 +172,7 @@ static std::vector<std::pair<V, K>> SortByValueDesc(
 // Returned pointer will point to inside of remote_contents.
 template <typename T>
 static ObjPtr<T> FixUpRemotePointer(ObjPtr<T> remote_ptr,
-                                    std::vector<uint8_t>& remote_contents,
+                                    ArrayRef<uint8_t> remote_contents,
                                     const backtrace_map_t& boot_map)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   if (remote_ptr == nullptr) {
@@ -194,7 +194,7 @@ static ObjPtr<T> FixUpRemotePointer(ObjPtr<T> remote_ptr,
 
 template <typename T>
 static ObjPtr<T> RemoteContentsPointerToLocal(ObjPtr<T> remote_ptr,
-                                              std::vector<uint8_t>& remote_contents,
+                                              ArrayRef<uint8_t> remote_contents,
                                               const ImageHeader& image_header)
     REQUIRES_SHARED(Locks::mutator_lock_) {
   if (remote_ptr == nullptr) {
@@ -226,8 +226,8 @@ template <typename T>
 struct RegionCommon {
  public:
   RegionCommon(std::ostream* os,
-               std::vector<uint8_t>* remote_contents,
-               std::vector<uint8_t>* zygote_contents,
+               ArrayRef<uint8_t> remote_contents,
+               ArrayRef<uint8_t> zygote_contents,
                const backtrace_map_t& boot_map,
                const ImageHeader& image_header) :
     os_(*os),
@@ -238,8 +238,7 @@ struct RegionCommon {
     different_entries_(0),
     dirty_entry_bytes_(0),
     false_dirty_entry_bytes_(0) {
-    CHECK(remote_contents != nullptr);
-    CHECK(zygote_contents != nullptr);
+    CHECK(!remote_contents.empty());
   }
 
   void DumpSamplesAndOffsetCount() {
@@ -301,9 +300,9 @@ struct RegionCommon {
   // The output stream to write to.
   std::ostream& os_;
   // The byte contents of the remote (image) process' image.
-  std::vector<uint8_t>* remote_contents_;
+  ArrayRef<uint8_t> remote_contents_;
   // The byte contents of the zygote process' image.
-  std::vector<uint8_t>* zygote_contents_;
+  ArrayRef<uint8_t> zygote_contents_;
   const backtrace_map_t& boot_map_;
   const ImageHeader& image_header_;
 
@@ -374,8 +373,8 @@ template<>
 class RegionSpecializedBase<mirror::Object> : public RegionCommon<mirror::Object> {
  public:
   RegionSpecializedBase(std::ostream* os,
-                        std::vector<uint8_t>* remote_contents,
-                        std::vector<uint8_t>* zygote_contents,
+                        ArrayRef<uint8_t> remote_contents,
+                        ArrayRef<uint8_t> zygote_contents,
                         const backtrace_map_t& boot_map,
                         const ImageHeader& image_header,
                         bool dump_dirty_objects)
@@ -547,7 +546,7 @@ class RegionSpecializedBase<mirror::Object> : public RegionCommon<mirror::Object
           // local class object
           ObjPtr<mirror::Class> local_klass =
               RemoteContentsPointerToLocal(remote_klass,
-                                           *RegionCommon<mirror::Object>::remote_contents_,
+                                           RegionCommon<mirror::Object>::remote_contents_,
                                            RegionCommon<mirror::Object>::image_header_);
           os_ << "        " << reinterpret_cast<const void*>(object) << " ";
           os_ << "  class_status (remote): " << remote_klass->GetStatus() << ", ";
@@ -702,15 +701,15 @@ template<>
 class RegionSpecializedBase<ArtMethod> : public RegionCommon<ArtMethod> {
  public:
   RegionSpecializedBase(std::ostream* os,
-                        std::vector<uint8_t>* remote_contents,
-                        std::vector<uint8_t>* zygote_contents,
+                        ArrayRef<uint8_t> remote_contents,
+                        ArrayRef<uint8_t> zygote_contents,
                         const backtrace_map_t& boot_map,
                         const ImageHeader& image_header,
                         bool dump_dirty_objects ATTRIBUTE_UNUSED)
       : RegionCommon<ArtMethod>(os, remote_contents, zygote_contents, boot_map, image_header),
         os_(*os) {
     // Prepare the table for offset to member lookups.
-    ArtMethod* art_method = reinterpret_cast<ArtMethod*>(&(*remote_contents)[0]);
+    ArtMethod* art_method = reinterpret_cast<ArtMethod*>(&remote_contents[0]);
     art_method->VisitMembers(member_info_);
     // Prepare the table for address to symbolic entry point names.
     BuildEntryPointNames();
@@ -809,12 +808,12 @@ class RegionSpecializedBase<ArtMethod> : public RegionCommon<ArtMethod> {
       // remote class
       ObjPtr<mirror::Class> remote_declaring_class =
         FixUpRemotePointer(art_method->GetDeclaringClass(),
-                           *RegionCommon<ArtMethod>::remote_contents_,
+                           RegionCommon<ArtMethod>::remote_contents_,
                            RegionCommon<ArtMethod>::boot_map_);
       // local class
       ObjPtr<mirror::Class> declaring_class =
         RemoteContentsPointerToLocal(remote_declaring_class,
-                                     *RegionCommon<ArtMethod>::remote_contents_,
+                                     RegionCommon<ArtMethod>::remote_contents_,
                                      RegionCommon<ArtMethod>::image_header_);
       DumpOneArtMethod(art_method, declaring_class, remote_declaring_class);
     }
@@ -936,8 +935,8 @@ template <typename T>
 class RegionData : public RegionSpecializedBase<T> {
  public:
   RegionData(std::ostream* os,
-             std::vector<uint8_t>* remote_contents,
-             std::vector<uint8_t>* zygote_contents,
+             ArrayRef<uint8_t> remote_contents,
+             ArrayRef<uint8_t> zygote_contents,
              const backtrace_map_t& boot_map,
              const ImageHeader& image_header,
              bool dump_dirty_objects)
@@ -948,8 +947,7 @@ class RegionData : public RegionSpecializedBase<T> {
                                  image_header,
                                  dump_dirty_objects),
         os_(*os) {
-    CHECK(remote_contents != nullptr);
-    CHECK(zygote_contents != nullptr);
+    CHECK(!remote_contents.empty());
   }
 
   // Walk over the type T entries in theregion between begin_image_ptr and end_image_ptr,
@@ -993,7 +991,7 @@ class RegionData : public RegionSpecializedBase<T> {
         os_ << "  Application dirty entries (private dirty): ";
         // If we are dumping private dirty, diff against the zygote map to make it clearer what
         // fields caused the page to be private dirty.
-        base_ptr = &RegionCommon<T>::zygote_contents_->operator[](0);
+        base_ptr = RegionCommon<T>::zygote_contents_.data();
         break;
       case RemoteProcesses::kImageOnly:
         os_ << "  Application dirty entries (unknown whether private or shared dirty): ";
@@ -1028,7 +1026,7 @@ class RegionData : public RegionSpecializedBase<T> {
 
   void DiffDirtyEntries(ProcessType process_type,
                         const uint8_t* begin_image_ptr,
-                        std::vector<uint8_t>* contents,
+                        ArrayRef<uint8_t> contents,
                         const uint8_t* base_ptr,
                         bool log_dirty_objects)
       REQUIRES_SHARED(Locks::mutator_lock_) {
@@ -1040,7 +1038,7 @@ class RegionData : public RegionSpecializedBase<T> {
     for (T* entry : entries) {
       uint8_t* entry_bytes = reinterpret_cast<uint8_t*>(entry);
       ptrdiff_t offset = entry_bytes - begin_image_ptr;
-      uint8_t* remote_bytes = &(*contents)[offset];
+      uint8_t* remote_bytes = &contents[offset];
       RegionSpecializedBase<T>::DiffEntryContents(entry,
                                                   remote_bytes,
                                                   &base_ptr[offset],
@@ -1056,10 +1054,10 @@ class RegionData : public RegionSpecializedBase<T> {
     uint8_t* current = reinterpret_cast<uint8_t*>(entry);
     ptrdiff_t offset = current - begin_image_ptr;
     T* entry_remote =
-        reinterpret_cast<T*>(const_cast<uint8_t*>(&(*RegionCommon<T>::remote_contents_)[offset]));
-    const bool have_zygote = !RegionCommon<T>::zygote_contents_->empty();
+        reinterpret_cast<T*>(const_cast<uint8_t*>(&RegionCommon<T>::remote_contents_[offset]));
+    const bool have_zygote = !RegionCommon<T>::zygote_contents_.empty();
     const uint8_t* current_zygote =
-        have_zygote ? &(*RegionCommon<T>::zygote_contents_)[offset] : nullptr;
+        have_zygote ? &RegionCommon<T>::zygote_contents_[offset] : nullptr;
     T* entry_zygote = reinterpret_cast<T*>(const_cast<uint8_t*>(current_zygote));
     // Visit and classify entries at the current location.
     RegionSpecializedBase<T>::VisitEntry(entry);
@@ -1305,7 +1303,7 @@ class ImgDiagDumper {
   bool ComputeDirtyBytes(const ImageHeader& image_header,
                          const uint8_t* image_begin,
                          const backtrace_map_t& boot_map,
-                         const std::vector<uint8_t>& remote_contents,
+                         ArrayRef<uint8_t> remote_contents,
                          MappingData* mapping_data /*out*/) {
     std::ostream& os = *os_;
 
@@ -1502,18 +1500,42 @@ class ImgDiagDumper {
       return false;
     }
 
-    // The contents of /proc/<image_diff_pid_>/maps.
-    std::vector<uint8_t> remote_contents(boot_map_size);
-    if (!image_mem_file_.PreadFully(remote_contents.data(), boot_map_size, boot_map.start)) {
-      os << "Could not fully read file " << image_mem_file_.GetPath();
+    auto read_contents = [&](File* mem_file,
+                             /*out*/ MemMap* map,
+                             /*out*/ ArrayRef<uint8_t>* contents) {
+      DCHECK_ALIGNED(boot_map.start, kPageSize);
+      DCHECK_ALIGNED(boot_map_size, kPageSize);
+      std::string name = "Contents of " + mem_file->GetPath();
+      std::string local_error_msg;
+      // We need to use low 4 GiB memory so that we can walk the objects using standard
+      // functions that use ObjPtr<> which is checking that it fits into lower 4 GiB.
+      *map = MemMap::MapAnonymous(name.c_str(),
+                                  boot_map_size,
+                                  PROT_READ | PROT_WRITE,
+                                  /* low_4gb= */ true,
+                                  &local_error_msg);
+      if (!map->IsValid()) {
+        os << "Failed to allocate anonymous mapping for " << boot_map_size << " bytes.\n";
+        return false;
+      }
+      if (!mem_file->PreadFully(map->Begin(), boot_map_size, boot_map.start)) {
+        os << "Could not fully read file " << image_mem_file_.GetPath();
+        return false;
+      }
+      *contents = ArrayRef<uint8_t>(map->Begin(), boot_map_size);
+      return true;
+    };
+    // The contents of /proc/<image_diff_pid_>/mem.
+    MemMap remote_contents_map;
+    ArrayRef<uint8_t> remote_contents;
+    if (!read_contents(&image_mem_file_, &remote_contents_map, &remote_contents)) {
       return false;
     }
-    // The contents of /proc/<zygote_diff_pid_>/maps.
-    std::vector<uint8_t> zygote_contents;
+    // The contents of /proc/<zygote_diff_pid_>/mem.
+    MemMap zygote_contents_map;
+    ArrayRef<uint8_t> zygote_contents;
     if (zygote_diff_pid_ != -1) {
-      zygote_contents.resize(boot_map_size);
-      if (!zygote_mem_file_.PreadFully(zygote_contents.data(), boot_map_size, boot_map.start)) {
-        LOG(WARNING) << "Could not fully read zygote file " << zygote_mem_file_.GetPath();
+      if (!read_contents(&zygote_mem_file_, &zygote_contents_map, &zygote_contents)) {
         return false;
       }
     }
@@ -1550,8 +1572,8 @@ class ImgDiagDumper {
 
     // Check all the mirror::Object entries in the image.
     RegionData<mirror::Object> object_region_data(os_,
-                                                  &remote_contents,
-                                                  &zygote_contents,
+                                                  remote_contents,
+                                                  zygote_contents,
                                                   boot_map,
                                                   image_header,
                                                   dump_dirty_objects_);
@@ -1561,8 +1583,8 @@ class ImgDiagDumper {
 
     // Check all the ArtMethod entries in the image.
     RegionData<ArtMethod> artmethod_region_data(os_,
-                                                &remote_contents,
-                                                &zygote_contents,
+                                                remote_contents,
+                                                zygote_contents,
                                                 boot_map,
                                                 image_header,
                                                 dump_dirty_objects_);
