@@ -43,7 +43,6 @@ public class Main {
             System.out.println("finalizerWait timed out.");
         }
 
-        System.out.println("Starting main snooze.");
         // Sleep for less time than the default finalizer timeout, but significantly more than
         // the new timeout plus the 5 seconds we wait to dump thread stacks before actually
         // exiting.
