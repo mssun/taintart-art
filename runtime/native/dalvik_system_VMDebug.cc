@@ -610,6 +610,19 @@ static void VMDebug_allowHiddenApiReflectionFrom(JNIEnv* env, jclass, jclass j_c
   h_caller->SetSkipHiddenApiChecks();
 }
 
+static void VMDebug_setAllocTrackerStackDepth(JNIEnv* env, jclass, jint stack_depth) {
+  Runtime* runtime = Runtime::Current();
+  if (stack_depth < 0 ||
+      static_cast<size_t>(stack_depth) > gc::AllocRecordObjectMap::kMaxSupportedStackDepth) {
+    ScopedObjectAccess soa(env);
+    soa.Self()->ThrowNewExceptionF("Ljava/lang/RuntimeException;",
+                                   "Stack depth is invalid: %d",
+                                   stack_depth);
+  } else {
+    runtime->GetHeap()->SetAllocTrackerStackDepth(static_cast<size_t>(stack_depth));
+  }
+}
+
 static JNINativeMethod gMethods[] = {
   NATIVE_METHOD(VMDebug, countInstancesOfClass, "(Ljava/lang/Class;Z)J"),
   NATIVE_METHOD(VMDebug, countInstancesOfClasses, "([Ljava/lang/Class;Z)[J"),
@@ -646,6 +659,7 @@ static JNINativeMethod gMethods[] = {
   NATIVE_METHOD(VMDebug, getRuntimeStatsInternal, "()[Ljava/lang/String;"),
   NATIVE_METHOD(VMDebug, nativeAttachAgent, "(Ljava/lang/String;Ljava/lang/ClassLoader;)V"),
   NATIVE_METHOD(VMDebug, allowHiddenApiReflectionFrom, "(Ljava/lang/Class;)V"),
+  NATIVE_METHOD(VMDebug, setAllocTrackerStackDepth, "(I)V"),
 };
 
 void register_dalvik_system_VMDebug(JNIEnv* env) {

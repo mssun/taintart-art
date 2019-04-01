@@ -200,6 +200,11 @@ class AllocRecord {
 
 class AllocRecordObjectMap {
  public:
+  static constexpr size_t kDefaultNumAllocRecords = 512 * 1024;
+  static constexpr size_t kDefaultNumRecentRecords = 64 * 1024 - 1;
+  static constexpr size_t kDefaultAllocStackDepth = 16;
+  static constexpr size_t kMaxSupportedStackDepth = 128;
+
   // GcRoot<mirror::Object> pointers in the list are weak roots, and the last recent_record_max_
   // number of AllocRecord::klass_ pointers are strong roots (and the rest of klass_ pointers are
   // weak roots). The last recent_record_max_ number of pairs in the list are always kept for DDMS's
@@ -291,10 +296,6 @@ class AllocRecordObjectMap {
   void Clear() REQUIRES(Locks::alloc_tracker_lock_);
 
  private:
-  static constexpr size_t kDefaultNumAllocRecords = 512 * 1024;
-  static constexpr size_t kDefaultNumRecentRecords = 64 * 1024 - 1;
-  static constexpr size_t kDefaultAllocStackDepth = 16;
-  static constexpr size_t kMaxSupportedStackDepth = 128;
   size_t alloc_record_max_ GUARDED_BY(Locks::alloc_tracker_lock_) = kDefaultNumAllocRecords;
   size_t recent_record_max_ GUARDED_BY(Locks::alloc_tracker_lock_) = kDefaultNumRecentRecords;
   size_t max_stack_depth_ = kDefaultAllocStackDepth;
@@ -304,7 +305,7 @@ class AllocRecordObjectMap {
   // see the comment in typedef of EntryList
   EntryList entries_ GUARDED_BY(Locks::alloc_tracker_lock_);
 
-  void SetProperties() REQUIRES(Locks::alloc_tracker_lock_);
+  void SetMaxStackDepth(size_t max_stack_depth) REQUIRES(Locks::alloc_tracker_lock_);
 };
 
 }  // namespace gc
