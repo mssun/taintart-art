@@ -111,7 +111,7 @@ TEST_F(ObjectTest, Clone) {
   StackHandleScope<2> hs(soa.Self());
   Handle<ObjectArray<Object>> a1(hs.NewHandle(AllocObjectArray<Object>(soa.Self(), 256)));
   size_t s1 = a1->SizeOf();
-  Object* clone = a1->Clone(soa.Self());
+  ObjPtr<Object> clone = a1->Clone(soa.Self());
   EXPECT_EQ(s1, clone->SizeOf());
   EXPECT_TRUE(clone->GetClass() == a1->GetClass());
 }
@@ -340,7 +340,8 @@ TEST_F(ObjectTest, CreateMultiArray) {
       dims->Set<false>(0, i);
       dims->Set<false>(1, j);
       multi.Assign(Array::CreateMultiArray(soa.Self(), int_class, dims));
-      EXPECT_TRUE(multi->GetClass() == class_linker_->FindSystemClass(soa.Self(), "[[I"));
+      ObjPtr<mirror::Class> expected_class = class_linker_->FindSystemClass(soa.Self(), "[[I");
+      EXPECT_OBJ_PTR_EQ(multi->GetClass(), expected_class);
       EXPECT_EQ(i, multi->GetLength());
       for (int k = 0; k < i; ++k) {
         ObjPtr<Array> outer = multi->AsObjectArray<Array>()->Get(k);

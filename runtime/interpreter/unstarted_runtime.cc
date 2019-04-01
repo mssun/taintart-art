@@ -1525,7 +1525,7 @@ void UnstartedRuntime::UnstartedUnsafeGetObjectVolatile(
     return;
   }
   int64_t offset = shadow_frame->GetVRegLong(arg_offset + 2);
-  mirror::Object* value = obj->GetFieldObjectVolatile<mirror::Object>(MemberOffset(offset));
+  ObjPtr<mirror::Object> value = obj->GetFieldObjectVolatile<mirror::Object>(MemberOffset(offset));
   result->SetL(value);
 }
 

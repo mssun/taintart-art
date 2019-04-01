@@ -359,7 +359,7 @@ class ScopedCheck {
     if (f == nullptr) {
       return false;
     }
-    mirror::Class* c = o->GetClass();
+    ObjPtr<mirror::Class> c = o->GetClass();
     if (c->FindInstanceField(f->GetName(), f->GetTypeDescriptor()) == nullptr) {
       AbortF("jfieldID %s not valid for an object of class %s",
              f->PrettyField().c_str(), o->PrettyTypeOf().c_str());

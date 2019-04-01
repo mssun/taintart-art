@@ -99,10 +99,10 @@ TEST_F(TransactionTest, Object_class) {
   Runtime::Current()->EnterTransactionMode();
   Handle<mirror::Object> h_obj(hs.NewHandle(h_klass->AllocObject(soa.Self())));
   ASSERT_TRUE(h_obj != nullptr);
-  ASSERT_EQ(h_obj->GetClass(), h_klass.Get());
+  ASSERT_OBJ_PTR_EQ(h_obj->GetClass(), h_klass.Get());
   // Rolling back transaction's changes must not clear the Object::class field.
   Runtime::Current()->RollbackAndExitTransactionMode();
-  EXPECT_EQ(h_obj->GetClass(), h_klass.Get());
+  EXPECT_OBJ_PTR_EQ(h_obj->GetClass(), h_klass.Get());
 }
 
 // Tests object's monitor state is preserved after transaction rollback.
@@ -114,7 +114,7 @@ TEST_F(TransactionTest, Object_monitor) {
   ASSERT_TRUE(h_klass != nullptr);
   Handle<mirror::Object> h_obj(hs.NewHandle(h_klass->AllocObject(soa.Self())));
   ASSERT_TRUE(h_obj != nullptr);
-  ASSERT_EQ(h_obj->GetClass(), h_klass.Get());
+  ASSERT_OBJ_PTR_EQ(h_obj->GetClass(), h_klass.Get());
 
   // Lock object's monitor outside the transaction.
   h_obj->MonitorEnter(soa.Self());
@@ -151,7 +151,7 @@ TEST_F(TransactionTest, Array_length) {
                                      h_klass->GetComponentSizeShift(),
                                      Runtime::Current()->GetHeap()->GetCurrentAllocator())));
   ASSERT_TRUE(h_obj != nullptr);
-  ASSERT_EQ(h_obj->GetClass(), h_klass.Get());
+  ASSERT_OBJ_PTR_EQ(h_obj->GetClass(), h_klass.Get());
   Runtime::Current()->RollbackAndExitTransactionMode();
 
   // Rolling back transaction's changes must not reset array's length.
@@ -227,7 +227,7 @@ TEST_F(TransactionTest, StaticFieldsTest) {
   ASSERT_TRUE(object_klass != nullptr);
   Handle<mirror::Object> h_obj(hs.NewHandle(h_klass->AllocObject(soa.Self())));
   ASSERT_TRUE(h_obj != nullptr);
-  ASSERT_EQ(h_obj->GetClass(), h_klass.Get());
+  ASSERT_OBJ_PTR_EQ(h_obj->GetClass(), h_klass.Get());
 
   // Modify fields inside transaction then rollback changes.
   Runtime::Current()->EnterTransactionMode();
@@ -327,7 +327,7 @@ TEST_F(TransactionTest, InstanceFieldsTest) {
   ASSERT_TRUE(object_klass != nullptr);
   Handle<mirror::Object> h_obj(hs.NewHandle(h_klass->AllocObject(soa.Self())));
   ASSERT_TRUE(h_obj != nullptr);
-  ASSERT_EQ(h_obj->GetClass(), h_klass.Get());
+  ASSERT_OBJ_PTR_EQ(h_obj->GetClass(), h_klass.Get());
 
   // Modify fields inside transaction then rollback changes.
   Runtime::Current()->EnterTransactionMode();
@@ -450,7 +450,7 @@ TEST_F(TransactionTest, StaticArrayFieldsTest) {
   ASSERT_TRUE(object_klass != nullptr);
   Handle<mirror::Object> h_obj(hs.NewHandle(h_klass->AllocObject(soa.Self())));
   ASSERT_TRUE(h_obj != nullptr);
-  ASSERT_EQ(h_obj->GetClass(), h_klass.Get());
+  ASSERT_OBJ_PTR_EQ(h_obj->GetClass(), h_klass.Get());
 
   // Modify fields inside transaction then rollback changes.
   Runtime::Current()->EnterTransactionMode();

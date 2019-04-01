@@ -74,9 +74,9 @@ class CopyReferenceFieldsWithReadBarrierVisitor {
   const ObjPtr<Object> dest_obj_;
 };
 
-Object* Object::CopyObject(ObjPtr<mirror::Object> dest,
-                           ObjPtr<mirror::Object> src,
-                           size_t num_bytes) {
+ObjPtr<Object> Object::CopyObject(ObjPtr<mirror::Object> dest,
+                                  ObjPtr<mirror::Object> src,
+                                  size_t num_bytes) {
   // Copy instance data.  Don't assume memcpy copies by words (b/32012820).
   {
     const size_t offset = sizeof(Object);
@@ -131,7 +131,7 @@ Object* Object::CopyObject(ObjPtr<mirror::Object> dest,
   } else {
     WriteBarrier::ForEveryFieldWrite(dest);
   }
-  return dest.Ptr();
+  return dest;
 }
 
 // An allocation pre-fence visitor that copies the object.
@@ -151,7 +151,7 @@ class CopyObjectVisitor {
   DISALLOW_COPY_AND_ASSIGN(CopyObjectVisitor);
 };
 
-Object* Object::Clone(Thread* self) {
+ObjPtr<Object> Object::Clone(Thread* self) {
   CHECK(!IsClass()) << "Can't clone classes.";
   // Object::SizeOf gets the right size even if we're an array. Using c->AllocObject() here would
   // be wrong.
@@ -169,7 +169,7 @@ Object* Object::Clone(Thread* self) {
   if (this_object->GetClass()->IsFinalizable()) {
     heap->AddFinalizerReference(self, &copy);
   }
-  return copy.Ptr();
+  return copy;
 }
 
 uint32_t Object::GenerateIdentityHashCode() {

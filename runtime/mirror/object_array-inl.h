@@ -285,7 +285,7 @@ inline void ObjectArray<T>::AssignableCheckingMemcpy(int32_t dst_pos,
         SetWithoutChecks<kTransactionActive>(dst_pos + i, nullptr);
       } else {
         // TODO: use the underlying class reference to avoid uncompression when not necessary.
-        Class* o_class = o->GetClass();
+        ObjPtr<Class> o_class = o->GetClass();
         if (LIKELY(lastAssignableElementClass == o_class)) {
           SetWithoutChecks<kTransactionActive>(dst_pos + i, o);
         } else if (LIKELY(dst_class->IsAssignableFrom(o_class))) {
