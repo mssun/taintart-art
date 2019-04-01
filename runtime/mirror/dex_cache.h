@@ -209,9 +209,7 @@ class MANAGED DexCache final : public Object {
   void FixupResolvedCallSites(GcRoot<mirror::CallSite>* dest, const Visitor& visitor)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
-  String* GetLocation() REQUIRES_SHARED(Locks::mutator_lock_) {
-    return GetFieldObject<String>(OFFSET_OF_OBJECT_MEMBER(DexCache, location_));
-  }
+  ObjPtr<String> GetLocation() REQUIRES_SHARED(Locks::mutator_lock_);
 
   static constexpr MemberOffset StringsOffset() {
     return OFFSET_OF_OBJECT_MEMBER(DexCache, strings_);
