@@ -16,8 +16,10 @@
 #
 
 import argparse
+import fnmatch
 import logging
 import os
+import os.path
 import subprocess
 import sys
 import zipfile
@@ -184,7 +186,7 @@ class Checker:
   def __init__(self, provider):
     self._provider = provider
     self._errors = 0
-    self._expected_file_paths = set()
+    self._expected_file_globs = set()
 
   def fail(self, msg, *fail_args):
     self._errors += 1
@@ -208,7 +210,7 @@ class Checker:
     ok, msg = self.is_file(path)
     if not ok:
       self.fail(msg, path)
-    self._expected_file_paths.add(path)
+    self._expected_file_globs.add(path)
     return ok
 
   def check_executable(self, filename):
@@ -229,37 +231,43 @@ class Checker:
       return
     if not fs_object.is_symlink:
       self.fail('%s is not a symlink', path)
-    self._expected_file_paths.add(path)
+    self._expected_file_globs.add(path)
 
   def check_single_library(self, filename):
     lib_path = 'lib/%s' % filename
     lib64_path = 'lib64/%s' % filename
     lib_is_file, _ = self.is_file(lib_path)
     if lib_is_file:
-      self._expected_file_paths.add(lib_path)
+      self._expected_file_globs.add(lib_path)
     lib64_is_file, _ = self.is_file(lib64_path)
     if lib64_is_file:
-      self._expected_file_paths.add(lib64_path)
+      self._expected_file_globs.add(lib64_path)
     if not lib_is_file and not lib64_is_file:
       self.fail('Library missing: %s', filename)
 
   def check_java_library(self, basename):
     return self.check_file('javalib/%s.jar' % basename)
 
-  def ignore_path(self, path):
-    self._expected_file_paths.add(path)
+  def ignore_path(self, path_glob):
+    self._expected_file_globs.add(path_glob)
 
   def check_no_superfluous_files(self, dir_path):
-    dir_path += '/'
-    expected_filenames = set(['.', '..'])
-    for path in self._expected_file_paths:
-      if path.startswith(dir_path):
-        subpath = path[len(dir_path):]
-        subpath_first_segment, _, _ = subpath.partition('/')
-        expected_filenames.add(subpath_first_segment)
+    paths = []
     for name in sorted(self._provider.read_dir(dir_path).keys()):
-      if name not in expected_filenames:
-        self.fail('Unexpected file \'%s%s\'', dir_path, name)
+      if name not in ('.', '..'):
+        paths.append(os.path.join(dir_path, name))
+    expected_paths = set()
+    dir_prefix = dir_path + '/'
+    for path_glob in self._expected_file_globs:
+      expected_paths |= set(fnmatch.filter(paths, path_glob))
+      # If there are globs in subdirectories of dir_path we want to match their
+      # path segments at this directory level.
+      if path_glob.startswith(dir_prefix):
+        subpath = path_glob[len(dir_prefix):]
+        subpath_first_segment, _, _ = subpath.partition('/')
+        expected_paths |= set(fnmatch.filter(paths, dir_prefix + subpath_first_segment))
+    for unexpected_path in set(paths) - expected_paths:
+      self.fail('Unexpected file \'%s\'', unexpected_path)
 
   # Just here for docs purposes, even if it isn't good Python style.
 
@@ -279,7 +287,7 @@ class Checker:
     """Check lib/basename.so, and/or lib64/basename.so."""
     raise NotImplementedError
 
-  def check_optional_native_library(self, basename):
+  def check_optional_native_library(self, basename_glob):
     """Allow lib/basename.so and/or lib64/basename.so to exist."""
     raise NotImplementedError
 
@@ -305,8 +313,8 @@ class Arch32Checker(Checker):
     # the precision of this test?
     self.check_file('lib/%s.so' % basename)
 
-  def check_optional_native_library(self, basename):
-    self.ignore_path('lib/%s.so' % basename)
+  def check_optional_native_library(self, basename_glob):
+    self.ignore_path('lib/%s.so' % basename_glob)
 
   def check_prefer64_library(self, basename):
     self.check_native_library(basename)
@@ -329,8 +337,8 @@ class Arch64Checker(Checker):
     # the precision of this test?
     self.check_file('lib64/%s.so' % basename)
 
-  def check_optional_native_library(self, basename):
-    self.ignore_path('lib64/%s.so' % basename)
+  def check_optional_native_library(self, basename_glob):
+    self.ignore_path('lib64/%s.so' % basename_glob)
 
   def check_prefer64_library(self, basename):
     self.check_native_library(basename)
@@ -356,9 +364,9 @@ class MultilibChecker(Checker):
     self.check_file('lib/%s.so' % basename)
     self.check_file('lib64/%s.so' % basename)
 
-  def check_optional_native_library(self, basename):
-    self.ignore_path('lib/%s.so' % basename)
-    self.ignore_path('lib64/%s.so' % basename)
+  def check_optional_native_library(self, basename_glob):
+    self.ignore_path('lib/%s.so' % basename_glob)
+    self.ignore_path('lib64/%s.so' % basename_glob)
 
   def check_prefer64_library(self, basename):
     self.check_file('lib64/%s.so' % basename)
@@ -435,11 +443,13 @@ class ReleaseChecker:
     self._checker.check_native_library('libziparchive')
     self._checker.check_optional_native_library('libvixl')  # Only on ARM/ARM64
 
-    # TODO(b/124293228): Figure out why we get these.
+    # Allow extra dependencies that appear in ASAN builds.
+    self._checker.check_optional_native_library('libclang_rt.asan*')
+    self._checker.check_optional_native_library('libclang_rt.hwasan*')
+    self._checker.check_optional_native_library('libclang_rt.ubsan*')
+
+    # TODO(b/124293228): Figure out why we get this.
     self._checker.check_native_library('libcutils')
-    # The following appears with ASAN (SANITIZE_TARGET=address).
-    self._checker.check_optional_native_library('libclang_rt.asan-i686-android')
-    self._checker.check_optional_native_library('libclang_rt.hwasan-aarch64-android')
 
 
 class ReleaseTargetChecker:
@@ -509,6 +519,10 @@ class ReleaseHostChecker:
     return 'Release (Host) Checker'
 
   def run(self):
+    # Check binaries for ART.
+    self._checker.check_executable('hprof-conv')
+    self._checker.check_symlinked_multilib_executable('dex2oatd')
+
     # Check exported native libraries for Managed Core Library.
     self._checker.check_native_library('libandroidicu-host')
     self._checker.check_native_library('libandroidio')
