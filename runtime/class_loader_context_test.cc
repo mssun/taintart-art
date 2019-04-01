@@ -122,7 +122,7 @@ class ClassLoaderContextTest : public CommonRuntimeTest {
                                        size_t index,
                                        const std::string& test_name) {
     VerifyClassLoaderFromTestDex(
-        context, index, ClassLoaderContext::kInMemoryDexClassLoader, test_name);
+        context, index, ClassLoaderContext::kInMemoryDexClassLoader, test_name, "<unknown>");
   }
 
   enum class LocationCheck {
@@ -141,7 +141,8 @@ class ClassLoaderContextTest : public CommonRuntimeTest {
   void VerifyOpenDexFiles(
       ClassLoaderContext* context,
       size_t index,
-      std::vector<std::unique_ptr<const DexFile>>* all_dex_files) {
+      std::vector<std::unique_ptr<const DexFile>>* all_dex_files,
+      bool classpath_matches_dex_location = true) {
     ASSERT_TRUE(context != nullptr);
     ASSERT_TRUE(context->dex_files_open_attempted_);
     ASSERT_TRUE(context->dex_files_open_result_);
@@ -169,7 +170,9 @@ class ClassLoaderContextTest : public CommonRuntimeTest {
         ASSERT_EQ(expected_location, opened_location);
       }
       ASSERT_EQ(expected_dex_file->GetLocationChecksum(), opened_dex_file->GetLocationChecksum());
-      ASSERT_EQ(info.classpath[k], opened_location);
+      if (classpath_matches_dex_location) {
+        ASSERT_EQ(info.classpath[k], opened_location);
+      }
     }
   }
 
@@ -250,11 +253,20 @@ class ClassLoaderContextTest : public CommonRuntimeTest {
   void VerifyClassLoaderFromTestDex(ClassLoaderContext* context,
                                     size_t index,
                                     ClassLoaderContext::ClassLoaderType type,
-                                    const std::string& test_name) {
+                                    const std::string& test_name,
+                                    const std::string& classpath = "") {
     std::vector<std::unique_ptr<const DexFile>> dex_files = OpenTestDexFiles(test_name.c_str());
 
-    VerifyClassLoaderInfo(context, index, type, GetTestDexFileName(test_name.c_str()));
-    VerifyOpenDexFiles(context, index, &dex_files);
+    // If `classpath` is set, override the expected value of ClassLoaderInfo::classpath.
+    // Otherwise assume it is equal to dex location (here test dex file name).
+    VerifyClassLoaderInfo(context,
+                          index,
+                          type,
+                          classpath.empty() ? GetTestDexFileName(test_name.c_str()) : classpath);
+    VerifyOpenDexFiles(context,
+                       index,
+                       &dex_files,
+                       /* classpath_matches_dex_location= */ classpath.empty());
   }
 };
 
@@ -283,10 +295,22 @@ TEST_F(ClassLoaderContextTest, ParseValidContextDLC) {
   VerifyClassLoaderDLC(context.get(), 0, "a.dex");
 }
 
-TEST_F(ClassLoaderContextTest, ParseInvalidContextIMC) {
+TEST_F(ClassLoaderContextTest, ParseValidContextIMC) {
+  std::unique_ptr<ClassLoaderContext> context = ParseContextWithChecksums("IMC[<unknown>*111]");
+  ASSERT_FALSE(context == nullptr);
+}
+
+TEST_F(ClassLoaderContextTest, ParseInvalidContextIMCNoChecksum) {
   // IMC is treated as an unknown class loader unless a checksum is provided.
   // This is because the dex location is always bogus.
-  std::unique_ptr<ClassLoaderContext> context = ClassLoaderContext::Create("IMC[a.dex]");
+  std::unique_ptr<ClassLoaderContext> context = ClassLoaderContext::Create("IMC[<unknown>]");
+  ASSERT_TRUE(context == nullptr);
+}
+
+TEST_F(ClassLoaderContextTest, ParseInvalidContextIMCWrongClasspathMagic) {
+  // IMC does not support arbitrary dex location. A magic marker must be used
+  // otherwise the spec should be rejected.
+  std::unique_ptr<ClassLoaderContext> context = ClassLoaderContext::Create("IMC[a.dex*111]");
   ASSERT_TRUE(context == nullptr);
 }
 
@@ -500,11 +524,7 @@ TEST_F(ClassLoaderContextTest, OpenDexFilesForIMCFails) {
   std::unique_ptr<ClassLoaderContext> context;
   std::string dex_name = GetTestDexFileName("Main");
 
-  context = ParseContextWithChecksums("PCL[" + dex_name + "*111]");
-  VerifyContextSize(context.get(), 1);
-  ASSERT_TRUE(context->OpenDexFiles(InstructionSet::kArm, "."));
-
-  context = ParseContextWithChecksums("IMC[" + dex_name + "*111]");
+  context = ParseContextWithChecksums("IMC[<unknown>*111]");
   VerifyContextSize(context.get(), 1);
   ASSERT_FALSE(context->OpenDexFiles(InstructionSet::kArm, "."));
 }
@@ -1075,6 +1095,23 @@ TEST_F(ClassLoaderContextTest, EncodeInOatFile) {
   ASSERT_EQ(expected_encoding, context->EncodeContextForOatFile(""));
 }
 
+TEST_F(ClassLoaderContextTest, EncodeInOatFileIMC) {
+  jobject class_loader_a = LoadDexInPathClassLoader("Main", nullptr);
+  jobject class_loader_b = LoadDexInInMemoryDexClassLoader("MyClass", class_loader_a);
+
+  std::unique_ptr<ClassLoaderContext> context = CreateContextForClassLoader(class_loader_b);
+  ASSERT_TRUE(context->OpenDexFiles(InstructionSet::kArm, ""));
+
+  std::vector<std::unique_ptr<const DexFile>> dex1 = OpenTestDexFiles("Main");
+  std::vector<std::unique_ptr<const DexFile>> dex2 = OpenTestDexFiles("MyClass");
+  ASSERT_EQ(dex2.size(), 1u);
+
+  std::string encoding = context->EncodeContextForOatFile("");
+  std::string expected_encoding = "IMC[<unknown>*" + std::to_string(dex2[0]->GetLocationChecksum())
+      + "];PCL[" + CreateClassPathWithChecksums(dex1) + "]";
+  ASSERT_EQ(expected_encoding, context->EncodeContextForOatFile(""));
+}
+
 TEST_F(ClassLoaderContextTest, EncodeForDex2oat) {
   std::string dex1_name = GetTestDexFileName("Main");
   std::string dex2_name = GetTestDexFileName("MultiDex");
@@ -1082,10 +1119,20 @@ TEST_F(ClassLoaderContextTest, EncodeForDex2oat) {
       ClassLoaderContext::Create("PCL[" + dex1_name + ":" + dex2_name + "]");
   ASSERT_TRUE(context->OpenDexFiles(InstructionSet::kArm, ""));
 
-  std::vector<std::unique_ptr<const DexFile>> dex1 = OpenTestDexFiles("Main");
-  std::vector<std::unique_ptr<const DexFile>> dex2 = OpenTestDexFiles("MultiDex");
   std::string encoding = context->EncodeContextForDex2oat("");
   std::string expected_encoding = "PCL[" + dex1_name + ":" + dex2_name + "]";
+  ASSERT_EQ(expected_encoding, context->EncodeContextForDex2oat(""));
+}
+
+TEST_F(ClassLoaderContextTest, EncodeForDex2oatIMC) {
+  jobject class_loader_a = LoadDexInPathClassLoader("Main", nullptr);
+  jobject class_loader_b = LoadDexInInMemoryDexClassLoader("MyClass", class_loader_a);
+
+  std::unique_ptr<ClassLoaderContext> context = CreateContextForClassLoader(class_loader_b);
+  ASSERT_TRUE(context->OpenDexFiles(InstructionSet::kArm, ""));
+
+  std::string encoding = context->EncodeContextForDex2oat("");
+  std::string expected_encoding = "IMC[<unknown>];PCL[" + GetTestDexFileName("Main") + "]";
   ASSERT_EQ(expected_encoding, context->EncodeContextForDex2oat(""));
 }
 
@@ -1202,7 +1249,7 @@ TEST_F(ClassLoaderContextTest, VerifyClassLoaderContextMatch) {
 }
 
 TEST_F(ClassLoaderContextTest, VerifyClassLoaderContextWithIMCMatch) {
-  std::string context_spec = "PCL[a.dex*123:b.dex*456];DLC[c.dex*890];IMC[d.dex*111]";
+  std::string context_spec = "PCL[a.dex*123:b.dex*456];DLC[c.dex*890];IMC[<unknown>*111]";
   std::unique_ptr<ClassLoaderContext> context = ParseContextWithChecksums(context_spec);
   // Pretend that we successfully open the dex files to pass the DCHECKS.
   // (as it's much easier to test all the corner cases without relying on actual dex files).
@@ -1211,7 +1258,7 @@ TEST_F(ClassLoaderContextTest, VerifyClassLoaderContextWithIMCMatch) {
   VerifyContextSize(context.get(), 3);
   VerifyClassLoaderPCL(context.get(), 0, "a.dex:b.dex");
   VerifyClassLoaderDLC(context.get(), 1, "c.dex");
-  VerifyClassLoaderIMC(context.get(), 2, "d.dex");
+  VerifyClassLoaderIMC(context.get(), 2, "<unknown>");
 
   ASSERT_EQ(context->VerifyClassLoaderContextMatch(context_spec),
             ClassLoaderContext::VerificationResult::kVerifies);
@@ -1286,18 +1333,19 @@ TEST_F(ClassLoaderContextTest, VerifyClassLoaderContextMatchWithSL) {
 
 TEST_F(ClassLoaderContextTest, VerifyClassLoaderContextMatchWithIMCSL) {
   std::string context_spec =
-      "IMC[a.dex*123:b.dex*456]{IMC[d.dex*321];IMC[e.dex*654]#IMC[f.dex*098:g.dex*999]}"
-      ";DLC[c.dex*890]";
+      "IMC[<unknown>*123:<unknown>*456]"
+      "{IMC[<unknown>*321];IMC[<unknown>*654]#IMC[<unknown>*098:<unknown>*999]};"
+      "DLC[c.dex*890]";
   std::unique_ptr<ClassLoaderContext> context = ParseContextWithChecksums(context_spec);
   // Pretend that we successfully open the dex files to pass the DCHECKS.
   // (as it's much easier to test all the corner cases without relying on actual dex files).
   PretendContextOpenedDexFiles(context.get());
 
   VerifyContextSize(context.get(), 2);
-  VerifyClassLoaderIMC(context.get(), 0, "a.dex:b.dex");
+  VerifyClassLoaderIMC(context.get(), 0, "<unknown>:<unknown>");
   VerifyClassLoaderDLC(context.get(), 1, "c.dex");
-  VerifyClassLoaderSharedLibraryIMC(context.get(), 0, 0, "d.dex");
-  VerifyClassLoaderSharedLibraryIMC(context.get(), 0, 1, "f.dex:g.dex");
+  VerifyClassLoaderSharedLibraryIMC(context.get(), 0, 0, "<unknown>");
+  VerifyClassLoaderSharedLibraryIMC(context.get(), 0, 1, "<unknown>:<unknown>");
 
   ASSERT_EQ(context->VerifyClassLoaderContextMatch(context_spec),
             ClassLoaderContext::VerificationResult::kVerifies);
