@@ -364,16 +364,18 @@ Runtime::~Runtime() {
         << "\n";
   }
 
+  // Wait for the workers of thread pools to be created since there can't be any
+  // threads attaching during shutdown.
   WaitForThreadPoolWorkersToStart();
-
   if (jit_ != nullptr) {
-    // Wait for the workers to be created since there can't be any threads attaching during
-    // shutdown.
     jit_->WaitForWorkersToBeCreated();
     // Stop the profile saver thread before marking the runtime as shutting down.
     // The saver will try to dump the profiles before being sopped and that
     // requires holding the mutator lock.
     jit_->StopProfileSaver();
+  }
+  if (oat_file_manager_ != nullptr) {
+    oat_file_manager_->WaitForWorkersToBeCreated();
   }
 
   {
@@ -418,6 +420,9 @@ Runtime::~Runtime() {
     // Delete thread pool before the thread list since we don't want to wait forever on the
     // JIT compiler threads.
     jit_->DeleteThreadPool();
+  }
+  if (oat_file_manager_ != nullptr) {
+    oat_file_manager_->DeleteThreadPool();
   }
   DeleteThreadPool();
   CHECK(thread_pool_ == nullptr);

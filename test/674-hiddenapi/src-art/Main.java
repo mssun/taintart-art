@@ -14,18 +14,12 @@
  * limitations under the License.
  */
 
-import dalvik.system.InMemoryDexClassLoader;
 import dalvik.system.PathClassLoader;
-import dalvik.system.VMRuntime;
 import java.io.File;
-import java.io.InputStream;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
-import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.util.Arrays;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipFile;
 
 public class Main {
   // This needs to be kept in sync with DexDomain in ChildClass.
@@ -52,6 +46,9 @@ public class Main {
     // As a side effect, we also cannot test Platform->Platform and later
     // Platform->CorePlatform as the former succeeds in verifying linkage usages
     // that should fail in the latter.
+    // We also cannot use InMemoryDexClassLoader because it runs verification in
+    // a background thread and being able to dynamically change the configuration
+    // (like list of exemptions) would require proper thread synchronization.
 
     // Run test with both parent and child dex files loaded with class loaders.
     // The expectation is that hidden members in parent should be visible to
@@ -104,7 +101,7 @@ public class Main {
     // Load child dex if it is not in boot class path.
     ClassLoader childLoader = null;
     if (childDomain == DexDomain.Application) {
-      childLoader = new InMemoryDexClassLoader(readDexFile(DEX_CHILD), parentLoader);
+      childLoader = new PathClassLoader(DEX_CHILD, parentLoader);
     } else {
       if (parentLoader != BOOT_CLASS_LOADER) {
         throw new IllegalStateException(
@@ -148,22 +145,6 @@ public class Main {
       throw new IllegalStateException("Didn't find " + libName + " in " +
           Arrays.toString(libPaths));
     }
-  }
-
-  // Helper to read dex file into memory.
-  private static ByteBuffer readDexFile(String jarFileName) throws Exception {
-    ZipFile zip = new ZipFile(new File(jarFileName));
-    ZipEntry entry = zip.getEntry("classes.dex");
-    InputStream is = zip.getInputStream(entry);
-    int offset = 0;
-    int size = (int) entry.getSize();
-    ByteBuffer buffer = ByteBuffer.allocate(size);
-    while (is.available() > 0) {
-      is.read(buffer.array(), offset, size - offset);
-    }
-    is.close();
-    zip.close();
-    return buffer;
   }
 
   // Copy native library to a new file with a unique name so it does not
