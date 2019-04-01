@@ -29,7 +29,7 @@
 #include "object-inl.h"
 #include "object_array-inl.h"
 #include "object_array.h"
-#include "stack_trace_element.h"
+#include "stack_trace_element-inl.h"
 #include "string.h"
 #include "well_known_classes.h"
 
@@ -50,7 +50,8 @@ void Throwable::SetDetailMessage(ObjPtr<String> new_detail_message) {
 void Throwable::SetCause(ObjPtr<Throwable> cause) {
   CHECK(cause != nullptr);
   CHECK(cause != this);
-  Throwable* current_cause = GetFieldObject<Throwable>(OFFSET_OF_OBJECT_MEMBER(Throwable, cause_));
+  ObjPtr<Throwable> current_cause =
+      GetFieldObject<Throwable>(OFFSET_OF_OBJECT_MEMBER(Throwable, cause_));
   CHECK(current_cause == nullptr || current_cause == this);
   if (Runtime::Current()->IsActiveTransaction()) {
     SetFieldObject<true>(OFFSET_OF_OBJECT_MEMBER(Throwable, cause_), cause);
@@ -137,8 +138,8 @@ std::string Throwable::Dump() {
         for (int32_t i = 0; i < ste_array->GetLength(); ++i) {
           ObjPtr<StackTraceElement> ste = ste_array->Get(i);
           DCHECK(ste != nullptr);
-          auto* method_name = ste->GetMethodName();
-          auto* file_name = ste->GetFileName();
+          ObjPtr<String> method_name = ste->GetMethodName();
+          ObjPtr<String> file_name = ste->GetFileName();
           result += StringPrintf(
               "  at %s (%s:%d)\n",
               method_name != nullptr ? method_name->ToModifiedUtf8().c_str() : "<unknown method>",

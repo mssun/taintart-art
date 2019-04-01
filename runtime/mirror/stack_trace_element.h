@@ -29,27 +29,21 @@ namespace mirror {
 // C++ mirror of java.lang.StackTraceElement
 class MANAGED StackTraceElement final : public Object {
  public:
-  String* GetDeclaringClass() REQUIRES_SHARED(Locks::mutator_lock_) {
-    return GetFieldObject<String>(OFFSET_OF_OBJECT_MEMBER(StackTraceElement, declaring_class_));
-  }
+  ObjPtr<String> GetDeclaringClass() REQUIRES_SHARED(Locks::mutator_lock_);
 
-  String* GetMethodName() REQUIRES_SHARED(Locks::mutator_lock_) {
-    return GetFieldObject<String>(OFFSET_OF_OBJECT_MEMBER(StackTraceElement, method_name_));
-  }
+  ObjPtr<String> GetMethodName() REQUIRES_SHARED(Locks::mutator_lock_);
 
-  String* GetFileName() REQUIRES_SHARED(Locks::mutator_lock_) {
-    return GetFieldObject<String>(OFFSET_OF_OBJECT_MEMBER(StackTraceElement, file_name_));
-  }
+  ObjPtr<String> GetFileName() REQUIRES_SHARED(Locks::mutator_lock_);
 
   int32_t GetLineNumber() REQUIRES_SHARED(Locks::mutator_lock_) {
     return GetField32(OFFSET_OF_OBJECT_MEMBER(StackTraceElement, line_number_));
   }
 
-  static StackTraceElement* Alloc(Thread* self,
-                                  Handle<String> declaring_class,
-                                  Handle<String> method_name,
-                                  Handle<String> file_name,
-                                  int32_t line_number)
+  static ObjPtr<StackTraceElement> Alloc(Thread* self,
+                                         Handle<String> declaring_class,
+                                         Handle<String> method_name,
+                                         Handle<String> file_name,
+                                         int32_t line_number)
       REQUIRES_SHARED(Locks::mutator_lock_) REQUIRES(!Roles::uninterruptible_);
 
  private:

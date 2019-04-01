@@ -52,7 +52,7 @@
 #include "jni/jni_internal.h"
 #include "mirror/class-alloc-inl.h"
 #include "mirror/class-inl.h"
-#include "mirror/class_loader.h"
+#include "mirror/class_loader-inl.h"
 #include "mirror/object_array-alloc-inl.h"
 #include "native/dalvik_system_DexFile.h"
 #include "noop_compiler_callbacks.h"

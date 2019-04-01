@@ -27,11 +27,11 @@
 namespace art {
 namespace mirror {
 
-StackTraceElement* StackTraceElement::Alloc(Thread* self,
-                                            Handle<String> declaring_class,
-                                            Handle<String> method_name,
-                                            Handle<String> file_name,
-                                            int32_t line_number) {
+ObjPtr<StackTraceElement> StackTraceElement::Alloc(Thread* self,
+                                                   Handle<String> declaring_class,
+                                                   Handle<String> method_name,
+                                                   Handle<String> file_name,
+                                                   int32_t line_number) {
   ObjPtr<StackTraceElement> trace =
       ObjPtr<StackTraceElement>::DownCast(GetClassRoot<StackTraceElement>()->AllocObject(self));
   if (LIKELY(trace != nullptr)) {
@@ -41,7 +41,7 @@ StackTraceElement* StackTraceElement::Alloc(Thread* self,
       trace->Init<false>(declaring_class.Get(), method_name.Get(), file_name.Get(), line_number);
     }
   }
-  return trace.Ptr();
+  return trace;
 }
 
 template<bool kTransactionActive>

@@ -25,7 +25,7 @@
 #include "gc/heap.h"
 #include "gc/space/space-inl.h"
 #include "mirror/class.h"
-#include "mirror/class_loader.h"
+#include "mirror/class_loader-inl.h"
 #include "runtime.h"
 #include "scoped_thread_state_change-inl.h"
 #include "thread-current-inl.h"

@@ -19,7 +19,7 @@
 #include "class_linker-inl.h"
 #include "handle.h"
 #include "handle_scope-inl.h"
-#include "mirror/class_loader.h"
+#include "mirror/class_loader-inl.h"
 #include "mirror/dex_cache.h"
 #include "mirror/object-inl.h"
 #include "runtime.h"
