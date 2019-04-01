@@ -645,7 +645,16 @@ std::vector<std::unique_ptr<const DexFile>> OatFileManager::OpenDexFilesFromOat(
 void OatFileManager::SetOnlyUseSystemOatFiles(bool assert_no_files_loaded) {
   ReaderMutexLock mu(Thread::Current(), *Locks::oat_file_manager_lock_);
   if (assert_no_files_loaded) {
-    CHECK_EQ(oat_files_.size(), GetBootOatFiles().size());
+    // Make sure all files that were loaded up to this point are on /system. Skip the image
+    // files.
+    std::vector<const OatFile*> boot_vector = GetBootOatFiles();
+    std::unordered_set<const OatFile*> boot_set(boot_vector.begin(), boot_vector.end());
+
+    for (const std::unique_ptr<const OatFile>& oat_file : oat_files_) {
+      if (boot_set.find(oat_file.get()) == boot_set.end()) {
+        CHECK(LocationIsOnSystem(oat_file->GetLocation().c_str())) << oat_file->GetLocation();
+      }
+    }
   }
   only_use_system_oat_files_ = true;
 }
