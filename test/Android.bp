@@ -492,6 +492,7 @@ cc_defaults {
         "664-aget-verifier/aget-verifier.cc",
         "667-jit-jni-stub/jit_jni_stub_test.cc",
         "674-hiddenapi/hiddenapi.cc",
+        "692-vdex-inmem-loader/vdex_inmem_loader.cc",
         "708-jit-cache-churn/jit.cc",
         "800-smali/jni.cc",
         "909-attach-agent/disallow_debugging.cc",
