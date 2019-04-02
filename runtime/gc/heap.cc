@@ -123,7 +123,6 @@ static const char* kRosAllocSpaceName[2] = {"main rosalloc space", "main rosallo
 static const char* kMemMapSpaceName[2] = {"main space", "main space 1"};
 static const char* kNonMovingSpaceName = "non moving space";
 static const char* kZygoteSpaceName = "zygote space";
-static constexpr size_t kGSSBumpPointerSpaceCapacity = 32 * MB;
 static constexpr bool kGCALotMode = false;
 // GC alot mode uses a small allocation stack to stress test a lot of GC.
 static constexpr size_t kGcAlotAllocationStackSize = 4 * KB /
@@ -335,9 +334,8 @@ Heap::Heap(size_t initial_size,
   live_bitmap_.reset(new accounting::HeapBitmap(this));
   mark_bitmap_.reset(new accounting::HeapBitmap(this));
 
-  // We don't have hspace compaction enabled with GSS or CC.
-  if (foreground_collector_type_ == kCollectorTypeGSS ||
-      foreground_collector_type_ == kCollectorTypeCC) {
+  // We don't have hspace compaction enabled with CC.
+  if (foreground_collector_type_ == kCollectorTypeCC) {
     use_homogeneous_space_compaction_for_oom_ = false;
   }
   bool support_homogeneous_space_compaction =
@@ -350,9 +348,6 @@ Heap::Heap(size_t initial_size,
   bool separate_non_moving_space = is_zygote ||
       support_homogeneous_space_compaction || IsMovingGc(foreground_collector_type_) ||
       IsMovingGc(background_collector_type_);
-  if (foreground_collector_type_ == kCollectorTypeGSS) {
-    separate_non_moving_space = false;
-  }
 
   // Requested begin for the alloc space, to follow the mapped image and oat files
   uint8_t* request_begin = nullptr;
@@ -360,8 +355,7 @@ Heap::Heap(size_t initial_size,
   size_t heap_reservation_size = 0u;
   if (separate_non_moving_space) {
     heap_reservation_size = non_moving_space_capacity;
-  } else if ((foreground_collector_type_ != kCollectorTypeCC) &&
-             (is_zygote || foreground_collector_type_ == kCollectorTypeGSS)) {
+  } else if (foreground_collector_type_ != kCollectorTypeCC && is_zygote) {
     heap_reservation_size = capacity_;
   }
   heap_reservation_size = RoundUp(heap_reservation_size, kPageSize);
@@ -446,14 +440,13 @@ Heap::Heap(size_t initial_size,
   // Attempt to create 2 mem maps at or after the requested begin.
   if (foreground_collector_type_ != kCollectorTypeCC) {
     ScopedTrace trace2("Create main mem map");
-    if (separate_non_moving_space ||
-        !(is_zygote || foreground_collector_type_ == kCollectorTypeGSS)) {
+    if (separate_non_moving_space || !is_zygote) {
       main_mem_map_1 = MapAnonymousPreferredAddress(
           kMemMapSpaceName[0], request_begin, capacity_, &error_str);
     } else {
-      // If no separate non-moving space and we are the zygote or the collector type is GSS,
-      // the main space must come right after the image space to avoid a gap.
-      // This is required since we want the zygote space to be adjacent to the image space.
+      // If no separate non-moving space and we are the zygote, the main space must come right after
+      // the image space to avoid a gap. This is required since we want the zygote space to be
+      // adjacent to the image space.
       DCHECK_EQ(heap_reservation.IsValid(), !boot_image_spaces_.empty());
       main_mem_map_1 = MemMap::MapAnonymous(
           kMemMapSpaceName[0],
@@ -506,8 +499,7 @@ Heap::Heap(size_t initial_size,
     region_space_ = space::RegionSpace::Create(
         kRegionSpaceName, std::move(region_space_mem_map), use_generational_cc_);
     AddSpace(region_space_);
-  } else if (IsMovingGc(foreground_collector_type_) &&
-      foreground_collector_type_ != kCollectorTypeGSS) {
+  } else if (IsMovingGc(foreground_collector_type_)) {
     // Create bump pointer spaces.
     // We only to create the bump pointer if the foreground collector is a compacting GC.
     // TODO: Place bump-pointer spaces somewhere to minimize size of card table.
@@ -528,19 +520,7 @@ Heap::Heap(size_t initial_size,
       non_moving_space_ = main_space_;
       CHECK(!non_moving_space_->CanMoveObjects());
     }
-    if (foreground_collector_type_ == kCollectorTypeGSS) {
-      CHECK_EQ(foreground_collector_type_, background_collector_type_);
-      // Create bump pointer spaces instead of a backup space.
-      main_mem_map_2.Reset();
-      bump_pointer_space_ = space::BumpPointerSpace::Create(
-          "Bump pointer space 1", kGSSBumpPointerSpaceCapacity);
-      CHECK(bump_pointer_space_ != nullptr);
-      AddSpace(bump_pointer_space_);
-      temp_space_ = space::BumpPointerSpace::Create(
-          "Bump pointer space 2", kGSSBumpPointerSpaceCapacity);
-      CHECK(temp_space_ != nullptr);
-      AddSpace(temp_space_);
-    } else if (main_mem_map_2.IsValid()) {
+    if (main_mem_map_2.IsValid()) {
       const char* name = kUseRosAlloc ? kRosAllocSpaceName[1] : kDlMallocSpaceName[1];
       main_space_backup_.reset(CreateMallocSpaceFromMemMap(std::move(main_mem_map_2),
                                                            initial_size,
@@ -650,13 +630,10 @@ Heap::Heap(size_t initial_size,
     }
   }
   if (kMovingCollector) {
-    if (MayUseCollector(kCollectorTypeSS) || MayUseCollector(kCollectorTypeGSS) ||
+    if (MayUseCollector(kCollectorTypeSS) ||
         MayUseCollector(kCollectorTypeHomogeneousSpaceCompact) ||
         use_homogeneous_space_compaction_for_oom_) {
-      // TODO: Clean this up.
-      const bool generational = foreground_collector_type_ == kCollectorTypeGSS;
-      semi_space_collector_ = new collector::SemiSpace(this, generational,
-                                                       generational ? "generational" : "");
+      semi_space_collector_ = new collector::SemiSpace(this);
       garbage_collectors_.push_back(semi_space_collector_);
     }
     if (MayUseCollector(kCollectorTypeCC)) {
@@ -689,10 +666,10 @@ Heap::Heap(size_t initial_size,
     }
   }
   if (!GetBootImageSpaces().empty() && non_moving_space_ != nullptr &&
-      (is_zygote || separate_non_moving_space || foreground_collector_type_ == kCollectorTypeGSS)) {
+      (is_zygote || separate_non_moving_space)) {
     // Check that there's no gap between the image space and the non moving space so that the
     // immune region won't break (eg. due to a large object allocated in the gap). This is only
-    // required when we're the zygote or using GSS.
+    // required when we're the zygote.
     // Space with smallest Begin().
     space::ImageSpace* first_space = nullptr;
     for (space::ImageSpace* space : boot_image_spaces_) {
@@ -795,8 +772,7 @@ void Heap::CreateMainMallocSpace(MemMap&& mem_map,
   if (kCompactZygote && Runtime::Current()->IsZygote() && !can_move_objects) {
     // After the zygote we want this to be false if we don't have background compaction enabled so
     // that getting primitive array elements is faster.
-    // We never have homogeneous compaction with GSS and don't need a space with movable objects.
-    can_move_objects = !HasZygoteSpace() && foreground_collector_type_ != kCollectorTypeGSS;
+    can_move_objects = !HasZygoteSpace();
   }
   if (collector::SemiSpace::kUseRememberedSet && main_space_ != nullptr) {
     RemoveRememberedSet(main_space_);
@@ -2280,8 +2256,7 @@ void Heap::ChangeCollector(CollectorType collector_type) {
         }
         break;
       }
-      case kCollectorTypeSS:  // Fall-through.
-      case kCollectorTypeGSS: {
+      case kCollectorTypeSS: {
         gc_plan_.push_back(collector::kGcTypeFull);
         if (use_tlab_) {
           ChangeAllocator(kAllocatorTypeTLAB);
@@ -2323,7 +2298,7 @@ void Heap::ChangeCollector(CollectorType collector_type) {
 class ZygoteCompactingCollector final : public collector::SemiSpace {
  public:
   ZygoteCompactingCollector(gc::Heap* heap, bool is_running_on_memory_tool)
-      : SemiSpace(heap, false, "zygote collector"),
+      : SemiSpace(heap, "zygote collector"),
         bin_live_bitmap_(nullptr),
         bin_mark_bitmap_(nullptr),
         is_running_on_memory_tool_(is_running_on_memory_tool) {}
@@ -2738,8 +2713,6 @@ collector::GcType Heap::CollectGarbageInternal(collector::GcType gc_type,
            current_allocator_ == kAllocatorTypeRegionTLAB);
     switch (collector_type_) {
       case kCollectorTypeSS:
-        // Fall-through.
-      case kCollectorTypeGSS:
         semi_space_collector_->SetFromSpace(bump_pointer_space_);
         semi_space_collector_->SetToSpace(temp_space_);
         semi_space_collector_->SetSwapSemiSpaces(true);
@@ -3365,8 +3338,7 @@ void Heap::ProcessCards(TimingLogger* timings,
       TimingLogger::ScopedTiming t2(name, timings);
       table->ProcessCards();
     } else if (use_rem_sets && rem_set != nullptr) {
-      DCHECK(collector::SemiSpace::kUseRememberedSet && collector_type_ == kCollectorTypeGSS)
-          << static_cast<int>(collector_type_);
+      DCHECK(collector::SemiSpace::kUseRememberedSet) << static_cast<int>(collector_type_);
       TimingLogger::ScopedTiming t2("AllocSpaceRemSetClearCards", timings);
       rem_set->ClearCards();
     } else if (process_alloc_space_cards) {
