@@ -62,3 +62,13 @@ art_cc_test {
     srcs: ["sigchain_test.cc"],
     whole_static_libs: ["libsigchain"],
 }
+
+filegroup {
+    name: "art_sigchain_version_script32.txt",
+    srcs: ["version-script32.txt"],
+}
+
+filegroup {
+    name: "art_sigchain_version_script64.txt",
+    srcs: ["version-script64.txt"],
+}
