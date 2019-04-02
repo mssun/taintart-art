@@ -499,11 +499,8 @@ class ReleaseTargetChecker:
     self._checker.check_native_library('libz')
 
     # TODO(b/124293228): Figure out why we get these.
-    self._checker.check_prefer64_library('libjsoncpp')
     self._checker.check_prefer64_library('libmeminfo')
-    self._checker.check_prefer64_library('libprocessgroup')
     self._checker.check_prefer64_library('libprocinfo')
-    self._checker.check_prefer64_library('libutils')
 
     # TODO(b/124293228): Cuttlefish puts ARM libs in a lib/arm subdirectory.
     # Check that properly on that arch, but for now just ignore the directory.
