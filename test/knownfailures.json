@@ -560,6 +560,7 @@
             "690-hiddenapi-same-name-methods",
             "691-hiddenapi-proxy",
             "692-vdex-inmem-loader",
+            "693-vdex-inmem-loader-evict",
             "944-transform-classloaders",
             "999-redefine-hiddenapi"
         ],
@@ -1096,6 +1097,7 @@
                   "690-hiddenapi-same-name-methods",
                   "691-hiddenapi-proxy",
                   "692-vdex-inmem-loader",
+                  "693-vdex-inmem-loader-evict",
                   "999-redefine-hiddenapi",
                   "1000-non-moving-space-stress",
                   "1001-app-image-regions",

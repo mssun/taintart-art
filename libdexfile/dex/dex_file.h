@@ -738,6 +738,10 @@ class DexFile {
   static uint32_t CalculateChecksum(const uint8_t* begin, size_t size);
   static uint32_t ChecksumMemoryRange(const uint8_t* begin, size_t size);
 
+  // Number of bytes at the beginning of the dex file header which are skipped
+  // when computing the adler32 checksum of the entire file.
+  static constexpr uint32_t kNumNonChecksumBytes = OFFSETOF_MEMBER(DexFile::Header, signature_);
+
   // Returns a human-readable form of the method at an index.
   std::string PrettyMethod(uint32_t method_idx, bool with_signature = true) const;
   // Returns a human-readable form of the field at an index.

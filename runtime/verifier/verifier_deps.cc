@@ -525,18 +525,20 @@ void VerifierDeps::MaybeRecordClassRedefinition(const DexFile& dex_file,
 void VerifierDeps::MaybeRecordVerificationStatus(const DexFile& dex_file,
                                                  const dex::ClassDef& class_def,
                                                  FailureKind failure_kind) {
-  if (failure_kind != FailureKind::kNoFailure) {
-    // The `verified_classes_` bit vector is initialized to `false`.
-    // Only continue if we are about to write `true`.
-    return;
+  // The `verified_classes_` bit vector is initialized to `false`.
+  // Only continue if we are about to write `true`.
+  if (failure_kind == FailureKind::kNoFailure) {
+    VerifierDeps* thread_deps = GetThreadLocalVerifierDeps();
+    if (thread_deps != nullptr) {
+      thread_deps->RecordClassVerified(dex_file, class_def);
+    }
   }
+}
 
-  VerifierDeps* thread_deps = GetThreadLocalVerifierDeps();
-  if (thread_deps != nullptr) {
-    DexFileDeps* dex_deps = thread_deps->GetDexFileDeps(dex_file);
-    DCHECK_EQ(dex_deps->verified_classes_.size(), dex_file.NumClassDefs());
-    dex_deps->verified_classes_[dex_file.GetIndexForClassDef(class_def)] = true;
-  }
+void VerifierDeps::RecordClassVerified(const DexFile& dex_file, const dex::ClassDef& class_def) {
+  DexFileDeps* dex_deps = GetDexFileDeps(dex_file);
+  DCHECK_EQ(dex_deps->verified_classes_.size(), dex_file.NumClassDefs());
+  dex_deps->verified_classes_[dex_file.GetIndexForClassDef(class_def)] = true;
 }
 
 void VerifierDeps::MaybeRecordClassResolution(const DexFile& dex_file,

@@ -29,6 +29,12 @@ extern "C" JNIEXPORT void JNICALL Java_Main_waitForVerifier(JNIEnv*, jclass) {
   Runtime::Current()->GetOatFileManager().WaitForBackgroundVerificationTasks();
 }
 
+extern "C" JNIEXPORT void JNICALL Java_Main_setProcessDataDir(JNIEnv* env, jclass, jstring jpath) {
+  const char* path = env->GetStringUTFChars(jpath, nullptr);
+  Runtime::Current()->SetProcessDataDirectory(path);
+  env->ReleaseStringUTFChars(jpath, path);
+}
+
 extern "C" JNIEXPORT jboolean JNICALL Java_Main_areClassesVerified(JNIEnv*,
                                                                    jclass,
                                                                    jobject loader) {
@@ -66,6 +72,48 @@ extern "C" JNIEXPORT jboolean JNICALL Java_Main_areClassesVerified(JNIEnv*,
     }
   }
   return all_verified ? JNI_TRUE : JNI_FALSE;
+}
+
+extern "C" JNIEXPORT bool JNICALL Java_Main_hasVdexFile(JNIEnv*,
+                                                        jclass,
+                                                        jobject loader) {
+  ScopedObjectAccess soa(Thread::Current());
+  StackHandleScope<1> hs(soa.Self());
+  Handle<mirror::ClassLoader> h_loader = hs.NewHandle(soa.Decode<mirror::ClassLoader>(loader));
+
+  std::vector<const DexFile::Header*> dex_headers;
+  VisitClassLoaderDexFiles(
+      soa,
+      h_loader,
+      [&](const DexFile* dex_file) {
+        dex_headers.push_back(&dex_file->GetHeader());
+        return true;
+      });
+
+  uint32_t location_checksum;
+  std::string dex_location;
+  std::string vdex_filename;
+  std::string error_msg;
+  return OatFileAssistant::AnonymousDexVdexLocation(dex_headers,
+                                                    kRuntimeISA,
+                                                    &location_checksum,
+                                                    &dex_location,
+                                                    &vdex_filename) &&
+         OS::FileExists(vdex_filename.c_str());
+}
+
+extern "C" JNIEXPORT jint JNICALL Java_Main_getVdexCacheSize(JNIEnv*, jclass) {
+  return static_cast<jint>(OatFileManager::kAnonymousVdexCacheSize);
+}
+
+extern "C" JNIEXPORT jboolean JNICALL Java_Main_isAnonymousVdexBasename(JNIEnv* env,
+                                                                        jclass,
+                                                                        jstring basename) {
+  if (basename == nullptr) {
+    return JNI_FALSE;
+  }
+  ScopedUtfChars basename_utf(env, basename);
+  return OatFileAssistant::IsAnonymousVdexBasename(basename_utf.c_str()) ? JNI_TRUE : JNI_FALSE;
 }
 
 }  // namespace Test692VdexInmemLoader

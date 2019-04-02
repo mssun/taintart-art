@@ -430,6 +430,7 @@ libart_static_cc_defaults {
         "liblog",
         "libnativebridge",
         "libnativeloader",
+        "libsigchain_dummy",
         "libunwindstack",
         "libz",
     ],

@@ -593,6 +593,18 @@ class Runtime {
     }
   }
 
+  const std::string& GetProcessDataDirectory() const {
+    return process_data_directory_;
+  }
+
+  void SetProcessDataDirectory(const char* data_dir) {
+    if (data_dir == nullptr) {
+      process_data_directory_.clear();
+    } else {
+      process_data_directory_ = data_dir;
+    }
+  }
+
   bool IsDexFileFallbackEnabled() const {
     return allow_dex_file_fallback_;
   }
@@ -1137,6 +1149,9 @@ class Runtime {
 
   // The package of the app running in this process.
   std::string process_package_name_;
+
+  // The data directory of the app running in this process.
+  std::string process_data_directory_;
 
   // Whether threads should dump their native stack on SIGQUIT.
   bool dump_native_stack_on_sig_quit_;

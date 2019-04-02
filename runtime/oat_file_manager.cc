@@ -19,6 +19,7 @@
 #include <memory>
 #include <queue>
 #include <vector>
+#include <sys/stat.h>
 
 #include "android-base/stringprintf.h"
 #include "android-base/strings.h"
@@ -50,6 +51,8 @@
 #include "thread-current-inl.h"
 #include "thread_list.h"
 #include "thread_pool.h"
+#include "vdex_file.h"
+#include "verifier/verifier_deps.h"
 #include "well_known_classes.h"
 
 namespace art {
@@ -644,10 +647,90 @@ std::vector<std::unique_ptr<const DexFile>> OatFileManager::OpenDexFilesFromOat(
   return dex_files;
 }
 
+static std::vector<const DexFile::Header*> GetDexFileHeaders(
+    const std::vector<const DexFile*>& dex_files) {
+  std::vector<const DexFile::Header*> headers;
+  headers.reserve(dex_files.size());
+  for (const DexFile* dex_file : dex_files) {
+    headers.push_back(&dex_file->GetHeader());
+  }
+  return headers;
+}
+
+// Check how many vdex files exist in the same directory as the vdex file we are about
+// to write. If more than or equal to kAnonymousVdexCacheSize, unlink the least
+// recently used one(s) (according to stat-reported atime).
+static bool UnlinkLeastRecentlyUsedVdexIfNeeded(const std::string& vdex_path_to_add,
+                                                std::string* error_msg) {
+  if (OS::FileExists(vdex_path_to_add.c_str())) {
+    // File already exists and will be overwritten.
+    // This will not change the number of entries in the cache.
+    return true;
+  }
+
+  auto last_slash = vdex_path_to_add.rfind('/');
+  CHECK(last_slash != std::string::npos);
+  std::string vdex_dir = vdex_path_to_add.substr(0, last_slash + 1);
+
+  if (!OS::DirectoryExists(vdex_dir.c_str())) {
+    // Folder does not exist yet. Cache has zero entries.
+    return true;
+  }
+
+  std::vector<std::pair<time_t, std::string>> cache;
+
+  DIR* c_dir = opendir(vdex_dir.c_str());
+  if (c_dir == nullptr) {
+    *error_msg = "Unable to open " + vdex_dir + " to delete unused vdex files";
+    return false;
+  }
+  for (struct dirent* de = readdir(c_dir); de != nullptr; de = readdir(c_dir)) {
+    if (de->d_type != DT_REG) {
+      continue;
+    }
+    std::string basename = de->d_name;
+    if (!OatFileAssistant::IsAnonymousVdexBasename(basename)) {
+      continue;
+    }
+    std::string fullname = vdex_dir + basename;
+
+    struct stat s;
+    int rc = TEMP_FAILURE_RETRY(stat(fullname.c_str(), &s));
+    if (rc == -1) {
+      *error_msg = "Failed to stat() anonymous vdex file " + fullname;
+      return false;
+    }
+
+    cache.push_back(std::make_pair(s.st_atime, fullname));
+  }
+  CHECK_EQ(0, closedir(c_dir)) << "Unable to close directory.";
+
+  if (cache.size() < OatFileManager::kAnonymousVdexCacheSize) {
+    return true;
+  }
+
+  std::sort(cache.begin(),
+            cache.end(),
+            [](const auto& a, const auto& b) { return a.first < b.first; });
+  for (size_t i = OatFileManager::kAnonymousVdexCacheSize - 1; i < cache.size(); ++i) {
+    if (unlink(cache[i].second.c_str()) != 0) {
+      *error_msg = "Could not unlink anonymous vdex file " + cache[i].second;
+      return false;
+    }
+  }
+
+  return true;
+}
+
 class BackgroundVerificationTask final : public Task {
  public:
-  BackgroundVerificationTask(const std::vector<const DexFile*>& dex_files, jobject class_loader)
-      : dex_files_(dex_files) {
+  BackgroundVerificationTask(const std::vector<const DexFile*>& dex_files,
+                             jobject class_loader,
+                             const char* class_loader_context,
+                             const std::string& vdex_path)
+      : dex_files_(dex_files),
+        class_loader_context_(class_loader_context),
+        vdex_path_(vdex_path) {
     Thread* const self = Thread::Current();
     ScopedObjectAccess soa(self);
     // Create a global ref for `class_loader` because it will be accessed from a different thread.
@@ -662,11 +745,15 @@ class BackgroundVerificationTask final : public Task {
   }
 
   void Run(Thread* self) override {
+    std::string error_msg;
     ClassLinker* const class_linker = Runtime::Current()->GetClassLinker();
+    verifier::VerifierDeps verifier_deps(dex_files_);
 
     // Iterate over all classes and verify them.
     for (const DexFile* dex_file : dex_files_) {
       for (uint32_t cdef_idx = 0; cdef_idx < dex_file->NumClassDefs(); cdef_idx++) {
+        const dex::ClassDef& class_def = dex_file->GetClassDef(cdef_idx);
+
         // Take handles inside the loop. The background verification is low priority
         // and we want to minimize the risk of blocking anyone else.
         ScopedObjectAccess soa(self);
@@ -675,7 +762,7 @@ class BackgroundVerificationTask final : public Task {
             soa.Decode<mirror::ClassLoader>(class_loader_)));
         Handle<mirror::Class> h_class(hs.NewHandle<mirror::Class>(class_linker->FindClass(
             self,
-            dex_file->GetClassDescriptor(dex_file->GetClassDef(cdef_idx)),
+            dex_file->GetClassDescriptor(class_def),
             h_loader)));
 
         if (h_class == nullptr) {
@@ -700,7 +787,27 @@ class BackgroundVerificationTask final : public Task {
 
         CHECK(h_class->IsVerified() || h_class->IsErroneous())
             << h_class->PrettyDescriptor() << ": state=" << h_class->GetStatus();
+
+        if (h_class->IsVerified()) {
+          verifier_deps.RecordClassVerified(*dex_file, class_def);
+        }
       }
+    }
+
+    // Delete old vdex files if there are too many in the folder.
+    if (!UnlinkLeastRecentlyUsedVdexIfNeeded(vdex_path_, &error_msg)) {
+      LOG(ERROR) << "Could not unlink old vdex files " << vdex_path_ << ": " << error_msg;
+      return;
+    }
+
+    // Construct a vdex file and write `verifier_deps` into it.
+    if (!VdexFile::WriteToDisk(vdex_path_,
+                               dex_files_,
+                               verifier_deps,
+                               class_loader_context_,
+                               &error_msg)) {
+      LOG(ERROR) << "Could not write anonymous vdex " << vdex_path_ << ": " << error_msg;
+      return;
     }
   }
 
@@ -711,12 +818,15 @@ class BackgroundVerificationTask final : public Task {
  private:
   const std::vector<const DexFile*> dex_files_;
   jobject class_loader_;
+  const std::string class_loader_context_;
+  const std::string vdex_path_;
 
   DISALLOW_COPY_AND_ASSIGN(BackgroundVerificationTask);
 };
 
 void OatFileManager::RunBackgroundVerification(const std::vector<const DexFile*>& dex_files,
-                                               jobject class_loader) {
+                                               jobject class_loader,
+                                               const char* class_loader_context) {
   if (Runtime::Current()->IsJavaDebuggable()) {
     // Threads created by ThreadPool ("runtime threads") are not allowed to load
     // classes when debuggable to match class-initialization semantics
@@ -730,13 +840,25 @@ void OatFileManager::RunBackgroundVerification(const std::vector<const DexFile*>
     return;
   }
 
-  if (verification_thread_pool_ == nullptr) {
-    verification_thread_pool_.reset(new ThreadPool("Verification thread pool",
-                                                   /* num_threads= */ 1));
-    verification_thread_pool_->StartWorkers(self);
+  uint32_t location_checksum;
+  std::string dex_location;
+  std::string vdex_path;
+  if (OatFileAssistant::AnonymousDexVdexLocation(GetDexFileHeaders(dex_files),
+                                                 kRuntimeISA,
+                                                 &location_checksum,
+                                                 &dex_location,
+                                                 &vdex_path)) {
+    if (verification_thread_pool_ == nullptr) {
+      verification_thread_pool_.reset(
+          new ThreadPool("Verification thread pool", /* num_threads= */ 1));
+      verification_thread_pool_->StartWorkers(self);
+    }
+    verification_thread_pool_->AddTask(self, new BackgroundVerificationTask(
+        dex_files,
+        class_loader,
+        class_loader_context,
+        vdex_path));
   }
-
-  verification_thread_pool_->AddTask(self, new BackgroundVerificationTask(dex_files, class_loader));
 }
 
 void OatFileManager::WaitForWorkersToBeCreated() {

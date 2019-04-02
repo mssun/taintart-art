@@ -106,7 +106,8 @@ class OatFileManager {
 
   // Spawn a background thread which verifies all classes in the given dex files.
   void RunBackgroundVerification(const std::vector<const DexFile*>& dex_files,
-                                 jobject class_loader);
+                                 jobject class_loader,
+                                 const char* class_loader_context);
 
   // Wait for thread pool workers to be created. This is used during shutdown as
   // threads are not allowed to attach while runtime is in shutdown lock.
@@ -117,6 +118,9 @@ class OatFileManager {
 
   // Wait for all background verification tasks to finish. This is only used by tests.
   void WaitForBackgroundVerificationTasks();
+
+  // Maximum number of anonymous vdex files kept in the process' data folder.
+  static constexpr size_t kAnonymousVdexCacheSize = 8u;
 
  private:
   enum class CheckCollisionResult {

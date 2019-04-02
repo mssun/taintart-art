@@ -66,6 +66,12 @@ class VerifierDeps {
   // same set of dex files.
   void MergeWith(std::unique_ptr<VerifierDeps> other, const std::vector<const DexFile*>& dex_files);
 
+  // Record information that a class was verified.
+  // Note that this function is different from MaybeRecordVerificationStatus() which
+  // looks up thread-local VerifierDeps first.
+  void RecordClassVerified(const DexFile& dex_file, const dex::ClassDef& class_def)
+      REQUIRES(!Locks::verifier_deps_lock_);
+
   // Record the verification status of the class defined in `class_def`.
   static void MaybeRecordVerificationStatus(const DexFile& dex_file,
                                             const dex::ClassDef& class_def,
