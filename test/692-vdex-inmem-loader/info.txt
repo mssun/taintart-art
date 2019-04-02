@@ -1,0 +1,3 @@
+Test that dex files loaded with InMemoryDexClassLoader get verified and the verification results
+cached in a vdex file in the app's data folder. Subsequent loads should initialize an instance of
+OatFile using the data in the vdex.

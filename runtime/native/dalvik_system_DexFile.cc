@@ -340,6 +340,26 @@ static jobject DexFile_openDexFileNative(JNIEnv* env,
   }
 }
 
+static void DexFile_verifyInBackgroundNative(JNIEnv* env,
+                                             jclass,
+                                             jobject cookie,
+                                             jobject class_loader) {
+  CHECK(cookie != nullptr);
+  CHECK(class_loader != nullptr);
+
+  // Extract list of dex files from the cookie.
+  std::vector<const DexFile*> dex_files;
+  const OatFile* oat_file;
+  if (!ConvertJavaArrayToDexFiles(env, cookie, dex_files, oat_file)) {
+    Thread::Current()->AssertPendingException();
+    return;
+  }
+  CHECK(oat_file == nullptr) << "Called verifyInBackground on a dex file backed by oat";
+
+  // Hand over to OatFileManager to spawn a verification thread.
+  Runtime::Current()->GetOatFileManager().RunBackgroundVerification(dex_files, class_loader);
+}
+
 static jboolean DexFile_closeDexFile(JNIEnv* env, jclass, jobject cookie) {
   std::vector<const DexFile*> dex_files;
   const OatFile* oat_file;
@@ -893,6 +913,7 @@ static JNINativeMethod gMethods[] = {
                 "[I"
                 "[I"
                 ")Ljava/lang/Object;"),
+  NATIVE_METHOD(DexFile, verifyInBackgroundNative, "(Ljava/lang/Object;Ljava/lang/ClassLoader;)V"),
   NATIVE_METHOD(DexFile, isValidCompilerFilter, "(Ljava/lang/String;)Z"),
   NATIVE_METHOD(DexFile, isProfileGuidedCompilerFilter, "(Ljava/lang/String;)Z"),
   NATIVE_METHOD(DexFile,

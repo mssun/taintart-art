@@ -371,4 +371,8 @@ extern "C" JNIEXPORT void JNICALL Java_Main_deoptimizeBootImage(JNIEnv*, jclass)
   Runtime::Current()->DeoptimizeBootImage();
 }
 
+extern "C" JNIEXPORT jboolean JNICALL Java_Main_isDebuggable(JNIEnv*, jclass) {
+  return Runtime::Current()->IsJavaDebuggable() ? JNI_TRUE : JNI_FALSE;
+}
+
 }  // namespace art
