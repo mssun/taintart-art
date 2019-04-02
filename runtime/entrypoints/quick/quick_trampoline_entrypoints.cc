@@ -2476,6 +2476,11 @@ extern "C" TwoWordReturn artQuickGenericJniTrampoline(Thread* self, ArtMethod** 
   }
 #endif
 
+  VLOG(third_party_jni) << "GenericJNI: "
+                        << called->PrettyMethod()
+                        << " -> "
+                        << std::hex << reinterpret_cast<uintptr_t>(nativeCode);
+
   // Return native code addr(lo) and bottom of alloca address(hi).
   return GetTwoWordSuccessValue(reinterpret_cast<uintptr_t>(visitor.GetBottomOfUsedArea()),
                                 reinterpret_cast<uintptr_t>(nativeCode));
