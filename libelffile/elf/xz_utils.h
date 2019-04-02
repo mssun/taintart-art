@@ -23,7 +23,7 @@
 
 namespace art {
 
-void XzCompress(ArrayRef<const uint8_t> src, std::vector<uint8_t>* dst);
+void XzCompress(ArrayRef<const uint8_t> src, std::vector<uint8_t>* dst, int level = 1 /* speed */);
 void XzDecompress(ArrayRef<const uint8_t> src, std::vector<uint8_t>* dst);
 
 }  // namespace art
