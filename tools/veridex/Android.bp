@@ -37,4 +37,9 @@ cc_binary {
     header_libs: [
         "art_libartbase_headers",
     ],
+    target: {
+        darwin: {
+            enabled: true,
+        },
+    },
 }
