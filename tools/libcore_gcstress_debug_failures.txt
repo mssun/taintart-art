@@ -39,6 +39,7 @@
           "jsr166.StampedLockTest#testReadTryLock_Interruptible",
           "jsr166.StampedLockTest#testReadLockInterruptibly_Interruptible",
           "jsr166.StampedLockTest#testReadLockInterruptibly",
+          "jsr166.StampedLockTest#testWriteLockInterruptibly",
           "org.apache.harmony.tests.java.lang.ProcessManagerTest#testSleep"
   ]
 },
