@@ -130,7 +130,7 @@ class MANAGED LOCKABLE Object {
   template<VerifyObjectFlags kVerifyFlags = kDefaultVerifyFlags>
   size_t SizeOf() REQUIRES_SHARED(Locks::mutator_lock_);
 
-  Object* Clone(Thread* self) REQUIRES_SHARED(Locks::mutator_lock_)
+  ObjPtr<Object> Clone(Thread* self) REQUIRES_SHARED(Locks::mutator_lock_)
       REQUIRES(!Roles::uninterruptible_);
 
   int32_t IdentityHashCode()
@@ -758,9 +758,9 @@ class MANAGED LOCKABLE Object {
   // A utility function that copies an object in a read barrier and write barrier-aware way.
   // This is internally used by Clone() and Class::CopyOf(). If the object is finalizable,
   // it is the callers job to call Heap::AddFinalizerReference.
-  static Object* CopyObject(ObjPtr<mirror::Object> dest,
-                            ObjPtr<mirror::Object> src,
-                            size_t num_bytes)
+  static ObjPtr<Object> CopyObject(ObjPtr<mirror::Object> dest,
+                                   ObjPtr<mirror::Object> src,
+                                   size_t num_bytes)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
   template<VerifyObjectFlags kVerifyFlags, Primitive::Type kType>

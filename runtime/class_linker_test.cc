@@ -85,7 +85,7 @@ class ClassLinkerTest : public CommonRuntimeTest {
       REQUIRES_SHARED(Locks::mutator_lock_) {
     ASSERT_TRUE(primitive != nullptr);
     ASSERT_TRUE(primitive->GetClass() != nullptr);
-    ASSERT_EQ(primitive->GetClass(), primitive->GetClass()->GetClass());
+    ASSERT_OBJ_PTR_EQ(primitive->GetClass(), primitive->GetClass()->GetClass());
     EXPECT_TRUE(primitive->GetClass()->GetSuperClass() != nullptr);
     std::string temp;
     ASSERT_STREQ(descriptor.c_str(), primitive->GetDescriptor(&temp));
@@ -124,8 +124,7 @@ class ClassLinkerTest : public CommonRuntimeTest {
       REQUIRES_SHARED(Locks::mutator_lock_) {
     ASSERT_TRUE(JavaLangObject != nullptr);
     ASSERT_TRUE(JavaLangObject->GetClass() != nullptr);
-    ASSERT_EQ(JavaLangObject->GetClass(),
-              JavaLangObject->GetClass()->GetClass());
+    ASSERT_OBJ_PTR_EQ(JavaLangObject->GetClass(), JavaLangObject->GetClass()->GetClass());
     EXPECT_OBJ_PTR_EQ(JavaLangObject, JavaLangObject->GetClass()->GetSuperClass());
     std::string temp;
     ASSERT_STREQ(JavaLangObject->GetDescriptor(&temp), "Ljava/lang/Object;");
@@ -197,7 +196,7 @@ class ClassLinkerTest : public CommonRuntimeTest {
       REQUIRES_SHARED(Locks::mutator_lock_) {
     ASSERT_TRUE(array != nullptr);
     ASSERT_TRUE(array->GetClass() != nullptr);
-    ASSERT_EQ(array->GetClass(), array->GetClass()->GetClass());
+    ASSERT_OBJ_PTR_EQ(array->GetClass(), array->GetClass()->GetClass());
     EXPECT_TRUE(array->GetClass()->GetSuperClass() != nullptr);
     std::string temp;
     ASSERT_STREQ(array_descriptor.c_str(), array->GetDescriptor(&temp));
@@ -274,7 +273,7 @@ class ClassLinkerTest : public CommonRuntimeTest {
       EXPECT_TRUE(klass->GetSuperClass() != nullptr);
     }
     EXPECT_TRUE(klass->GetClass() != nullptr);
-    EXPECT_EQ(klass->GetClass(), klass->GetClass()->GetClass());
+    EXPECT_OBJ_PTR_EQ(klass->GetClass(), klass->GetClass()->GetClass());
     EXPECT_TRUE(klass->GetDexCache() != nullptr);
     EXPECT_TRUE(klass->IsLoaded());
     EXPECT_TRUE(klass->IsResolved());
@@ -927,7 +926,7 @@ TEST_F(ClassLinkerTest, FindClass) {
   ObjPtr<mirror::Class> MyClass = class_linker_->FindClass(soa.Self(), "LMyClass;", class_loader);
   ASSERT_TRUE(MyClass != nullptr);
   ASSERT_TRUE(MyClass->GetClass() != nullptr);
-  ASSERT_EQ(MyClass->GetClass(), MyClass->GetClass()->GetClass());
+  ASSERT_OBJ_PTR_EQ(MyClass->GetClass(), MyClass->GetClass()->GetClass());
   EXPECT_OBJ_PTR_EQ(JavaLangObject.Get(), MyClass->GetClass()->GetSuperClass());
   std::string temp;
   ASSERT_STREQ(MyClass->GetDescriptor(&temp), "LMyClass;");
@@ -955,7 +954,7 @@ TEST_F(ClassLinkerTest, FindClass) {
   EXPECT_EQ(0U, MyClass->NumStaticFields());
   EXPECT_EQ(0U, MyClass->NumDirectInterfaces());
 
-  EXPECT_EQ(JavaLangObject->GetClass()->GetClass(), MyClass->GetClass()->GetClass());
+  EXPECT_OBJ_PTR_EQ(JavaLangObject->GetClass()->GetClass(), MyClass->GetClass()->GetClass());
 
   // created by class_linker
   AssertArrayClass("[C", "C", nullptr);

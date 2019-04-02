@@ -2985,7 +2985,7 @@ ObjPtr<mirror::Class> ClassLinker::FindClass(Thread* self,
   if (UNLIKELY(old != result_ptr)) {
     // Return `old` (even if `!descriptor_equals`) to mimic the RI behavior for parallel
     // capable class loaders.  (All class loaders are considered parallel capable on Android.)
-    mirror::Class* loader_class = class_loader->GetClass();
+    ObjPtr<mirror::Class> loader_class = class_loader->GetClass();
     const char* loader_class_name =
         loader_class->GetDexFile().StringByTypeIdx(loader_class->GetDexTypeIndex());
     LOG(WARNING) << "Initiating class loader of type " << DescriptorToDot(loader_class_name)

@@ -940,7 +940,7 @@ TEST_F(StubTest, AllocObject) {
     EXPECT_FALSE(self->IsExceptionPending());
     EXPECT_NE(reinterpret_cast<size_t>(nullptr), result);
     ObjPtr<mirror::Object> obj = reinterpret_cast<mirror::Object*>(result);
-    EXPECT_EQ(c.Get(), obj->GetClass());
+    EXPECT_OBJ_PTR_EQ(c.Get(), obj->GetClass());
     VerifyObject(obj);
   }
 
@@ -952,7 +952,7 @@ TEST_F(StubTest, AllocObject) {
     EXPECT_FALSE(self->IsExceptionPending());
     EXPECT_NE(reinterpret_cast<size_t>(nullptr), result);
     ObjPtr<mirror::Object> obj = reinterpret_cast<mirror::Object*>(result);
-    EXPECT_EQ(c.Get(), obj->GetClass());
+    EXPECT_OBJ_PTR_EQ(c.Get(), obj->GetClass());
     VerifyObject(obj);
   }
 
@@ -964,7 +964,7 @@ TEST_F(StubTest, AllocObject) {
     EXPECT_FALSE(self->IsExceptionPending());
     EXPECT_NE(reinterpret_cast<size_t>(nullptr), result);
     ObjPtr<mirror::Object> obj = reinterpret_cast<mirror::Object*>(result);
-    EXPECT_EQ(c.Get(), obj->GetClass());
+    EXPECT_OBJ_PTR_EQ(c.Get(), obj->GetClass());
     VerifyObject(obj);
   }
 
@@ -1062,7 +1062,7 @@ TEST_F(StubTest, AllocObjectArray) {
     ObjPtr<mirror::Object> obj = reinterpret_cast<mirror::Object*>(result);
     EXPECT_TRUE(obj->IsArrayInstance());
     EXPECT_TRUE(obj->IsObjectArray());
-    EXPECT_EQ(c.Get(), obj->GetClass());
+    EXPECT_OBJ_PTR_EQ(c.Get(), obj->GetClass());
     VerifyObject(obj);
     ObjPtr<mirror::Array> array = reinterpret_cast<mirror::Array*>(result);
     EXPECT_EQ(array->GetLength(), 10);
@@ -2082,7 +2082,7 @@ TEST_F(StubTest, ReadBarrier) {
   EXPECT_FALSE(self->IsExceptionPending());
   EXPECT_NE(reinterpret_cast<size_t>(nullptr), result);
   mirror::Class* klass = reinterpret_cast<mirror::Class*>(result);
-  EXPECT_EQ(klass, obj->GetClass());
+  EXPECT_OBJ_PTR_EQ(klass, obj->GetClass());
 
   // Tests done.
 #else
@@ -2117,7 +2117,7 @@ TEST_F(StubTest, ReadBarrierForRoot) {
   EXPECT_FALSE(self->IsExceptionPending());
   EXPECT_NE(reinterpret_cast<size_t>(nullptr), result);
   mirror::Class* klass = reinterpret_cast<mirror::Class*>(result);
-  EXPECT_EQ(klass, obj->GetClass());
+  EXPECT_OBJ_PTR_EQ(klass, obj->GetClass());
 
   // Tests done.
 #else
