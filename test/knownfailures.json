@@ -1214,5 +1214,14 @@
                         "Doesn't work with profiles because the run-test is not setup to",
                         "support both. It also needs full verification, so no interp-ac.",
                         "Requires zip, which isn't available on device"]
+    },
+    {
+        "tests": ["004-ReferenceMap",
+                  "449-checker-bce",
+                  "466-get-live-vreg",
+                  "563-checker-fakestring",
+                  "575-checker-string-init-alias"],
+        "variant": "baseline",
+        "description": [ "Working as intended tests that don't pass with baseline." ]
     }
 ]

@@ -4972,8 +4972,11 @@ void InstructionCodeGeneratorARMVIXL::HandleShift(HBinaryOperation* op) {
             __ Lsrs(o_h, high, 1);
             __ Rrx(o_l, low);
           }
+        } else if (shift_value == 0) {
+          __ Mov(o_l, low);
+          __ Mov(o_h, high);
         } else {
-          DCHECK(0 <= shift_value && shift_value < 32) << shift_value;
+          DCHECK(0 < shift_value && shift_value < 32) << shift_value;
           if (op->IsShl()) {
             __ Lsl(o_h, high, shift_value);
             __ Orr(o_h, o_h, Operand(low, ShiftType::LSR, 32 - shift_value));

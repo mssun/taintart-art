@@ -322,6 +322,7 @@ while true; do
         shift
     elif [ "x$1" = "x--baseline" ]; then
         FLAGS="${FLAGS} -Xcompiler-option --baseline"
+        COMPILE_FLAGS="${COMPILE_FLAGS} --baseline"
         shift
     elif [ "x$1" = "x--jvm" ]; then
         USE_JVM="y"
