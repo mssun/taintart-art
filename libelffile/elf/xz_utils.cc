@@ -32,7 +32,7 @@
 
 namespace art {
 
-constexpr size_t kChunkSize = kPageSize;
+constexpr size_t kChunkSize = 16 * KB;
 
 static void XzInitCrc() {
   static std::once_flag crc_initialized;
@@ -42,12 +42,12 @@ static void XzInitCrc() {
   });
 }
 
-void XzCompress(ArrayRef<const uint8_t> src, std::vector<uint8_t>* dst) {
+void XzCompress(ArrayRef<const uint8_t> src, std::vector<uint8_t>* dst, int level) {
   // Configure the compression library.
   XzInitCrc();
   CLzma2EncProps lzma2Props;
   Lzma2EncProps_Init(&lzma2Props);
-  lzma2Props.lzmaProps.level = 1;  // Fast compression.
+  lzma2Props.lzmaProps.level = level;
   lzma2Props.lzmaProps.reduceSize = src.size();  // Size of data that will be compressed.
   lzma2Props.blockSize = kChunkSize;
   Lzma2EncProps_Normalize(&lzma2Props);
