@@ -437,6 +437,10 @@ inline void DexCache::FixupResolvedCallSites(GcRoot<mirror::CallSite>* dest,
   }
 }
 
+inline ObjPtr<String> DexCache::GetLocation() {
+  return GetFieldObject<String>(OFFSET_OF_OBJECT_MEMBER(DexCache, location_));
+}
+
 }  // namespace mirror
 }  // namespace art
 

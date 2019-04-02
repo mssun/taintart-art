@@ -38,6 +38,7 @@
 #include "jni_internal.h"
 #include "mirror/class-inl.h"
 #include "mirror/class_loader.h"
+#include "mirror/dex_cache-inl.h"
 #include "nativebridge/native_bridge.h"
 #include "nativehelper/scoped_local_ref.h"
 #include "nativehelper/scoped_utf_chars.h"

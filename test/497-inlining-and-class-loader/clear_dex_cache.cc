@@ -78,11 +78,11 @@ extern "C" JNIEXPORT void JNICALL Java_Main_restoreResolvedMethods(
     uint32_t index;
     ArtMethod* method;
     if (sizeof(void*) == 4) {
-      ObjPtr<mirror::IntArray> int_array = down_cast<mirror::IntArray*>(old.Ptr());
+      ObjPtr<mirror::IntArray> int_array = ObjPtr<mirror::IntArray>::DownCast(old);
       index = static_cast<uint32_t>(int_array->Get(2u * i));
       method = reinterpret_cast32<ArtMethod*>(int_array->Get(2u * i + 1u));
     } else {
-      ObjPtr<mirror::LongArray> long_array = down_cast<mirror::LongArray*>(old.Ptr());
+      ObjPtr<mirror::LongArray> long_array = ObjPtr<mirror::LongArray>::DownCast(old);
       index = dchecked_integral_cast<uint32_t>(long_array->Get(2u * i));
       method = reinterpret_cast64<ArtMethod*>(long_array->Get(2u * i + 1u));
     }
