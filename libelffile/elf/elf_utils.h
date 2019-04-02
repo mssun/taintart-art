@@ -17,12 +17,11 @@
 #ifndef ART_LIBELFFILE_ELF_ELF_UTILS_H_
 #define ART_LIBELFFILE_ELF_ELF_UTILS_H_
 
+#include <elf.h>
+
 #include <sys/cdefs.h>
 
 #include <android-base/logging.h>
-
-// Explicitly include our own elf.h to avoid Linux and other dependencies.
-#include "elf/elf.h"
 
 namespace art {
 
@@ -71,8 +70,6 @@ struct ElfTypes64 {
 #define EI_ABIVERSION 8
 #define EM_ARM 40
 #define EF_MIPS_NOREORDER 1
-#define EF_MIPS_PIC 2
-#define EF_MIPS_CPIC 4
 #define STV_DEFAULT 0
 
 #define EM_AARCH64 183
