@@ -667,6 +667,11 @@ void CompilerDriver::Resolve(jobject class_loader,
 void CompilerDriver::ResolveConstStrings(const std::vector<const DexFile*>& dex_files,
                                          bool only_startup_strings,
                                          TimingLogger* timings) {
+  if (only_startup_strings && GetCompilerOptions().GetProfileCompilationInfo() == nullptr) {
+    // If there is no profile, don't resolve any strings. Resolving all of the strings in the image
+    // will cause a bloated app image and slow down startup.
+    return;
+  }
   ScopedObjectAccess soa(Thread::Current());
   StackHandleScope<1> hs(soa.Self());
   ClassLinker* const class_linker = Runtime::Current()->GetClassLinker();
