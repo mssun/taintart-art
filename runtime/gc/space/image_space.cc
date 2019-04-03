@@ -2258,32 +2258,36 @@ std::string ImageSpace::GetBootClassPathChecksums(ArrayRef<const std::string> bo
 std::string ImageSpace::GetBootClassPathChecksums(
     const std::vector<ImageSpace*>& image_spaces,
     const std::vector<const DexFile*>& boot_class_path) {
-  DCHECK(!image_spaces.empty());
-  const ImageHeader& primary_header = image_spaces.front()->GetImageHeader();
-  uint32_t component_count = primary_header.GetComponentCount();
-  DCHECK_EQ(component_count, image_spaces.size());
-  std::string boot_image_checksum =
-      StringPrintf("i;%d/%08x", component_count, primary_header.GetImageChecksum());
   size_t pos = 0u;
-  for (const ImageSpace* space : image_spaces) {
-    size_t num_dex_files = space->oat_file_non_owned_->GetOatDexFiles().size();
-    if (kIsDebugBuild) {
-      CHECK_NE(num_dex_files, 0u);
-      CHECK_LE(space->oat_file_non_owned_->GetOatDexFiles().size(), boot_class_path.size() - pos);
-      for (size_t i = 0; i != num_dex_files; ++i) {
-        CHECK_EQ(space->oat_file_non_owned_->GetOatDexFiles()[i]->GetDexFileLocation(),
-                 boot_class_path[pos + i]->GetLocation());
+  std::string boot_image_checksum;
+
+  if (!image_spaces.empty()) {
+    const ImageHeader& primary_header = image_spaces.front()->GetImageHeader();
+    uint32_t component_count = primary_header.GetComponentCount();
+    DCHECK_EQ(component_count, image_spaces.size());
+    boot_image_checksum =
+        StringPrintf("i;%d/%08x", component_count, primary_header.GetImageChecksum());
+    for (const ImageSpace* space : image_spaces) {
+      size_t num_dex_files = space->oat_file_non_owned_->GetOatDexFiles().size();
+      if (kIsDebugBuild) {
+        CHECK_NE(num_dex_files, 0u);
+        CHECK_LE(space->oat_file_non_owned_->GetOatDexFiles().size(), boot_class_path.size() - pos);
+        for (size_t i = 0; i != num_dex_files; ++i) {
+          CHECK_EQ(space->oat_file_non_owned_->GetOatDexFiles()[i]->GetDexFileLocation(),
+                   boot_class_path[pos + i]->GetLocation());
+        }
       }
+      pos += num_dex_files;
     }
-    pos += num_dex_files;
   }
+
   ArrayRef<const DexFile* const> boot_class_path_tail =
       ArrayRef<const DexFile* const>(boot_class_path).SubArray(pos);
   DCHECK(boot_class_path_tail.empty() ||
          !DexFileLoader::IsMultiDexLocation(boot_class_path_tail.front()->GetLocation().c_str()));
   for (const DexFile* dex_file : boot_class_path_tail) {
     if (!DexFileLoader::IsMultiDexLocation(dex_file->GetLocation().c_str())) {
-      StringAppendF(&boot_image_checksum, ":d");
+      StringAppendF(&boot_image_checksum, boot_image_checksum.empty() ? "d" : ":d");
     }
     StringAppendF(&boot_image_checksum, "/%08x", dex_file->GetLocationChecksum());
   }
