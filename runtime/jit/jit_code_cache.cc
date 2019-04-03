@@ -728,7 +728,7 @@ void JitCodeCache::SweepRootTables(IsMarkedVisitor* visitor) {
       mirror::Object* object = roots[i].Read<kWithoutReadBarrier>();
       if (object == nullptr || object == weak_sentinel) {
         // entry got deleted in a previous sweep.
-      } else if (object->IsString<kDefaultVerifyFlags, kWithoutReadBarrier>()) {
+      } else if (object->IsString<kDefaultVerifyFlags>()) {
         mirror::Object* new_object = visitor->IsMarked(object);
         // We know the string is marked because it's a strongly-interned string that
         // is always alive. The IsMarked implementation of the CMS collector returns

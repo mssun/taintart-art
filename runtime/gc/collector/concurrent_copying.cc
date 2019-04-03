@@ -3220,7 +3220,7 @@ void ConcurrentCopying::FillWithDummyObject(Thread* const self,
   if (ReadBarrier::kEnableToSpaceInvariantChecks) {
     AssertToSpaceInvariant(nullptr, MemberOffset(0), int_array_class);
   }
-  size_t component_size = int_array_class->GetComponentSize<kWithoutReadBarrier>();
+  size_t component_size = int_array_class->GetComponentSize();
   CHECK_EQ(component_size, sizeof(int32_t));
   size_t data_offset = mirror::Array::DataOffset(component_size).SizeValue();
   if (data_offset > byte_size) {

@@ -139,7 +139,8 @@ void Array::ThrowArrayStoreException(ObjPtr<Object> object) {
 }
 
 ObjPtr<Array> Array::CopyOf(Thread* self, int32_t new_length) {
-  CHECK(GetClass()->GetComponentType()->IsPrimitive()) << "Will miss write barriers";
+  ObjPtr<Class> klass = GetClass();
+  CHECK(klass->IsPrimitiveArray()) << "Will miss write barriers";
   DCHECK_GE(new_length, 0);
   // We may get copied by a compacting GC.
   StackHandleScope<1> hs(self);
@@ -147,16 +148,16 @@ ObjPtr<Array> Array::CopyOf(Thread* self, int32_t new_length) {
   auto* heap = Runtime::Current()->GetHeap();
   gc::AllocatorType allocator_type = heap->IsMovableObject(this) ? heap->GetCurrentAllocator() :
       heap->GetCurrentNonMovingAllocator();
-  const auto component_size = GetClass()->GetComponentSize();
-  const auto component_shift = GetClass()->GetComponentSizeShift();
+  const auto component_size = klass->GetComponentSize();
+  const auto component_shift = klass->GetComponentSizeShift();
   ObjPtr<Array> new_array =
-      Alloc<true>(self, GetClass(), new_length, component_shift, allocator_type);
+      Alloc<true>(self, klass, new_length, component_shift, allocator_type);  // Invalidates klass.
   if (LIKELY(new_array != nullptr)) {
     memcpy(new_array->GetRawData(component_size, 0),
            h_this->GetRawData(component_size, 0),
            std::min(h_this->GetLength(), new_length) << component_shift);
   }
-  return new_array.Ptr();
+  return new_array;
 }
 
 // Explicitly instantiate all the primitive array types.
