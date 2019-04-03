@@ -434,9 +434,9 @@ ExecuteMterpImpl:
     jalr    zero, t9                            # (self, shadow_frame, dex_pc_ptr) Note: tail call.
 
 %def opcode_pre():
-%  add_helper(dchecks_before_helper, "Mterp_dchecks_before_helper")
+%  add_helper(dchecks_before_helper, "mterp_dchecks_before_helper")
     #if !defined(NDEBUG)
-    jal    SYMBOL(Mterp_dchecks_before_helper)
+    jal    SYMBOL(mterp_dchecks_before_helper)
     #endif
 
 %def fallback():
