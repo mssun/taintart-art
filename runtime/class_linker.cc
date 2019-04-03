@@ -3011,9 +3011,12 @@ ObjPtr<mirror::Class> ClassLinker::FindClass(Thread* self,
 
 static bool IsReservedBootClassPathDescriptor(const char* descriptor) {
   std::string_view descriptor_sv(descriptor);
-  // Reserved conscrypt packages (includes sub-packages under these paths).
-  return StartsWith(descriptor_sv, "Landroid/net/ssl/") ||
-         StartsWith(descriptor_sv, "Lcom/android/org/conscrypt/");
+  return
+      // Reserved conscrypt packages (includes sub-packages under these paths).
+      StartsWith(descriptor_sv, "Landroid/net/ssl/") ||
+      StartsWith(descriptor_sv, "Lcom/android/org/conscrypt/") ||
+      // Reserved updatable-media package (includes sub-packages under this path).
+      StartsWith(descriptor_sv, "Landroid/media/");
 }
 
 ObjPtr<mirror::Class> ClassLinker::DefineClass(Thread* self,
