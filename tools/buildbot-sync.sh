@@ -26,5 +26,12 @@ if [[ -z "${ART_TEST_CHROOT}" ]]; then
   exit 1
 fi
 
+# Sync the system directory to the chroot.
 adb push ${ANDROID_PRODUCT_OUT}/system ${ART_TEST_CHROOT}/
+# Overwrite the default public.libraries.txt file with a smaller one that
+# contains only the public libraries pushed to the chroot directory.
+adb push ${ANDROID_BUILD_TOP}/art/tools/public.libraries.buildbot.txt \
+  ${ART_TEST_CHROOT}/system/etc/public.libraries.txt
+
+# Sync the data directory to the chroot.
 adb push ${ANDROID_PRODUCT_OUT}/data ${ART_TEST_CHROOT}/
