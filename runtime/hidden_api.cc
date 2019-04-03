@@ -196,9 +196,12 @@ void MemberSignature::Dump(std::ostream& os) const {
   }
 }
 
-void MemberSignature::WarnAboutAccess(AccessMethod access_method, hiddenapi::ApiList list) {
+void MemberSignature::WarnAboutAccess(AccessMethod access_method,
+                                      hiddenapi::ApiList list,
+                                      bool access_denied) {
   LOG(WARNING) << "Accessing hidden " << (type_ == kField ? "field " : "method ")
-               << Dumpable<MemberSignature>(*this) << " (" << list << ", " << access_method << ")";
+               << Dumpable<MemberSignature>(*this) << " (" << list << ", " << access_method
+               << (access_denied ? ", denied)" : ", allowed)");
 }
 
 bool MemberSignature::Equals(const MemberSignature& other) {
@@ -450,7 +453,7 @@ bool ShouldDenyAccessToMemberImpl(T* member, ApiList api_list, AccessMethod acce
     // Print a log message with information about this class member access.
     // We do this if we're about to deny access, or the app is debuggable.
     if (kLogAllAccesses || deny_access || runtime->IsJavaDebuggable()) {
-      member_signature.WarnAboutAccess(access_method, api_list);
+      member_signature.WarnAboutAccess(access_method, api_list, deny_access);
     }
 
     // If there is a StrictMode listener, notify it about this violation.
