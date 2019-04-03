@@ -29,6 +29,7 @@
 #include "base/file_utils.h"
 #include "base/logging.h"  // For VLOG.
 #include "base/mutex-inl.h"
+#include "base/sdk_version.h"
 #include "base/stl_util.h"
 #include "base/systrace.h"
 #include "class_linker.h"
@@ -965,15 +966,22 @@ class BackgroundVerificationTask final : public Task {
 void OatFileManager::RunBackgroundVerification(const std::vector<const DexFile*>& dex_files,
                                                jobject class_loader,
                                                const char* class_loader_context) {
-  if (Runtime::Current()->IsJavaDebuggable()) {
+  Runtime* const runtime = Runtime::Current();
+  Thread* const self = Thread::Current();
+
+  if (runtime->IsJavaDebuggable()) {
     // Threads created by ThreadPool ("runtime threads") are not allowed to load
     // classes when debuggable to match class-initialization semantics
     // expectations. Do not verify in the background.
     return;
   }
 
-  Thread* const self = Thread::Current();
-  if (Runtime::Current()->IsShuttingDown(self)) {
+  if (!IsSdkVersionSetAndAtLeast(runtime->GetTargetSdkVersion(), SdkVersion::kQ)) {
+    // Do not run for legacy apps as they may depend on the previous class loader behaviour.
+    return;
+  }
+
+  if (runtime->IsShuttingDown(self)) {
     // Not allowed to create new threads during runtime shutdown.
     return;
   }
