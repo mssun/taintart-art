@@ -76,6 +76,10 @@ class PACKED(4) OatQuickMethodHeader {
   }
 
   uint32_t GetCodeSize() const {
+    // ART compiled method are prefixed with header, but we can also easily
+    // accidentally use a function pointer to one of the stubs/trampolines.
+    // We prefix those with 0xFF in the aseembly so that we can do DCHECKs.
+    CHECK_NE(code_size_, 0xFFFFFFFF) << code_;
     return code_size_ & kCodeSizeMask;
   }
 

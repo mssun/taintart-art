@@ -2624,8 +2624,7 @@ art_quick_read_barrier_mark_introspection_gc_roots\label_suffix:
      *     (6 bytes). Loads the return register and jumps to the runtime call.
      */
 #if defined(USE_READ_BARRIER) && defined(USE_BAKER_READ_BARRIER)
-    .balign 512
-ENTRY art_quick_read_barrier_mark_introspection
+ENTRY_ALIGNED art_quick_read_barrier_mark_introspection, 512
     // At this point, IP contains the reference, rMR is clobbered by the thunk
     // and can be freely used as it will be set back to 1 before returning.
     // For heap poisoning, the reference is poisoned, so unpoison it first.

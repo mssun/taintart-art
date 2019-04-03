@@ -2790,8 +2790,7 @@ READ_BARRIER_MARK_REG art_quick_read_barrier_mark_reg29, w29, x29
      *   art_quick_read_barrier_mark_introspection_gc_roots:
      *     GC root entrypoint code.
      */
-    .balign 512
-ENTRY art_quick_read_barrier_mark_introspection
+ENTRY_ALIGNED art_quick_read_barrier_mark_introspection, 512
     // At this point, IP0 contains the reference, IP1 can be freely used.
     // For heap poisoning, the reference is poisoned, so unpoison it first.
     UNPOISON_HEAP_REF wIP0

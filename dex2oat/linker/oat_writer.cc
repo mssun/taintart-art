@@ -2194,7 +2194,8 @@ size_t OatWriter::InitOatCode(size_t offset) {
     size_t adjusted_offset = offset;
 
     #define DO_TRAMPOLINE(field, fn_name)                                   \
-      offset = CompiledCode::AlignCode(offset, instruction_set);            \
+      /* Pad with at least four 0xFFs so we can do DCHECKs in OatQuickMethodHeader */ \
+      offset = CompiledCode::AlignCode(offset + 4, instruction_set);        \
       adjusted_offset = offset + CompiledCode::CodeDelta(instruction_set);  \
       oat_header_->Set ## fn_name ## Offset(adjusted_offset);               \
       (field) = compiler_driver_->Create ## fn_name();                      \
@@ -3070,9 +3071,13 @@ size_t OatWriter::WriteCode(OutputStream* out, size_t file_offset, size_t relati
 
     #define DO_TRAMPOLINE(field) \
       do { \
-        uint32_t aligned_offset = CompiledCode::AlignCode(relative_offset, instruction_set); \
+        /* Pad with at least four 0xFFs so we can do DCHECKs in OatQuickMethodHeader */ \
+        uint32_t aligned_offset = CompiledCode::AlignCode(relative_offset + 4, instruction_set); \
         uint32_t alignment_padding = aligned_offset - relative_offset; \
-        out->Seek(alignment_padding, kSeekCurrent); \
+        for (size_t i = 0; i < alignment_padding; i++) { \
+          uint8_t padding = 0xFF; \
+          out->WriteFully(&padding, 1); \
+        } \
         size_trampoline_alignment_ += alignment_padding; \
         if (!out->WriteFully((field)->data(), (field)->size())) { \
           PLOG(ERROR) << "Failed to write " # field " to " << out->GetLocation(); \
