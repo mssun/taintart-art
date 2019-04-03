@@ -78,7 +78,8 @@ public class Main {
     // Data directory is now set. Background verification job should have run,
     // should have verified classes and written results to a vdex.
     test(singleLoader(), /*hasVdex*/ featureEnabled, /*backedByOat*/ false, /*invokeMethod*/ true);
-    test(singleLoader(), /*hasVdex*/ featureEnabled, /*backedByOat*/ true, /*invokeMethod*/ true);
+    test(singleLoader(), /*hasVdex*/ featureEnabled, /*backedByOat*/ featureEnabled,
+        /*invokeMethod*/ true);
 
     // Test loading the two dex files with separate class loaders.
     // Background verification task should still verify all classes.
