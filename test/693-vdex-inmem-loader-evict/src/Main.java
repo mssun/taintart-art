@@ -33,6 +33,11 @@ public class Main {
       return;
     }
 
+    if (!hasOatFile()) {
+      // We only generate vdex files if the oat directories are created.
+      return;
+    }
+
     setProcessDataDir(DEX_LOCATION);
 
     final int maxCacheSize = getVdexCacheSize();
@@ -63,6 +68,7 @@ public class Main {
   }
 
   private static native boolean isDebuggable();
+  private static native boolean hasOatFile();
   private static native int setTargetSdkVersion(int version);
   private static native void setProcessDataDir(String path);
   private static native void waitForVerifier();
