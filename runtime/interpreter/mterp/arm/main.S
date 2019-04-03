@@ -438,9 +438,9 @@ ENTRY ExecuteMterpImpl
     b      MterpCheckBefore     @ (self, shadow_frame, dex_pc_ptr)  @ Tail call.
 
 %def opcode_pre():
-%  add_helper(dchecks_before_helper, "Mterp_dchecks_before_helper")
+%  add_helper(dchecks_before_helper, "mterp_dchecks_before_helper")
     #if !defined(NDEBUG)
-    bl     Mterp_dchecks_before_helper
+    bl     mterp_dchecks_before_helper
     #endif
 
 %def fallback():
@@ -766,9 +766,9 @@ artMterpAsmInstructionStart = .L_op_nop
     .text
 
 %def opcode_start():
-    ENTRY Mterp_${opcode}
+    ENTRY mterp_${opcode}
 %def opcode_end():
-    END Mterp_${opcode}
+    END mterp_${opcode}
 %def helper_start(name):
     ENTRY ${name}
 %def helper_end(name):

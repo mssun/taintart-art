@@ -52,7 +52,7 @@ generated_helpers = {}
 # The output is temporarily redirected to in-memory buffer.
 def add_helper(write_helper, name = None):
   if name == None:
-    name = "Mterp_" + opcode + "_helper"
+    name = "mterp_" + opcode + "_helper"
   global out
   old_out = out
   out = StringIO()
