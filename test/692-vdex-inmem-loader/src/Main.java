@@ -64,6 +64,9 @@ public class Main {
     System.loadLibrary(args[0]);
     ClassLoader[] loaders = null;
 
+    // Feature only enabled for target SDK version Q and later.
+    setTargetSdkVersion(/* Q */ 29);
+
     // Feature is disabled in debuggable mode because runtime threads are not
     // allowed to load classes.
     boolean featureEnabled = !isDebuggable();
@@ -108,6 +111,7 @@ public class Main {
   }
 
   private static native boolean isDebuggable();
+  private static native int setTargetSdkVersion(int version);
   private static native void setProcessDataDir(String path);
   private static native void waitForVerifier();
   private static native boolean areClassesVerified(ClassLoader loader);
