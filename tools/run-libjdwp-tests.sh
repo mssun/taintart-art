@@ -121,4 +121,5 @@ function verbose_run() {
 verbose_run ./art/tools/run-jdwp-tests.sh \
             "${args[@]}"                  \
             --jdwp-path "libjdwp.so"      \
+            --vm-arg -Djpda.settings.debuggeeAgentExtraOptions=coredump=y \
             --expectations "$expect_path"
