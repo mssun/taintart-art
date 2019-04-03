@@ -102,6 +102,77 @@ extern "C" JNIEXPORT bool JNICALL Java_Main_hasVdexFile(JNIEnv*,
          OS::FileExists(vdex_filename.c_str());
 }
 
+extern "C" JNIEXPORT jboolean JNICALL Java_Main_isBackedByOatFile(JNIEnv*,
+                                                                  jclass,
+                                                                  jobject loader) {
+  ScopedObjectAccess soa(Thread::Current());
+  StackHandleScope<1> hs(soa.Self());
+  Handle<mirror::ClassLoader> h_loader = hs.NewHandle(soa.Decode<mirror::ClassLoader>(loader));
+
+  bool is_first = true;
+  bool all_backed_by_oat = false;
+
+  VisitClassLoaderDexFiles(
+      soa,
+      h_loader,
+      [&](const DexFile* dex_file) {
+        bool is_backed_by_oat = (dex_file->GetOatDexFile() != nullptr);
+        if (is_first) {
+          all_backed_by_oat = is_backed_by_oat;
+          is_first = false;
+        } else if (all_backed_by_oat != is_backed_by_oat) {
+          // DexFiles should either all or none be backed by oat.
+          LOG(ERROR) << "isBackedByOatFile is inconsistent";
+        }
+        return true;
+      });
+  return all_backed_by_oat ? JNI_TRUE : JNI_FALSE;
+}
+
+extern "C" JNIEXPORT jboolean JNICALL Java_Main_areClassesPreverified(JNIEnv*,
+                                                                      jclass,
+                                                                      jobject loader) {
+  ScopedObjectAccess soa(Thread::Current());
+  StackHandleScope<2> hs(soa.Self());
+  Handle<mirror::ClassLoader> h_loader(hs.NewHandle(soa.Decode<mirror::ClassLoader>(loader)));
+
+  std::vector<const DexFile*> dex_files;
+  VisitClassLoaderDexFiles(
+      soa,
+      h_loader,
+      [&](const DexFile* dex_file) {
+        dex_files.push_back(dex_file);
+        return true;
+      });
+
+  MutableHandle<mirror::Class> h_class(hs.NewHandle<mirror::Class>(nullptr));
+  ClassLinker* const class_linker = Runtime::Current()->GetClassLinker();
+
+  bool is_first = true;
+  bool all_preverified = false;
+  for (const DexFile* dex_file : dex_files) {
+    for (uint16_t cdef_idx = 0; cdef_idx < dex_file->NumClassDefs(); ++cdef_idx) {
+      const char* desc = dex_file->GetClassDescriptor(dex_file->GetClassDef(cdef_idx));
+      h_class.Assign(class_linker->FindClass(soa.Self(), desc, h_loader));
+      CHECK(h_class != nullptr) << "Could not find class " << desc;
+
+      ClassStatus oat_file_class_status(ClassStatus::kNotReady);
+      bool is_preverified = class_linker->VerifyClassUsingOatFile(
+          *dex_file, h_class.Get(), oat_file_class_status);
+
+      if (is_first) {
+        all_preverified = is_preverified;
+        is_first = false;
+      } else if (all_preverified != is_preverified) {
+        // Classes should either all or none be preverified.
+        LOG(ERROR) << "areClassesPreverified is inconsistent";
+      }
+    }
+  }
+
+  return all_preverified ? JNI_TRUE : JNI_FALSE;
+}
+
 extern "C" JNIEXPORT jint JNICALL Java_Main_getVdexCacheSize(JNIEnv*, jclass) {
   return static_cast<jint>(OatFileManager::kAnonymousVdexCacheSize);
 }

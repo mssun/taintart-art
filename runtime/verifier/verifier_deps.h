@@ -144,6 +144,13 @@ class VerifierDeps {
     return output_only_;
   }
 
+  // Parses raw VerifierDeps data to extract bitvectors of which class def indices
+  // were verified or not. The given `dex_files` must match the order and count of
+  // dex files used to create the VerifierDeps.
+  static std::vector<std::vector<bool>> ParseVerifiedClasses(
+      const std::vector<const DexFile*>& dex_files,
+      ArrayRef<const uint8_t> data);
+
  private:
   static constexpr uint16_t kUnresolvedMarker = static_cast<uint16_t>(-1);
 
@@ -233,6 +240,11 @@ class VerifierDeps {
   };
 
   VerifierDeps(const std::vector<const DexFile*>& dex_files, bool output_only);
+
+  // Helper function to share DexFileDeps decoding code.
+  static void DecodeDexFileDeps(DexFileDeps& deps,
+                                const uint8_t** data_start,
+                                const uint8_t* data_end);
 
   // Finds the DexFileDep instance associated with `dex_file`, or nullptr if
   // `dex_file` is not reported as being compiled.

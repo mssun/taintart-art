@@ -37,6 +37,7 @@ class ImageSpace;
 
 class ClassLoaderContext;
 class DexFile;
+class MemMap;
 class OatFile;
 class ThreadPool;
 
@@ -100,6 +101,23 @@ class OatFileManager {
       /*out*/ std::vector<std::string>* error_msgs)
       REQUIRES(!Locks::oat_file_manager_lock_, !Locks::mutator_lock_);
 
+  // Opens dex files provided in `dex_mem_maps` and attempts to find an anonymous
+  // vdex file created during a previous load attempt. If found, will initialize
+  // an instance of OatFile to back the DexFiles and preverify them using the
+  // vdex's VerifierDeps.
+  //
+  // Returns an empty vector if the dex files could not be loaded. In this
+  // case, there will be at least one error message returned describing why no
+  // dex files could not be loaded. The 'error_msgs' argument must not be
+  // null, regardless of whether there is an error or not.
+  std::vector<std::unique_ptr<const DexFile>> OpenDexFilesFromOat(
+      std::vector<MemMap>&& dex_mem_maps,
+      jobject class_loader,
+      jobjectArray dex_elements,
+      /*out*/ const OatFile** out_oat_file,
+      /*out*/ std::vector<std::string>* error_msgs)
+      REQUIRES(!Locks::oat_file_manager_lock_, !Locks::mutator_lock_);
+
   void DumpForSigQuit(std::ostream& os);
 
   void SetOnlyUseSystemOatFiles(bool enforce, bool assert_no_files_loaded);
@@ -129,6 +147,14 @@ class OatFileManager {
     kNoCollisions,
     kPerformedHasCollisions,
   };
+
+  std::vector<std::unique_ptr<const DexFile>> OpenDexFilesFromOat_Impl(
+      std::vector<MemMap>&& dex_mem_maps,
+      jobject class_loader,
+      jobjectArray dex_elements,
+      /*out*/ const OatFile** out_oat_file,
+      /*out*/ std::vector<std::string>* error_msgs)
+      REQUIRES(!Locks::oat_file_manager_lock_, !Locks::mutator_lock_);
 
   // Check that the class loader context of the given oat file matches the given context.
   // This will perform a check that all class loaders in the chain have the same type and

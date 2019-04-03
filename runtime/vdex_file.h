@@ -342,6 +342,18 @@ class VdexFile {
                           const std::string& class_loader_context,
                           std::string* error_msg);
 
+  // Returns true if the dex file checksums stored in the vdex header match
+  // the checksums in `dex_headers`. Both the number of dex files and their
+  // order must match too.
+  bool MatchesDexFileChecksums(const std::vector<const DexFile::Header*>& dex_headers) const;
+
+  // Returns true if the boot class path checksum stored in the vdex matches
+  // the checksum of boot class path in the current runtime.
+  bool MatchesBootClassPathChecksums() const;
+
+  // Returns true if the class loader context stored in the vdex matches `context`.
+  bool MatchesClassLoaderContext(const ClassLoaderContext& context) const;
+
  private:
   uint32_t GetQuickeningInfoTableOffset(const uint8_t* source_dex_begin) const;
 
