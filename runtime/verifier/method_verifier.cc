@@ -16,7 +16,7 @@
 
 #include "method_verifier-inl.h"
 
-#include <iostream>
+#include <ostream>
 
 #include "android-base/stringprintf.h"
 
@@ -213,8 +213,8 @@ MethodVerifier::FailureData MethodVerifier::VerifyMethod(Thread* self,
                                                     << dex_file->PrettyMethod(method_idx) << "\n");
       }
       if (VLOG_IS_ON(verifier_debug)) {
-        std::cout << "\n" << verifier.info_messages_.str();
-        verifier.Dump(std::cout);
+        LOG(INFO) << verifier.info_messages_.str();
+        verifier.Dump(LOG_STREAM(INFO));
       }
       result.kind = FailureKind::kSoftFailure;
       if (method != nullptr &&
@@ -290,8 +290,8 @@ MethodVerifier::FailureData MethodVerifier::VerifyMethod(Thread* self,
       }
     }
     if (VLOG_IS_ON(verifier) || VLOG_IS_ON(verifier_debug)) {
-      std::cout << "\n" << verifier.info_messages_.str();
-      verifier.Dump(std::cout);
+      LOG(ERROR) << verifier.info_messages_.str();
+      verifier.Dump(LOG_STREAM(ERROR));
     }
   }
   if (kTimeVerifyMethod) {
@@ -1652,8 +1652,8 @@ bool MethodVerifier::CodeFlowVerifyMethod() {
       RegisterLine* register_line = reg_table_.GetLine(insn_idx);
       if (register_line != nullptr) {
         if (work_line_->CompareLine(register_line) != 0) {
-          Dump(std::cout);
-          std::cout << info_messages_.str();
+          Dump(LOG_STREAM(FATAL_WITHOUT_ABORT));
+          LOG(FATAL_WITHOUT_ABORT) << info_messages_.str();
           LOG(FATAL) << "work_line diverged in " << dex_file_->PrettyMethod(dex_method_idx_)
                      << "@" << reinterpret_cast<void*>(work_insn_idx_) << "\n"
                      << " work_line=" << work_line_->Dump(this) << "\n"
