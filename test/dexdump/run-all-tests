@@ -38,7 +38,7 @@ tmpdir=/tmp/test-$$
 mkdir ${tmpdir}
 
 # Set up tools and commands to run
-DEXDUMP="${ANDROID_HOST_OUT}/bin/dexdump2"
+DEXDUMP="${ANDROID_HOST_OUT}/bin/dexdump"
 DEXLIST="${ANDROID_HOST_OUT}/bin/dexlist"
 
 declare -A SUFFIX_COMMAND_MAP
