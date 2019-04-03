@@ -193,7 +193,7 @@ class MemberSignature {
 
   bool IsExempted(const std::vector<std::string>& exemptions);
 
-  void WarnAboutAccess(AccessMethod access_method, ApiList list);
+  void WarnAboutAccess(AccessMethod access_method, ApiList list, bool access_denied);
 
   void LogAccessToEventLog(uint32_t sampled_value, AccessMethod access_method, bool access_denied);
 
