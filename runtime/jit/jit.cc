@@ -639,7 +639,7 @@ void Jit::CreateThreadPool() {
   // If we're not using the default boot image location, request a JIT task to
   // compile all methods in the boot image profile.
   Runtime* runtime = Runtime::Current();
-  if (runtime->IsZygote() && !runtime->IsUsingDefaultBootImageLocation()) {
+  if (runtime->IsZygote() && !runtime->IsUsingDefaultBootImageLocation() && UseJitCompilation()) {
     thread_pool_->AddTask(Thread::Current(), new ZygoteTask());
   }
 }
@@ -683,6 +683,10 @@ void Jit::AddNonAotBootMethodsToQueue(Thread* self) {
   ClassLinker* class_linker = runtime->GetClassLinker();
 
   for (const DexFile* dex_file : boot_class_path) {
+    if (LocationIsOnRuntimeModule(dex_file->GetLocation().c_str())) {
+      // The runtime module jars are already preopted.
+      continue;
+    }
     std::set<dex::TypeIndex> class_types;
     std::set<uint16_t> all_methods;
     if (!profile_info.GetClassesAndMethods(*dex_file,
@@ -690,7 +694,8 @@ void Jit::AddNonAotBootMethodsToQueue(Thread* self) {
                                            &all_methods,
                                            &all_methods,
                                            &all_methods)) {
-      LOG(ERROR) << "Unable to get classes and methods for " << dex_file->GetLocation();
+      // This means the profile file did not reference the dex file, which is the case
+      // if there's no classes and methods of that dex file in the profile.
       continue;
     }
     dex_cache.Assign(class_linker->FindDexCache(self, *dex_file));
@@ -708,7 +713,8 @@ void Jit::AddNonAotBootMethodsToQueue(Thread* self) {
       }
       const void* entry_point = method->GetEntryPointFromQuickCompiledCode();
       if (class_linker->IsQuickToInterpreterBridge(entry_point) ||
-          class_linker->IsQuickGenericJniStub(entry_point)) {
+          class_linker->IsQuickGenericJniStub(entry_point) ||
+          class_linker->IsQuickResolutionStub(entry_point)) {
         if (!method->IsNative()) {
           // The compiler requires a ProfilingInfo object for non-native methods.
           ProfilingInfo::Create(self, method, /* retry_allocation= */ true);

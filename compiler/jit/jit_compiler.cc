@@ -197,7 +197,13 @@ bool JitCompiler::CompileMethod(Thread* self, ArtMethod* method, bool baseline, 
   {
     TimingLogger::ScopedTiming t2("Compiling", &logger);
     JitCodeCache* const code_cache = runtime->GetJit()->GetCodeCache();
+    uint64_t start_ns = NanoTime();
     success = compiler_->JitCompile(self, code_cache, method, baseline, osr, jit_logger_.get());
+    uint64_t duration_ns = NanoTime() - start_ns;
+    VLOG(jit) << "Compilation of "
+              << method->PrettyMethod()
+              << " took "
+              << PrettyDuration(duration_ns);
   }
 
   // Trim maps to reduce memory usage.
