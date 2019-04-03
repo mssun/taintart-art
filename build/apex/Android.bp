@@ -82,9 +82,13 @@ art_runtime_data_file_prebuilts = [
 
 // Tools common to both device APEX and host APEX. Derived from art-tools in art/Android.mk.
 art_tools_common_binaries = [
-    "dexdiag",
     "dexdump",
     "dexlist",
+]
+
+// Tools common to both device and host debug APEXes.
+art_tools_debug_binaries = [
+    "dexdiag",
 ]
 
 // Tools exclusively for the device APEX derived from art-tools in art/Android.mk.
@@ -107,9 +111,6 @@ art_tools_host_only_binaries = [
     //"ahat",
     "hprof-conv",
 ]
-
-art_tools_device_binaries = art_tools_common_binaries + art_tools_device_only_binaries
-art_tools_host_binaries = art_tools_common_binaries + art_tools_host_only_binaries
 
 // Libraries needed to use com.android.runtime.host for zipapex run-tests
 art_runtime_host_run_test_libs = [
@@ -207,7 +208,8 @@ apex_defaults {
             binaries: art_runtime_base_binaries_prefer32,
         },
         first: {
-            binaries: art_tools_device_binaries,
+            binaries: art_tools_common_binaries
+                + art_tools_device_only_binaries,
         }
     },
     binaries: [
@@ -246,7 +248,8 @@ apex {
                 + art_runtime_debug_binaries_prefer32_device,
         },
         first: {
-            binaries: art_tools_debug_device_only_binaries,
+            binaries: art_tools_debug_binaries
+                + art_tools_debug_device_only_binaries,
         }
     },
     certificate: ":com.android.runtime.debug.certificate",
@@ -278,7 +281,9 @@ art_apex_test {
                 + art_runtime_debug_binaries_both_host,
         },
         first: {
-            binaries: art_tools_host_binaries
+            binaries: art_tools_common_binaries
+                + art_tools_debug_binaries  // Host APEX is always debug.
+                + art_tools_host_only_binaries
                 + art_runtime_base_binaries_prefer32
                 + art_runtime_debug_binaries_prefer32,
         }

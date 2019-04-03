@@ -383,8 +383,10 @@ class ReleaseChecker:
     # Check the APEX manifest.
     self._checker.check_file('apex_manifest.json')
 
-    # Check base binaries for ART.
+    # Check binaries for ART.
     self._checker.check_executable('dex2oat')
+    self._checker.check_executable('dexdump')
+    self._checker.check_executable('dexlist')
     self._checker.check_executable('dexoptanalyzer')
     self._checker.check_executable('profman')
     self._checker.check_symlinked_multilib_executable('dalvikvm')
@@ -468,9 +470,6 @@ class ReleaseTargetChecker:
     self._checker.check_executable('art_prepostinstall_utils')
 
     # Check binaries for ART.
-    self._checker.check_executable('dexdiag')
-    self._checker.check_executable('dexdump')
-    self._checker.check_executable('dexlist')
     self._checker.check_executable('oatdump')
 
     # Check internal libraries for ART.
@@ -497,10 +496,6 @@ class ReleaseTargetChecker:
     self._checker.check_native_library('libpac')
     self._checker.check_native_library('libtombstoned_client')
     self._checker.check_native_library('libz')
-
-    # TODO(b/124293228): Figure out why we get these.
-    self._checker.check_prefer64_library('libmeminfo')
-    self._checker.check_prefer64_library('libprocinfo')
 
     # TODO(b/124293228): Cuttlefish puts ARM libs in a lib/arm subdirectory.
     # Check that properly on that arch, but for now just ignore the directory.
@@ -541,8 +536,6 @@ class DebugChecker:
   def run(self):
     # Check binaries for ART.
     self._checker.check_executable('dexdiag')
-    self._checker.check_executable('dexdump')
-    self._checker.check_executable('dexlist')
 
     # Check debug binaries for ART.
     self._checker.check_executable('dexoptanalyzerd')
@@ -591,6 +584,8 @@ class DebugTargetChecker:
     # package we need to look out for dependencies that should go through
     # exported library stubs (until b/128708192 is fixed).
     self._checker.check_optional_native_library('libvixld')  # Only on ARM/ARM64
+    self._checker.check_prefer64_library('libmeminfo')
+    self._checker.check_prefer64_library('libprocinfo')
 
 
 class NoSuperfluousBinariesChecker:
