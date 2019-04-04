@@ -268,23 +268,23 @@ codes.
  * Get/set the 64-bit value from a Dalvik register.
  */
 .macro GET_VREG_WIDE reg, vreg
-    add     ip2, xFP, \vreg, lsl #2
+    add     ip2, xFP, \vreg, uxtw #2
     ldr     \reg, [ip2]
 .endm
 .macro SET_VREG_WIDE reg, vreg
-    add     ip2, xFP, \vreg, lsl #2
+    add     ip2, xFP, \vreg, uxtw #2
     str     \reg, [ip2]
-    add     ip2, xREFS, \vreg, lsl #2
+    add     ip2, xREFS, \vreg, uxtw #2
     str     xzr, [ip2]
 .endm
 .macro GET_VREG_DOUBLE reg, vreg
-    add     ip2, xFP, \vreg, lsl #2
+    add     ip2, xFP, \vreg, uxtw #2
     ldr     \reg, [ip2]
 .endm
 .macro SET_VREG_DOUBLE reg, vreg
-    add     ip2, xFP, \vreg, lsl #2
+    add     ip2, xFP, \vreg, uxtw #2
     str     \reg, [ip2]
-    add     ip2, xREFS, \vreg, lsl #2
+    add     ip2, xREFS, \vreg, uxtw #2
     str     xzr, [ip2]
 .endm
 
@@ -300,7 +300,7 @@ codes.
  * Convert a virtual register index into an address.
  */
 .macro VREG_INDEX_TO_ADDR reg, vreg
-    add     \reg, xFP, \vreg, lsl #2   /* WARNING: handle shadow frame vreg zero if store */
+    add     \reg, xFP, \vreg, uxtw #2   /* WARNING: handle shadow frame vreg zero if store */
 .endm
 
 /*
@@ -418,9 +418,9 @@ ENTRY ExecuteMterpImpl
     mov     xSELF, x0
     ldr     w0, [x2, #SHADOWFRAME_NUMBER_OF_VREGS_OFFSET]
     add     xFP, x2, #SHADOWFRAME_VREGS_OFFSET     // point to vregs.
-    add     xREFS, xFP, w0, lsl #2                 // point to reference array in shadow frame
+    add     xREFS, xFP, w0, uxtw #2                // point to reference array in shadow frame
     ldr     w0, [x2, #SHADOWFRAME_DEX_PC_OFFSET]   // Get starting dex_pc.
-    add     xPC, x1, w0, lsl #1                    // Create direct pointer to 1st dex opcode
+    add     xPC, x1, w0, uxtw #1                   // Create direct pointer to 1st dex opcode
     CFI_DEFINE_DEX_PC_WITH_OFFSET(CFI_TMP, CFI_DEX, 0)
     EXPORT_PC
 

@@ -75,7 +75,7 @@
     GET_VREG w1, w3                     // w1<- vCC (requested index)
     cbz     w0, common_errNullObject        // yes, bail
     ldr     w3, [x0, #MIRROR_ARRAY_LENGTH_OFFSET]    // w3<- arrayObj->length
-    add     x0, x0, w1, lsl #3          // w0<- arrayObj + index*width
+    add     x0, x0, w1, uxtw #3         // w0<- arrayObj + index*width
     cmp     w1, w3                      // compare unsigned index, length
     bcs     common_errArrayIndex        // index >= length, bail
     FETCH_ADVANCE_INST 2                // advance rPC, load wINST
@@ -104,7 +104,7 @@
     GET_VREG w1, w3                     // w1<- vCC (requested index)
     cbz     w0, common_errNullObject    // bail if null
     ldr     w3, [x0, #MIRROR_ARRAY_LENGTH_OFFSET]     // w3<- arrayObj->length
-    add     x0, x0, w1, lsl #$shift     // w0<- arrayObj + index*width
+    add     x0, x0, w1, uxtw #$shift    // w0<- arrayObj + index*width
     cmp     w1, w3                      // compare unsigned index, length
     bcs     common_errArrayIndex        // index >= length, bail
     FETCH_ADVANCE_INST 2                // advance rPC, load rINST
@@ -154,7 +154,7 @@
     GET_VREG w1, w3                     // w1<- vCC (requested index)
     cbz     w0, common_errNullObject    // bail if null
     ldr     w3, [x0, #MIRROR_ARRAY_LENGTH_OFFSET]    // w3<- arrayObj->length
-    add     x0, x0, w1, lsl #3          // w0<- arrayObj + index*width
+    add     x0, x0, w1, uxtw #3         // w0<- arrayObj + index*width
     cmp     w1, w3                      // compare unsigned index, length
     bcs     common_errArrayIndex        // index >= length, bail
     GET_VREG_WIDE x1, w4
