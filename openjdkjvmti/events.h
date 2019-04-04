@@ -21,6 +21,7 @@
 #include <vector>
 
 #include <android-base/logging.h>
+#include <android-base/thread_annotations.h>
 
 #include "base/macros.h"
 #include "base/mutex.h"
@@ -323,9 +324,9 @@ class EventHandler {
   // need to be able to remove arbitrary elements from it.
   std::list<ArtJvmTiEnv*> envs GUARDED_BY(envs_lock_);
 
-  // Top level lock. Nothing at all should be held when we lock this.
-  mutable art::ReaderWriterMutex envs_lock_
-      ACQUIRED_BEFORE(art::Locks::instrument_entrypoints_lock_);
+  // Close to top level lock. Nothing should be held when we lock this (except for mutator_lock_
+  // which is needed when setting new events).
+  mutable art::ReaderWriterMutex envs_lock_ ACQUIRED_AFTER(art::Locks::mutator_lock_);
 
   // A union of all enabled events, anywhere.
   EventMask global_mask;
