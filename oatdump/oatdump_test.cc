@@ -97,12 +97,12 @@ TEST_F(OatDumpTest, TestExportDex) {
   const std::string dex_location =
       tmp_dir_+ "/" + android::base::Basename(GetTestDexFileName(GetAppBaseName().c_str())) +
       "_export.dex";
-  const std::string dexdump2 = GetExecutableFilePath("dexdump2",
-                                                     /*is_debug=*/false,
-                                                     /*is_static=*/false);
+  const std::string dexdump = GetExecutableFilePath("dexdump",
+                                                    /*is_debug=*/false,
+                                                    /*is_static=*/false);
   std::string output;
   auto post_fork_fn = []() { return true; };
-  ForkAndExecResult res = ForkAndExec({dexdump2, "-d", dex_location}, post_fork_fn, &output);
+  ForkAndExecResult res = ForkAndExec({dexdump, "-d", dex_location}, post_fork_fn, &output);
   ASSERT_TRUE(res.StandardSuccess());
 }
 TEST_F(OatDumpTest, TestExportDexStatic) {

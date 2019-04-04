@@ -12,9 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// TODO(ajcbik): rename dexdump2 into dexdump when Dalvik version is removed
-
-
 cc_defaults {
     name: "dexdump_defaults",
     defaults: ["art_defaults"],
@@ -26,33 +23,37 @@ cc_defaults {
 }
 
 art_cc_binary {
-    name: "dexdump2",
+    name: "dexdump",
     defaults: ["dexdump_defaults"],
     host_supported: true,
-    shared_libs: [
-        "libdexfile",
-        "libartbase",
-        "libbase",
-    ],
-}
-
-art_cc_binary {
-    name: "dexdumps",
-    defaults: [
-        "dexdump_defaults",
-        "libartbase_static_defaults",
-        "libdexfile_static_defaults",
-    ],
-    host_supported: true,
-    device_supported: false,
     target: {
-        darwin: {
-            enabled: false,
-        },
         windows: {
             enabled: true,
-        },
-    },
+            static_libs: [
+                "libdexfile",
+                "libartbase",
+                "libbase",
+                "libartpalette",
+                "liblog",
+                "libz",
+                "libziparchive",
+            ],
+	},
+	not_windows: {
+            shared_libs: [
+                "libdexfile",
+                "libartbase",
+                "libbase",
+            ],
+	},
+	android: {
+            shared_libs: [
+                "libdexfile",
+                "libartbase",
+                "libbase",
+            ],
+	},
+    }
 }
 
 art_cc_test {
