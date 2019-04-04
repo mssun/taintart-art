@@ -158,9 +158,9 @@ void Locks::Init() {
     DCHECK(runtime_thread_pool_lock_ != nullptr);
   } else {
     // Create global locks in level order from highest lock level to lowest.
-    LockLevel current_lock_level = kInstrumentEntrypointsLock;
-    DCHECK(instrument_entrypoints_lock_ == nullptr);
-    instrument_entrypoints_lock_ = new Mutex("instrument entrypoint lock", current_lock_level);
+    LockLevel current_lock_level = kUserCodeSuspensionLock;
+    DCHECK(user_code_suspension_lock_ == nullptr);
+    user_code_suspension_lock_ = new Mutex("user code suspension lock", current_lock_level);
 
     #define UPDATE_CURRENT_LOCK_LEVEL(new_level) \
       if ((new_level) >= current_lock_level) { \
@@ -171,9 +171,9 @@ void Locks::Init() {
       } \
       current_lock_level = new_level;
 
-    UPDATE_CURRENT_LOCK_LEVEL(kUserCodeSuspensionLock);
-    DCHECK(user_code_suspension_lock_ == nullptr);
-    user_code_suspension_lock_ = new Mutex("user code suspension lock", current_lock_level);
+    UPDATE_CURRENT_LOCK_LEVEL(kInstrumentEntrypointsLock);
+    DCHECK(instrument_entrypoints_lock_ == nullptr);
+    instrument_entrypoints_lock_ = new Mutex("instrument entrypoint lock", current_lock_level);
 
     UPDATE_CURRENT_LOCK_LEVEL(kMutatorLock);
     DCHECK(mutator_lock_ == nullptr);
