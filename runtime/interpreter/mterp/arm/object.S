@@ -48,7 +48,7 @@
    cmp      r2, #0
    beq      common_errNullObject          @ null object
 %  if is_wide:
-     ldrd     r0, r1, [r2, r1]            @ r0,r1 <- obj.field
+     ldrd     r0, r1, [r1, r2]            @ r0,r1 <- obj.field
 %  else:
      ${load}  r0, [r2, r1]                @ r0 <- obj.field
 %  #endif
