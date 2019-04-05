@@ -57,8 +57,20 @@ if [[ -z "${ANDROID_HOST_OUT}" ]]; then
   ANDROID_HOST_OUT=${OUT}/host/linux-x86
 fi
 
+extra_flags=
+
+# If --api-flags is not passed directly, take it from the build.
+if [[ "$@" != "*--api-flags=*" ]]; then
+  file="${OUT}/soong/hiddenapi/hiddenapi-flags.csv"
+  if [ ! -f $file ]; then
+    echo "Missing API flags file $file"
+    exit 1
+  fi
+  extra_flags="--api-flags=$file"
+fi
+
 
 ${ANDROID_HOST_OUT}/bin/veridex \
     --core-stubs=${PACKAGING}/core_dex_intermediates/classes.dex:${PACKAGING}/oahl_dex_intermediates/classes.dex \
-    --api-flags=${PACKAGING}/hiddenapi-flags.csv \
+    $extra_flags \
     $@
