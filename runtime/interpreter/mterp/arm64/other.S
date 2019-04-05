@@ -263,7 +263,7 @@
     ldr     x0, [xFP, #OFF_FP_RESULT_REGISTER]  // get pointer to result JType.
     ldr     x0, [x0]                    // r0 <- result.i.
     GET_INST_OPCODE ip                  // extract opcode from wINST
-    SET_VREG_WIDE x0, x2                // fp[AA]<- r0
+    SET_VREG_WIDE x0, w2                // fp[AA]<- r0
     GOTO_OPCODE ip                      // jump to next instruction
 
 %def op_move_wide():
