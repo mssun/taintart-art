@@ -143,15 +143,9 @@ inline mirror::Object* Heap::AllocObjectWithAllocator(Thread* self,
       obj->AssertReadBarrierState();
     }
     if (collector::SemiSpace::kUseRememberedSet && UNLIKELY(allocator == kAllocatorTypeNonMoving)) {
-      // (Note this if statement will be constant folded away for the
-      // fast-path quick entry points.) Because SetClass() has no write
-      // barrier, if a non-moving space allocation, we need a write
-      // barrier as the class pointer may point to the bump pointer
-      // space (where the class pointer is an "old-to-young" reference,
-      // though rare) under the GSS collector with the remembered set
-      // enabled. We don't need this for kAllocatorTypeRosAlloc/DlMalloc
-      // cases because we don't directly allocate into the main alloc
-      // space (besides promotions) under the SS/GSS collector.
+      // (Note this if statement will be constant folded away for the fast-path quick entry
+      // points.) Because SetClass() has no write barrier, the GC may need a write barrier in the
+      // case the object is non movable and points to a recently allocated movable class.
       WriteBarrier::ForFieldWrite(obj, mirror::Object::ClassOffset(), klass);
     }
     pre_fence_visitor(obj, usable_size);

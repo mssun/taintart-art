@@ -174,8 +174,6 @@ void DexoptTest::ReserveImageSpace() {
   MemMap::Init();
 
   // Ensure a chunk of memory is reserved for the image space.
-  // The reservation_end includes room for the main space that has to come
-  // right after the image in case of the GSS collector.
   uint64_t reservation_start = ART_BASE_ADDRESS;
   uint64_t reservation_end = ART_BASE_ADDRESS + 384 * MB;
 
