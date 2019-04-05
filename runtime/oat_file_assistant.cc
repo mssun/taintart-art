@@ -543,7 +543,7 @@ bool OatFileAssistant::DexLocationToOatFilename(const std::string& location,
 
   // If ANDROID_DATA is not set, return false instead of aborting.
   // This can occur for preopt when using a class loader context.
-  if (GetAndroidDataSafe(error_msg) == nullptr) {
+  if (GetAndroidDataSafe(error_msg).empty()) {
     *error_msg = "GetAndroidDataSafe failed: " + *error_msg;
     return false;
   }
