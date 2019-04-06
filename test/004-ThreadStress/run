@@ -15,7 +15,29 @@
 # limitations under the License.
 
 # Enable lock contention logging.
-${RUN} --runtime-option -Xlockprofthreshold:10 "${@}"
+if [[ "x$ART_DEFAULT_GC_TYPE" = xGSS ]]; then
+  # NonMovingAlloc operations fail an assertion with the Generational
+  # Semi-Space (GSS) collector (see b/72738921); disable them for now
+  # by explicitly assigning frequencies to operations when the GSS
+  # collector is used.
+  #
+  # Note: The trick to use command substitution to have comments within
+  # a multi-line command is from https://stackoverflow.com/a/12797512.
+  ${RUN} --runtime-option -Xlockprofthreshold:10 "${@}" Main \
+    -oom:0.005           `#   1/200` \
+    -sigquit:0.095       `#  19/200` \
+    -alloc:0.225         `#  45/200` \
+    -largealloc:0.05     `#  10/200` \
+    -nonmovingalloc:0.0  `#   0/200` \
+    -stacktrace:0.1      `#  20/200` \
+    -exit:0.225          `#  45/200` \
+    -sleep:0.125         `#  25/200` \
+    -timedwait:0.05      `#  10/200` \
+    -wait:0.075          `#  15/200` \
+    -queuedwait:0.05     `#  10/200`
+else
+  ${RUN} --runtime-option -Xlockprofthreshold:10 "${@}"
+fi
 return_status1=$?
 
 # Run locks-only mode with stack-dump lock profiling. Reduce the number of total operations from

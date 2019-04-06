@@ -58,7 +58,7 @@ inline void SemiSpace::MarkObject(CompressedReferenceType* obj_ptr) {
       MarkStackPush(forward_address);
     }
     obj_ptr->Assign(forward_address);
-  } else if (!immune_spaces_.IsInImmuneRegion(obj)) {
+  } else if (!collect_from_space_only_ && !immune_spaces_.IsInImmuneRegion(obj)) {
     DCHECK(!to_space_->HasAddress(obj)) << "Tried to mark " << obj << " in to-space";
     auto slow_path = [this](const mirror::Object* ref) {
       CHECK(!to_space_->HasAddress(ref)) << "Marking " << ref << " in to_space_";

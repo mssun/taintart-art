@@ -32,6 +32,8 @@ enum CollectorType {
   kCollectorTypeCMS,
   // Semi-space / mark-sweep hybrid, enables compaction.
   kCollectorTypeSS,
+  // A generational variant of kCollectorTypeSS.
+  kCollectorTypeGSS,
   // Heap trimming collector, doesn't do any actual collecting.
   kCollectorTypeHeapTrim,
   // A (mostly) concurrent copying collector.
@@ -67,6 +69,8 @@ static constexpr CollectorType kCollectorTypeDefault =
     kCollectorTypeCMS
 #elif ART_DEFAULT_GC_TYPE_IS_SS
     kCollectorTypeSS
+#elif ART_DEFAULT_GC_TYPE_IS_GSS
+    kCollectorTypeGSS
 #else
     kCollectorTypeCMS
 #error "ART default GC type must be set"

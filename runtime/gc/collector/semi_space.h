@@ -59,7 +59,7 @@ class SemiSpace : public GarbageCollector {
   // If true, use remembered sets in the generational mode.
   static constexpr bool kUseRememberedSet = true;
 
-  explicit SemiSpace(Heap* heap, const std::string& name_prefix = "");
+  explicit SemiSpace(Heap* heap, bool generational = false, const std::string& name_prefix = "");
 
   ~SemiSpace() {}
 
@@ -76,7 +76,7 @@ class SemiSpace : public GarbageCollector {
     return kGcTypePartial;
   }
   CollectorType GetCollectorType() const override {
-    return kCollectorTypeSS;
+    return generational_ ? kCollectorTypeGSS : kCollectorTypeSS;
   }
 
   // Sets which space we will be copying objects to.
@@ -208,6 +208,9 @@ class SemiSpace : public GarbageCollector {
   // Every object inside the immune spaces is assumed to be marked.
   ImmuneSpaces immune_spaces_;
 
+  // If true, the large object space is immune.
+  bool is_large_object_space_immune_;
+
   // Destination and source spaces (can be any type of ContinuousMemMapAllocSpace which either has
   // a live bitmap or doesn't).
   space::ContinuousMemMapAllocSpace* to_space_;
@@ -218,6 +221,35 @@ class SemiSpace : public GarbageCollector {
   accounting::HeapBitmap* mark_bitmap_;
 
   Thread* self_;
+
+  // When true, the generational mode (promotion and the bump pointer
+  // space only collection) is enabled. TODO: move these to a new file
+  // as a new garbage collector?
+  const bool generational_;
+
+  // Used for the generational mode. the end/top of the bump
+  // pointer space at the end of the last collection.
+  uint8_t* last_gc_to_space_end_;
+
+  // Used for the generational mode. During a collection, keeps track
+  // of how many bytes of objects have been copied so far from the
+  // bump pointer space to the non-moving space.
+  uint64_t bytes_promoted_;
+
+  // Used for the generational mode. Keeps track of how many bytes of
+  // objects have been copied so far from the bump pointer space to
+  // the non-moving space, since the last whole heap collection.
+  uint64_t bytes_promoted_since_last_whole_heap_collection_;
+
+  // Used for the generational mode. Keeps track of how many bytes of
+  // large objects were allocated at the last whole heap collection.
+  uint64_t large_object_bytes_allocated_at_last_whole_heap_collection_;
+
+  // Used for generational mode. When true, we only collect the from_space_.
+  bool collect_from_space_only_;
+
+  // The space which we are promoting into, only used for GSS.
+  space::ContinuousMemMapAllocSpace* promo_dest_space_;
 
   // The space which we copy to if the to_space_ is full.
   space::ContinuousMemMapAllocSpace* fallback_space_;
