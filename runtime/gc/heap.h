@@ -956,6 +956,7 @@ class Heap {
     return
         collector_type == kCollectorTypeCC ||
         collector_type == kCollectorTypeSS ||
+        collector_type == kCollectorTypeGSS ||
         collector_type == kCollectorTypeCCBackground ||
         collector_type == kCollectorTypeHomogeneousSpaceCompact;
   }

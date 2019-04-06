@@ -569,6 +569,7 @@ bool ParsedOptions::DoParse(const RuntimeOptions& options,
 
   {
     // If not set, background collector type defaults to homogeneous compaction.
+    // If foreground is GSS, use GSS as background collector.
     // If not low memory mode, semispace otherwise.
 
     gc::CollectorType background_collector_type_;
@@ -584,8 +585,12 @@ bool ParsedOptions::DoParse(const RuntimeOptions& options,
     }
 
     if (background_collector_type_ == gc::kCollectorTypeNone) {
-      background_collector_type_ = low_memory_mode_ ?
-          gc::kCollectorTypeSS : gc::kCollectorTypeHomogeneousSpaceCompact;
+      if (collector_type_ != gc::kCollectorTypeGSS) {
+        background_collector_type_ = low_memory_mode_ ?
+            gc::kCollectorTypeSS : gc::kCollectorTypeHomogeneousSpaceCompact;
+      } else {
+        background_collector_type_ = collector_type_;
+      }
     }
 
     args.Set(M::BackgroundGc, BackgroundGcOption { background_collector_type_ });
