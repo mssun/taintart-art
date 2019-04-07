@@ -60,6 +60,7 @@ std::vector<uint8_t> PackElfFileForJIT(
     const InstructionSetFeatures* features,
     std::vector<ArrayRef<const uint8_t>>& added_elf_files,
     std::vector<const void*>& removed_symbols,
+    bool compress,
     /*out*/ size_t* num_symbols);
 
 std::vector<uint8_t> WriteDebugElfFileForClasses(

@@ -29,6 +29,10 @@
 namespace art {
 namespace debug {
 
+// Binary search table is not useful if the number of entries is small.
+// In particular, this avoids it for the in-memory JIT mini-debug-info.
+static constexpr size_t kMinDebugFrameHdrEntries = 100;
+
 static void WriteCIE(InstructionSet isa, /*inout*/ std::vector<uint8_t>* buffer) {
   using Reg = dwarf::Reg;
   // Scratch registers should be marked as undefined.  This tells the
@@ -224,7 +228,7 @@ void WriteCFISection(ElfBuilder<ElfTypes>* builder,
     cfi_section->End();
   }
 
-  if (method_infos.size() > 1) {
+  if (method_infos.size() > kMinDebugFrameHdrEntries) {
     std::sort(binary_search_table.begin(), binary_search_table.end());
 
     // Custom Android section. It is very similar to the official .eh_frame_hdr format.

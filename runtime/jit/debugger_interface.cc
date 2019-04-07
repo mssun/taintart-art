@@ -31,6 +31,7 @@
 #include <cstddef>
 #include <deque>
 #include <map>
+#include <set>
 
 //
 // Debug interface for native tools (gdb, lldb, libunwind, simpleperf).
@@ -274,88 +275,83 @@ void RemoveNativeDebugInfoForDex(Thread* self, const DexFile* dexfile) {
 }
 
 // Mapping from handle to entry. Used to manage life-time of the entries.
-static std::multimap<const void*, JITCodeEntry*> g_jit_debug_entries GUARDED_BY(g_jit_debug_lock);
+using JITCodeEntries = std::multimap<const void*, JITCodeEntry*>;
+static JITCodeEntries g_uncompressed_jit_debug_entries GUARDED_BY(g_jit_debug_lock);
+static JITCodeEntries g_compressed_jit_debug_entries GUARDED_BY(g_jit_debug_lock);
 
 // Number of entries added since last packing.  Used to pack entries in bulk.
 static size_t g_jit_num_unpacked_entries GUARDED_BY(g_jit_debug_lock) = 0;
+static constexpr uint32_t kJitMaxUnpackedEntries = 64;
 
 // We postpone removal so that it is done in bulk.
-static std::deque<const void*> g_jit_removed_entries GUARDED_BY(g_jit_debug_lock);
+static std::set<const void*> g_jit_removed_entries GUARDED_BY(g_jit_debug_lock);
 
 // Split the JIT code cache into groups of fixed size and create singe JITCodeEntry for each group.
 // The start address of method's code determines which group it belongs to.  The end is irrelevant.
 // As a consequnce, newly added mini debug infos will be merged and old ones (GCed) will be pruned.
-static void MaybePackJitMiniDebugInfo(PackElfFileForJITFunction pack,
-                                      InstructionSet isa,
-                                      const InstructionSetFeatures* features)
+static void RepackEntries(PackElfFileForJITFunction pack,
+                          InstructionSet isa,
+                          const InstructionSetFeatures* features,
+                          bool compress,
+                          /*inout*/ JITCodeEntries* entries)
     REQUIRES(g_jit_debug_lock) {
   // Size of memory range covered by each JITCodeEntry.
   // The number of methods per entry is variable (depending on how many fit in that range).
   constexpr uint32_t kGroupSize = 64 * KB;
-  // Even if there are no removed entries, we want to pack new entries on regular basis.
-  constexpr uint32_t kPackFrequency = 64;
 
-  std::deque<const void*>& removed_entries = g_jit_removed_entries;
-  std::sort(removed_entries.begin(), removed_entries.end());
-  if (removed_entries.empty() && g_jit_num_unpacked_entries < kPackFrequency) {
-    return;  // Nothing to do.
-  }
+  JITCodeEntries packed_entries;
+  std::vector<ArrayRef<const uint8_t>> added;
+  std::vector<const void*> removed;
+  while (!entries->empty()) {
+    const void* group_ptr = AlignDown(entries->begin()->first, kGroupSize);
+    const void* group_end = reinterpret_cast<const uint8_t*>(group_ptr) + kGroupSize;
 
-  std::vector<ArrayRef<const uint8_t>> added_elf_files;
-  std::vector<const void*> removed_symbols;
-  auto added_it = g_jit_debug_entries.begin();
-  auto removed_it = removed_entries.begin();
-  while (added_it != g_jit_debug_entries.end()) {
     // Collect all entries that have been added or removed within our memory range.
-    const void* group_ptr = AlignDown(added_it->first, kGroupSize);
-    added_elf_files.clear();
-    auto added_begin = added_it;
-    while (added_it != g_jit_debug_entries.end() &&
-           AlignDown(added_it->first, kGroupSize) == group_ptr) {
-      JITCodeEntry* entry = (added_it++)->second;
-      added_elf_files.emplace_back(entry->symfile_addr_, entry->symfile_size_);
+    added.clear();
+    auto add_it = entries->begin();
+    for (; add_it != entries->end() && add_it->first < group_end; ++add_it) {
+      JITCodeEntry* entry = add_it->second;
+      added.emplace_back(entry->symfile_addr_, entry->symfile_size_);
     }
-    removed_symbols.clear();
-    while (removed_it != removed_entries.end() &&
-           AlignDown(*removed_it, kGroupSize) == group_ptr) {
-      removed_symbols.push_back(*(removed_it++));
+    removed.clear();
+    auto remove_it = g_jit_removed_entries.lower_bound(group_ptr);
+    for (; remove_it != g_jit_removed_entries.end() && *remove_it < group_end; ++remove_it) {
+      removed.push_back(*remove_it);
     }
-
-    // Create new singe JITCodeEntry that covers this memory range.
-    if (added_elf_files.size() == 1 && removed_symbols.size() == 0) {
+    CHECK_GT(added.size(), 0u);
+    if (added.size() == 1 && removed.size() == 0) {
+      packed_entries.insert(entries->extract(entries->begin()));
       continue;  // Nothing changed in this memory range.
     }
-    uint64_t start_time = MilliTime();
+
+    // Create new single JITCodeEntry that covers this memory range.
+    uint64_t start_time = MicroTime();
     size_t symbols;
-    std::vector<uint8_t> packed = pack(isa, features, added_elf_files, removed_symbols, &symbols);
+    std::vector<uint8_t> packed = pack(isa, features, added, removed, compress, &symbols);
     VLOG(jit)
-        << "JIT mini-debug-info packed"
+        << "JIT mini-debug-info repacked"
         << " for " << group_ptr
-        << " in " << MilliTime() - start_time << "ms"
-        << " files=" << added_elf_files.size()
-        << " removed=" << removed_symbols.size()
+        << " in " << MicroTime() - start_time << "us"
+        << " files=" << added.size()
+        << " removed=" << removed.size()
         << " symbols=" << symbols
-        << " size=" << PrettySize(packed.size());
+        << " size=" << PrettySize(packed.size())
+        << " compress=" << compress;
 
     // Replace the old entries with the new one (with their lifetime temporally overlapping).
-    JITCodeEntry* packed_entry = CreateJITCodeEntryInternal(
+    packed_entries.emplace(group_ptr, CreateJITCodeEntryInternal(
         __jit_debug_descriptor,
         __jit_debug_register_code_ptr,
         ArrayRef<const uint8_t>(packed),
-        /*copy_symfile=*/ true);
-    for (auto it = added_begin; it != added_it; ++it) {
+        /*copy_symfile=*/ true));
+    for (auto it = entries->begin(); it != add_it; it = entries->erase(it)) {
       DeleteJITCodeEntryInternal(__jit_debug_descriptor,
                                  __jit_debug_register_code_ptr,
                                  /*entry=*/ it->second,
                                  /*free_symfile=*/ true);
     }
-    g_jit_debug_entries.erase(added_begin, added_it);
-    g_jit_debug_entries.emplace(group_ptr, packed_entry);
   }
-  CHECK(added_it == g_jit_debug_entries.end());
-  CHECK(removed_it == removed_entries.end());
-  removed_entries.clear();
-  g_jit_num_unpacked_entries = 0;
+  entries->swap(packed_entries);
 }
 
 void AddNativeDebugInfoForJit(Thread* self,
@@ -367,7 +363,14 @@ void AddNativeDebugInfoForJit(Thread* self,
   MutexLock mu(self, g_jit_debug_lock);
   DCHECK_NE(symfile.size(), 0u);
 
-  MaybePackJitMiniDebugInfo(pack, isa, features);
+  // Pack and compress all entries. This will run on first compilation after a GC.
+  // Must be done before addition in case the added code_ptr is in the removed set.
+  if (!g_jit_removed_entries.empty()) {
+    g_compressed_jit_debug_entries.merge(g_uncompressed_jit_debug_entries);
+    RepackEntries(pack, isa, features, /*compress=*/ true, &g_compressed_jit_debug_entries);
+    g_jit_removed_entries.clear();
+    g_jit_num_unpacked_entries = 0;
+  }
 
   JITCodeEntry* entry = CreateJITCodeEntryInternal(
       __jit_debug_descriptor,
@@ -383,11 +386,20 @@ void AddNativeDebugInfoForJit(Thread* self,
   // We don't provide code_ptr for type debug info, which means we cannot free it later.
   // (this only happens when --generate-debug-info flag is enabled for the purpose
   // of being debugged with gdb; it does not happen for debuggable apps by default).
-  if (code_ptr != nullptr) {
-    g_jit_debug_entries.emplace(code_ptr, entry);
-    // Count how many entries we have added since the last mini-debug-info packing.
-    // We avoid g_jit_debug_entries.size() here because it can shrink during packing.
-    g_jit_num_unpacked_entries++;
+  if (code_ptr == nullptr) {
+    return;
+  }
+
+  g_uncompressed_jit_debug_entries.emplace(code_ptr, entry);
+  // Count how many entries we have added since the last mini-debug-info packing.
+  // We avoid g_uncompressed_jit_debug_entries.size() because it can shrink during packing.
+  ++g_jit_num_unpacked_entries;
+
+  // Pack (but don't compress) recent entries - this is cheap and reduces memory use by ~4x.
+  // We delay compression until after GC since it is more expensive (and saves further ~4x).
+  if (g_jit_num_unpacked_entries >= kJitMaxUnpackedEntries) {
+    RepackEntries(pack, isa, features, /*compress=*/ false, &g_uncompressed_jit_debug_entries);
+    g_jit_num_unpacked_entries = 0;
   }
 }
 
@@ -395,16 +407,18 @@ void RemoveNativeDebugInfoForJit(Thread* self, const void* code_ptr) {
   MutexLock mu(self, g_jit_debug_lock);
   // We generate JIT native debug info only if the right runtime flags are enabled,
   // but we try to remove it unconditionally whenever code is freed from JIT cache.
-  if (!g_jit_debug_entries.empty()) {
-    g_jit_removed_entries.push_back(code_ptr);
+  if (!g_uncompressed_jit_debug_entries.empty() || !g_compressed_jit_debug_entries.empty()) {
+    g_jit_removed_entries.insert(code_ptr);
   }
 }
 
 size_t GetJitMiniDebugInfoMemUsage() {
   MutexLock mu(Thread::Current(), g_jit_debug_lock);
   size_t size = 0;
-  for (auto entry : g_jit_debug_entries) {
-    size += sizeof(JITCodeEntry) + entry.second->symfile_size_ + /*map entry*/ 4 * sizeof(void*);
+  for (const auto& entries : {g_uncompressed_jit_debug_entries, g_compressed_jit_debug_entries}) {
+    for (const auto& entry : entries) {
+      size += sizeof(JITCodeEntry) + entry.second->symfile_size_ + /*map entry*/ 4 * sizeof(void*);
+    }
   }
   return size;
 }
