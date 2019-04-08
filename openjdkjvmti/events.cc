@@ -58,6 +58,7 @@
 #include "thread-inl.h"
 #include "thread_list.h"
 #include "ti_phase.h"
+#include "ti_thread.h"
 #include "well_known_classes.h"
 
 namespace openjdkjvmti {
