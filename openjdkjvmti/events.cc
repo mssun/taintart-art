@@ -38,7 +38,6 @@
 #include "art_field-inl.h"
 #include "art_jvmti.h"
 #include "art_method-inl.h"
-#include "base/mutex.h"
 #include "deopt_manager.h"
 #include "dex/dex_file_types.h"
 #include "gc/allocation_listener.h"
@@ -1268,65 +1267,57 @@ jvmtiError EventHandler::SetEvent(ArtJvmTiEnv* env,
     return ERR(MUST_POSSESS_CAPABILITY);
   }
 
-  if (thread != nullptr && !IsThreadControllable(event)) {
-    return ERR(ILLEGAL_ARGUMENT);
+  art::Thread* art_thread = nullptr;
+  if (thread != nullptr) {
+    if (!IsThreadControllable(event)) {
+      return ERR(ILLEGAL_ARGUMENT);
+    }
+    art::ScopedObjectAccess soa(art::Thread::Current());
+    art::MutexLock mu(soa.Self(), *art::Locks::thread_list_lock_);
+    jvmtiError err = ERR(INTERNAL);
+    if (!ThreadUtil::GetAliveNativeThread(thread, soa, &art_thread, &err)) {
+      return err;
+    } else if (art_thread->IsStillStarting()) {
+      return ERR(THREAD_NOT_ALIVE);
+    }
+    art::ThreadState state = art_thread->GetState();
+    if (state == art::ThreadState::kStarting || state == art::ThreadState::kTerminated) {
+      return ERR(THREAD_NOT_ALIVE);
+    }
   }
 
-  art::Thread* self = art::Thread::Current();
-  art::Thread* target = nullptr;
-  do {
-    ThreadUtil::SuspendCheck(self);
-    art::MutexLock ucsl_mu(self, *art::Locks::user_code_suspension_lock_);
-    // Make sure we won't be suspended in the middle of holding the
-    // thread_suspend_count_lock_ by a user-code suspension. We retry and do
-    // another SuspendCheck to clear this.
-    if (ThreadUtil::WouldSuspendForUserCodeLocked(self)) {
-      continue;
-    }
-    bool old_state;
-    bool new_state;
-    {
-      // From now on we know we cannot get suspended by user-code.
-      // NB This does a SuspendCheck (during thread state change) so we need to
-      // make sure we don't have the 'suspend_lock' locked here.
-      art::ScopedObjectAccess soa(self);
-      art::WriterMutexLock el_mu(self, envs_lock_);
-      art::MutexLock tll_mu(self, *art::Locks::thread_list_lock_);
-      jvmtiError err = ERR(INTERNAL);
-      if (thread != nullptr) {
-        if (!ThreadUtil::GetAliveNativeThread(thread, soa, &target, &err)) {
-          return err;
-        } else if (target->IsStillStarting() ||
-                  target->GetState() == art::ThreadState::kStarting) {
-          target->Dump(LOG_STREAM(WARNING) << "Is not alive: ");
-          return ERR(THREAD_NOT_ALIVE);
-        }
-      }
+  // TODO We use art_thread simply as a global unique identifier here. It is not safe to actually
+  // use it without holding the thread_list_lock_.
 
+  bool old_state;
+  bool new_state;
 
-      {
-        art::WriterMutexLock ei_mu(self, env->event_info_mutex_);
-        old_state = global_mask.Test(event);
-        if (mode == JVMTI_ENABLE) {
-          env->event_masks.EnableEvent(env, target, event);
-          global_mask.Set(event);
-          new_state = true;
-        } else {
-          DCHECK_EQ(mode, JVMTI_DISABLE);
+  {
+    // Change the event masks atomically.
+    art::Thread* self = art::Thread::Current();
+    art::WriterMutexLock mu(self, envs_lock_);
+    art::WriterMutexLock mu_env_info(self, env->event_info_mutex_);
+    old_state = global_mask.Test(event);
+    if (mode == JVMTI_ENABLE) {
+      env->event_masks.EnableEvent(env, art_thread, event);
+      global_mask.Set(event);
+      new_state = true;
+    } else {
+      DCHECK_EQ(mode, JVMTI_DISABLE);
 
-          env->event_masks.DisableEvent(env, target, event);
-          RecalculateGlobalEventMaskLocked(event);
-          new_state = global_mask.Test(event);
-        }
-      }
+      // TODO Replace art_thread with a uintptr_t or something to indicate we cannot read from it.
+      env->event_masks.DisableEvent(env, art_thread, event);
+      RecalculateGlobalEventMaskLocked(event);
+      new_state = global_mask.Test(event);
     }
-    // Handle any special work required for the event type. We still have the
-    // user_code_suspend_count_lock_ so there won't be any interleaving here.
-    if (new_state != old_state) {
-      return HandleEventType(event, thread, mode == JVMTI_ENABLE);
-    }
-    return OK;
-  } while (true);
+  }
+
+  // Handle any special work required for the event type.
+  if (new_state != old_state) {
+    return HandleEventType(event, thread, mode == JVMTI_ENABLE);
+  }
+
+  return ERR(NONE);
 }
 
 void EventHandler::HandleBreakpointEventsChanged(bool added) {
@@ -1349,7 +1340,7 @@ void EventHandler::Shutdown() {
 }
 
 EventHandler::EventHandler()
-  : envs_lock_("JVMTI Environment List Lock", art::LockLevel::kPostMutatorTopLockLevel),
+  : envs_lock_("JVMTI Environment List Lock", art::LockLevel::kTopLockLevel),
     frame_pop_enabled(false) {
   alloc_listener_.reset(new JvmtiAllocationListener(this));
   ddm_listener_.reset(new JvmtiDdmChunkListener(this));
