@@ -17,8 +17,7 @@
 #include <string>
 #include <vector>
 
-#include "common_runtime_test.h"
-
+#include "base/common_art_test.h"
 #include "base/file_utils.h"
 #include "base/os.h"
 #include "exec_utils.h"
@@ -32,10 +31,10 @@ static const char* kDexDiagHelp = "--help";
 static const char* kDexDiagVerbose = "--verbose";
 static const char* kDexDiagBinaryName = "dexdiag";
 
-class DexDiagTest : public CommonRuntimeTest {
+class DexDiagTest : public CommonArtTest {
  protected:
   void SetUp() override {
-    CommonRuntimeTest::SetUp();
+    CommonArtTest::SetUp();
   }
 
   // Path to the dexdiag(d?)[32|64] binary.
