@@ -190,13 +190,14 @@ void BaseMutex::CheckSafeToWait(Thread* self) {
     for (int i = kLockLevelCount - 1; i >= 0; --i) {
       if (i != level_) {
         BaseMutex* held_mutex = self->GetHeldMutex(static_cast<LockLevel>(i));
-        // We allow the thread to wait even if the user_code_suspension_lock_ is held so long as we
-        // are some thread's resume_cond_ (level_ == kThreadSuspendCountLock). This just means that
-        // gc or some other internal process is suspending the thread while it is trying to suspend
-        // some other thread. So long as the current thread is not being suspended by a
-        // SuspendReason::kForUserCode (which needs the user_code_suspension_lock_ to clear) this is
-        // fine.
-        if (held_mutex == Locks::user_code_suspension_lock_ && level_ == kThreadSuspendCountLock) {
+        // We allow the thread to wait even if the user_code_suspension_lock_ is held so long. This
+        // just means that gc or some other internal process is suspending the thread while it is
+        // trying to suspend some other thread. So long as the current thread is not being suspended
+        // by a SuspendReason::kForUserCode (which needs the user_code_suspension_lock_ to clear)
+        // this is fine. This is needed due to user_code_suspension_lock_ being the way untrusted
+        // code interacts with suspension. One holds the lock to prevent user-code-suspension from
+        // occurring. Since this is only initiated from user-supplied native-code this is safe.
+        if (held_mutex == Locks::user_code_suspension_lock_) {
           // No thread safety analysis is fine since we have both the user_code_suspension_lock_
           // from the line above and the ThreadSuspendCountLock since it is our level_. We use this
           // lambda to avoid having to annotate the whole function as NO_THREAD_SAFETY_ANALYSIS.

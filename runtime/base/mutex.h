@@ -401,6 +401,12 @@ class ConditionVariable {
   // TODO: remove this.
   void WaitHoldingLocks(Thread* self) NO_THREAD_SAFETY_ANALYSIS;
 
+  void CheckSafeToWait(Thread* self) NO_THREAD_SAFETY_ANALYSIS {
+    if (kDebugLocking) {
+      guard_.CheckSafeToWait(self);
+    }
+  }
+
  private:
   const char* const name_;
   // The Mutex being used by waiters. It is an error to mix condition variables between different
