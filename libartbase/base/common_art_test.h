@@ -32,28 +32,11 @@
 #include "base/unix_file/fd_file.h"
 #include "dex/art_dex_file_loader.h"
 #include "dex/compact_dex_level.h"
-#include "obj_ptr-inl.h"
 
 namespace art {
 
 using LogSeverity = android::base::LogSeverity;
 using ScopedLogSeverity = android::base::ScopedLogSeverity;
-
-template<class MirrorType>
-static inline ObjPtr<MirrorType> MakeObjPtr(MirrorType* ptr) {
-  return ptr;
-}
-
-template<class MirrorType>
-static inline ObjPtr<MirrorType> MakeObjPtr(ObjPtr<MirrorType> ptr) {
-  return ptr;
-}
-
-// OBJ pointer helpers to avoid needing .Decode everywhere.
-#define EXPECT_OBJ_PTR_EQ(a, b) EXPECT_EQ(MakeObjPtr(a).Ptr(), MakeObjPtr(b).Ptr())
-#define ASSERT_OBJ_PTR_EQ(a, b) ASSERT_EQ(MakeObjPtr(a).Ptr(), MakeObjPtr(b).Ptr())
-#define EXPECT_OBJ_PTR_NE(a, b) EXPECT_NE(MakeObjPtr(a).Ptr(), MakeObjPtr(b).Ptr())
-#define ASSERT_OBJ_PTR_NE(a, b) ASSERT_NE(MakeObjPtr(a).Ptr(), MakeObjPtr(b).Ptr())
 
 class DexFile;
 
