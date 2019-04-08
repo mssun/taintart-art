@@ -34,6 +34,11 @@ std::string GetAndroidRoot();
 // Find $ANDROID_ROOT, /system, or return an empty string.
 std::string GetAndroidRootSafe(/*out*/ std::string* error_msg);
 
+// Find $ANDROID_RUNTIME_ROOT, /apex/com.android.runtime, or abort.
+std::string GetAndroidRuntimeRoot();
+// Find $ANDROID_RUNTIME_ROOT, /apex/com.android.runtime, or return an empty string.
+std::string GetAndroidRuntimeRootSafe(/*out*/ std::string* error_msg);
+
 // Find $ANDROID_DATA, /data, or abort.
 const char* GetAndroidData();
 // Find $ANDROID_DATA, /data, or return null.

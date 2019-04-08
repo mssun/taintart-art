@@ -178,6 +178,15 @@ static const char* GetAndroidDir(const char* env_var, const char* default_dir) {
   }
 }
 
+std::string GetAndroidRuntimeRootSafe(std::string* error_msg) {
+  const char* android_dir =
+      GetAndroidDirSafe(kAndroidRuntimeRootEnvVar, kAndroidRuntimeApexDefaultPath, error_msg);
+  return (android_dir != nullptr) ? android_dir : "";
+}
+
+std::string GetAndroidRuntimeRoot() {
+  return GetAndroidDir(kAndroidRuntimeRootEnvVar, kAndroidRuntimeApexDefaultPath);
+}
 const char* GetAndroidData() {
   return GetAndroidDir(kAndroidDataEnvVar, kAndroidDataDefaultPath);
 }
@@ -341,13 +350,10 @@ bool LocationIsOnSystemFramework(const char* full_path) {
 }
 
 bool RuntimeModuleRootDistinctFromAndroidRoot() {
-  std::string error_msg;
-  std::string android_root = GetAndroidRootSafe(&error_msg);
-  const char* runtime_root =
-      GetAndroidDirSafe(kAndroidRuntimeRootEnvVar, kAndroidRuntimeApexDefaultPath, &error_msg);
-  return !android_root.empty()
-      && (runtime_root != nullptr)
-      && (android_root != std::string_view(runtime_root));
+  std::string unused_error_msg;
+  std::string android_root = GetAndroidRootSafe(&unused_error_msg);
+  std::string runtime_root = GetAndroidRuntimeRootSafe(&unused_error_msg);
+  return !android_root.empty() && !runtime_root.empty() && (android_root != runtime_root);
 }
 
 int DupCloexec(int fd) {
