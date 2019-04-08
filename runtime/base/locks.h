@@ -121,14 +121,9 @@ enum LockLevel : uint8_t {
   kRuntimeShutdownLock,
   kTraceLock,
   kHeapBitmapLock,
-
-  // This is a generic lock level for a top-level lock meant to be gained after having the
-  // mutator_lock_.
-  kPostMutatorTopLockLevel,
-
   kMutatorLock,
-  kInstrumentEntrypointsLock,
   kUserCodeSuspensionLock,
+  kInstrumentEntrypointsLock,
   kZygoteCreationLock,
 
   // The highest valid lock level. Use this if there is code that should only be called with no
@@ -179,13 +174,13 @@ class Locks {
   // Check if the given mutex is in expected_mutexes_on_weak_ref_access_.
   static bool IsExpectedOnWeakRefAccess(BaseMutex* mutex);
 
+  // Guards allocation entrypoint instrumenting.
+  static Mutex* instrument_entrypoints_lock_;
+
   // Guards code that deals with user-code suspension. This mutex must be held when suspending or
   // resuming threads with SuspendReason::kForUserCode. It may be held by a suspended thread, but
   // only if the suspension is not due to SuspendReason::kForUserCode.
-  static Mutex* user_code_suspension_lock_;
-
-  // Guards allocation entrypoint instrumenting.
-  static Mutex* instrument_entrypoints_lock_ ACQUIRED_AFTER(user_code_suspension_lock_);
+  static Mutex* user_code_suspension_lock_ ACQUIRED_AFTER(instrument_entrypoints_lock_);
 
   // A barrier is used to synchronize the GC/Debugger thread with mutator threads. When GC/Debugger
   // thread wants to suspend all mutator threads, it needs to wait for all mutator threads to pass
@@ -222,7 +217,7 @@ class Locks {
   //    state is changed                           |  .. running ..
   //  - if the CAS operation fails then goto x     |  .. running ..
   //  .. running ..                                |  .. running ..
-  static MutatorMutex* mutator_lock_ ACQUIRED_AFTER(instrument_entrypoints_lock_);
+  static MutatorMutex* mutator_lock_ ACQUIRED_AFTER(user_code_suspension_lock_);
 
   // Allow reader-writer mutual exclusion on the mark and live bitmaps of the heap.
   static ReaderWriterMutex* heap_bitmap_lock_ ACQUIRED_AFTER(mutator_lock_);
