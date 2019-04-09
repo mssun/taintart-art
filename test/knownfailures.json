@@ -19,13 +19,6 @@
     },
     {
         "tests": "080-oom-fragmentation",
-        "description": ["Disable 080-oom-fragmentation for GSS GC due to lack of",
-                        "support for allocations larger than 32MB."],
-        "env_vars": {"ART_DEFAULT_GC_TYPE": "GSS"},
-        "bug": "http://b/33795328"
-    },
-    {
-        "tests": "080-oom-fragmentation",
         "description": ["Disable 080-oom-fragmentation for CC collector in debug mode",
                         "because of potential fragmentation caused by the region space's",
                         "cyclic region allocation (which is enabled in debug mode)."],
