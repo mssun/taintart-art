@@ -478,11 +478,11 @@ void Trace::StopTracing(bool finish_tracing, bool flush_file) {
         MutexLock mu(self, *Locks::thread_list_lock_);
         runtime->GetThreadList()->ForEach(ClearThreadStackTraceAndClockBase, nullptr);
       } else {
-        runtime->GetInstrumentation()->DisableMethodTracing(kTracerInstrumentationKey);
         runtime->GetInstrumentation()->RemoveListener(
             the_trace, instrumentation::Instrumentation::kMethodEntered |
             instrumentation::Instrumentation::kMethodExited |
             instrumentation::Instrumentation::kMethodUnwind);
+        runtime->GetInstrumentation()->DisableMethodTracing(kTracerInstrumentationKey);
       }
     }
     // At this point, code may read buf_ as it's writers are shutdown
