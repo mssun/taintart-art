@@ -308,9 +308,6 @@ class Heap {
   void ChangeAllocator(AllocatorType allocator)
       REQUIRES(Locks::mutator_lock_, !Locks::runtime_shutdown_lock_);
 
-  // Transition the garbage collector during runtime, may copy objects from one space to another.
-  void TransitionCollector(CollectorType collector_type) REQUIRES(!*gc_complete_lock_);
-
   // Change the collector to be one of the possible options (MS, CMS, SS).
   void ChangeCollector(CollectorType collector_type)
       REQUIRES(Locks::mutator_lock_);
@@ -690,9 +687,6 @@ class Heap {
                          uint32_t* boot_image_end,
                          uint32_t* boot_oat_begin,
                          uint32_t* boot_oat_end);
-
-  // Permenantly disable moving garbage collection.
-  void DisableMovingGc() REQUIRES(!*gc_complete_lock_);
 
   space::DlMallocSpace* GetDlMallocSpace() const {
     return dlmalloc_space_;

@@ -96,9 +96,6 @@ namespace art {
 
 namespace gc {
 
-static constexpr size_t kCollectorTransitionStressIterations = 0;
-static constexpr size_t kCollectorTransitionStressWait = 10 * 1000;  // Microseconds
-
 DEFINE_RUNTIME_DEBUG_FLAG(Heap, kStressCollectorTransition);
 
 // Minimum amount of remaining bytes before a concurrent GC is triggered.
@@ -315,6 +312,9 @@ Heap::Heap(size_t initial_size,
   if (kUseReadBarrier) {
     CHECK_EQ(foreground_collector_type_, kCollectorTypeCC);
     CHECK_EQ(background_collector_type_, kCollectorTypeCCBackground);
+  } else {
+    CHECK_EQ(IsMovingGc(foreground_collector_type_), IsMovingGc(background_collector_type_))
+        << "Changing from moving to non-moving GC (or visa versa) is not supported.";
   }
   verification_.reset(new Verification(this));
   CHECK_GE(large_object_threshold, kMinLargeObjectThreshold);
@@ -799,34 +799,6 @@ void Heap::ChangeAllocator(AllocatorType allocator) {
   }
 }
 
-void Heap::DisableMovingGc() {
-  CHECK(!kUseReadBarrier);
-  if (IsMovingGc(foreground_collector_type_)) {
-    foreground_collector_type_ = kCollectorTypeCMS;
-  }
-  if (IsMovingGc(background_collector_type_)) {
-    background_collector_type_ = foreground_collector_type_;
-  }
-  TransitionCollector(foreground_collector_type_);
-  Thread* const self = Thread::Current();
-  ScopedThreadStateChange tsc(self, kSuspended);
-  ScopedSuspendAll ssa(__FUNCTION__);
-  // Something may have caused the transition to fail.
-  if (!IsMovingGc(collector_type_) && non_moving_space_ != main_space_) {
-    CHECK(main_space_ != nullptr);
-    // The allocation stack may have non movable objects in it. We need to flush it since the GC
-    // can't only handle marking allocation stack objects of one non moving space and one main
-    // space.
-    {
-      WriterMutexLock mu(self, *Locks::heap_bitmap_lock_);
-      FlushAllocStack();
-    }
-    main_space_->DisableMovingObjects();
-    non_moving_space_ = main_space_;
-    CHECK(!non_moving_space_->CanMoveObjects());
-  }
-}
-
 bool Heap::IsCompilingBoot() const {
   if (!Runtime::Current()->IsAotCompiler()) {
     return false;
@@ -947,14 +919,6 @@ void Heap::ThreadFlipEnd(Thread* self) {
 void Heap::UpdateProcessState(ProcessState old_process_state, ProcessState new_process_state) {
   if (old_process_state != new_process_state) {
     const bool jank_perceptible = new_process_state == kProcessStateJankPerceptible;
-    for (size_t i = 1; i <= kCollectorTransitionStressIterations; ++i) {
-      // Start at index 1 to avoid "is always false" warning.
-      // Have iteration 1 always transition the collector.
-      TransitionCollector((((i & 1) == 1) == jank_perceptible)
-          ? foreground_collector_type_
-          : background_collector_type_);
-      usleep(kCollectorTransitionStressWait);
-    }
     if (jank_perceptible) {
       // Transition back to foreground right away to prevent jank.
       RequestCollectorTransition(foreground_collector_type_, 0);
@@ -1382,7 +1346,7 @@ void Heap::DoPendingCollectorTransition() {
       VLOG(gc) << "CC background compaction ignored due to jank perceptible process state";
     }
   } else {
-    TransitionCollector(desired_collector_type);
+    CHECK_EQ(desired_collector_type, collector_type_) << "Unsupported collector transition";
   }
 }
 
@@ -1831,35 +1795,6 @@ mirror::Object* Heap::AllocateInternalWithGc(Thread* self,
         }
         break;
       }
-      case kAllocatorTypeNonMoving: {
-        if (kUseReadBarrier) {
-          // DisableMovingGc() isn't compatible with CC.
-          break;
-        }
-        // Try to transition the heap if the allocation failure was due to the space being full.
-        if (!IsOutOfMemoryOnAllocation(allocator, alloc_size, /*grow=*/ false)) {
-          // If we aren't out of memory then the OOM was probably from the non moving space being
-          // full. Attempt to disable compaction and turn the main space into a non moving space.
-          DisableMovingGc();
-          // Thread suspension could have occurred.
-          if ((was_default_allocator && allocator != GetCurrentAllocator()) ||
-              (!instrumented && EntrypointsInstrumented())) {
-            return nullptr;
-          }
-          // If we are still a moving GC then something must have caused the transition to fail.
-          if (IsMovingGc(collector_type_)) {
-            MutexLock mu(self, *gc_complete_lock_);
-            // If we couldn't disable moving GC, just throw OOME and return null.
-            LOG(WARNING) << "Couldn't disable moving GC with disable GC count "
-                         << disable_moving_gc_count_;
-          } else {
-            LOG(WARNING) << "Disabled moving GC due to the non moving space being full";
-            ptr = TryToAllocate<true, true>(self, allocator, alloc_size, bytes_allocated,
-                                            usable_size, bytes_tl_bulk_allocated);
-          }
-        }
-        break;
-      }
       default: {
         // Do nothing for others allocators.
       }
@@ -2079,163 +2014,6 @@ HomogeneousSpaceCompactResult Heap::PerformHomogeneousSpaceCompact() {
     soa.Vm()->UnloadNativeLibraries();
   }
   return HomogeneousSpaceCompactResult::kSuccess;
-}
-
-void Heap::TransitionCollector(CollectorType collector_type) {
-  if (collector_type == collector_type_) {
-    return;
-  }
-  // Collector transition must not happen with CC
-  CHECK(!kUseReadBarrier);
-  VLOG(heap) << "TransitionCollector: " << static_cast<int>(collector_type_)
-             << " -> " << static_cast<int>(collector_type);
-  uint64_t start_time = NanoTime();
-  uint32_t before_allocated = num_bytes_allocated_.load(std::memory_order_relaxed);
-  Runtime* const runtime = Runtime::Current();
-  Thread* const self = Thread::Current();
-  ScopedThreadStateChange tsc(self, kWaitingPerformingGc);
-  // TODO: Clang prebuilt for r316199 produces bogus thread safety analysis warning for holding both
-  // exclusive and shared lock in the same scope. Remove the assertion as a temporary workaround.
-  // http://b/71769596
-  // Locks::mutator_lock_->AssertNotHeld(self);
-  // Busy wait until we can GC (StartGC can fail if we have a non-zero
-  // compacting_gc_disable_count_, this should rarely occurs).
-  for (;;) {
-    {
-      ScopedThreadStateChange tsc2(self, kWaitingForGcToComplete);
-      MutexLock mu(self, *gc_complete_lock_);
-      // Ensure there is only one GC at a time.
-      WaitForGcToCompleteLocked(kGcCauseCollectorTransition, self);
-      // Currently we only need a heap transition if we switch from a moving collector to a
-      // non-moving one, or visa versa.
-      const bool copying_transition = IsMovingGc(collector_type_) != IsMovingGc(collector_type);
-      // If someone else beat us to it and changed the collector before we could, exit.
-      // This is safe to do before the suspend all since we set the collector_type_running_ before
-      // we exit the loop. If another thread attempts to do the heap transition before we exit,
-      // then it would get blocked on WaitForGcToCompleteLocked.
-      if (collector_type == collector_type_) {
-        return;
-      }
-      // GC can be disabled if someone has a used GetPrimitiveArrayCritical but not yet released.
-      if (!copying_transition || disable_moving_gc_count_ == 0) {
-        // TODO: Not hard code in semi-space collector?
-        collector_type_running_ = copying_transition ? kCollectorTypeSS : collector_type;
-        break;
-      }
-    }
-    usleep(1000);
-  }
-  if (runtime->IsShuttingDown(self)) {
-    // Don't allow heap transitions to happen if the runtime is shutting down since these can
-    // cause objects to get finalized.
-    FinishGC(self, collector::kGcTypeNone);
-    return;
-  }
-  collector::GarbageCollector* collector = nullptr;
-  {
-    ScopedSuspendAll ssa(__FUNCTION__);
-    switch (collector_type) {
-      case kCollectorTypeSS: {
-        if (!IsMovingGc(collector_type_)) {
-          // Create the bump pointer space from the backup space.
-          CHECK(main_space_backup_ != nullptr);
-          MemMap mem_map = main_space_backup_->ReleaseMemMap();
-          // We are transitioning from non moving GC -> moving GC, since we copied from the bump
-          // pointer space last transition it will be protected.
-          CHECK(mem_map.IsValid());
-          mem_map.Protect(PROT_READ | PROT_WRITE);
-          bump_pointer_space_ = space::BumpPointerSpace::CreateFromMemMap("Bump pointer space",
-                                                                          std::move(mem_map));
-          AddSpace(bump_pointer_space_);
-          collector = Compact(bump_pointer_space_, main_space_, kGcCauseCollectorTransition);
-          // Use the now empty main space mem map for the bump pointer temp space.
-          mem_map = main_space_->ReleaseMemMap();
-          // Unset the pointers just in case.
-          if (dlmalloc_space_ == main_space_) {
-            dlmalloc_space_ = nullptr;
-          } else if (rosalloc_space_ == main_space_) {
-            rosalloc_space_ = nullptr;
-          }
-          // Remove the main space so that we don't try to trim it, this doens't work for debug
-          // builds since RosAlloc attempts to read the magic number from a protected page.
-          RemoveSpace(main_space_);
-          RemoveRememberedSet(main_space_);
-          delete main_space_;  // Delete the space since it has been removed.
-          main_space_ = nullptr;
-          RemoveRememberedSet(main_space_backup_.get());
-          main_space_backup_.reset(nullptr);  // Deletes the space.
-          temp_space_ = space::BumpPointerSpace::CreateFromMemMap("Bump pointer space 2",
-                                                                  std::move(mem_map));
-          AddSpace(temp_space_);
-        }
-        break;
-      }
-      case kCollectorTypeMS:
-        // Fall through.
-      case kCollectorTypeCMS: {
-        if (IsMovingGc(collector_type_)) {
-          CHECK(temp_space_ != nullptr);
-          MemMap mem_map = temp_space_->ReleaseMemMap();
-          RemoveSpace(temp_space_);
-          temp_space_ = nullptr;
-          mem_map.Protect(PROT_READ | PROT_WRITE);
-          CreateMainMallocSpace(std::move(mem_map),
-                                kDefaultInitialSize,
-                                std::min(mem_map.Size(), growth_limit_),
-                                mem_map.Size());
-          // Compact to the main space from the bump pointer space, don't need to swap semispaces.
-          AddSpace(main_space_);
-          collector = Compact(main_space_, bump_pointer_space_, kGcCauseCollectorTransition);
-          mem_map = bump_pointer_space_->ReleaseMemMap();
-          RemoveSpace(bump_pointer_space_);
-          bump_pointer_space_ = nullptr;
-          const char* name = kUseRosAlloc ? kRosAllocSpaceName[1] : kDlMallocSpaceName[1];
-          // Temporarily unprotect the backup mem map so rosalloc can write the debug magic number.
-          if (kIsDebugBuild && kUseRosAlloc) {
-            mem_map.Protect(PROT_READ | PROT_WRITE);
-          }
-          main_space_backup_.reset(CreateMallocSpaceFromMemMap(
-              std::move(mem_map),
-              kDefaultInitialSize,
-              std::min(mem_map.Size(), growth_limit_),
-              mem_map.Size(),
-              name,
-              true));
-          if (kIsDebugBuild && kUseRosAlloc) {
-            main_space_backup_->GetMemMap()->Protect(PROT_NONE);
-          }
-        }
-        break;
-      }
-      default: {
-        LOG(FATAL) << "Attempted to transition to invalid collector type "
-                   << static_cast<size_t>(collector_type);
-        UNREACHABLE();
-      }
-    }
-    ChangeCollector(collector_type);
-  }
-  // Can't call into java code with all threads suspended.
-  reference_processor_->EnqueueClearedReferences(self);
-  uint64_t duration = NanoTime() - start_time;
-  GrowForUtilization(semi_space_collector_);
-  DCHECK(collector != nullptr);
-  LogGC(kGcCauseCollectorTransition, collector);
-  FinishGC(self, collector::kGcTypeFull);
-  {
-    ScopedObjectAccess soa(self);
-    soa.Vm()->UnloadNativeLibraries();
-  }
-  int32_t after_allocated = num_bytes_allocated_.load(std::memory_order_relaxed);
-  int32_t delta_allocated = before_allocated - after_allocated;
-  std::string saved_str;
-  if (delta_allocated >= 0) {
-    saved_str = " saved at least " + PrettySize(delta_allocated);
-  } else {
-    saved_str = " expanded " + PrettySize(-delta_allocated);
-  }
-  VLOG(heap) << "Collector transition to " << collector_type << " took "
-             << PrettyDuration(duration) << saved_str;
 }
 
 void Heap::ChangeCollector(CollectorType collector_type) {
