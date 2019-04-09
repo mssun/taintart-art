@@ -365,8 +365,7 @@ IntrinsicVisitor::IntegerValueOfInfo IntrinsicVisitor::ComputeIntegerValueOfInfo
 
 void IntrinsicVisitor::AssertNonMovableStringClass() {
   if (kIsDebugBuild) {
-    Thread* const self = Thread::Current();
-    ReaderMutexLock mu(self, *Locks::mutator_lock_);
+    ScopedObjectAccess soa(Thread::Current());
     ObjPtr<mirror::Class> string_class = GetClassRoot<art::mirror::String>();
     CHECK(!art::Runtime::Current()->GetHeap()->IsMovableObject(string_class));
   }
