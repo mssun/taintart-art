@@ -46,5 +46,19 @@ extern "C" JNIEXPORT jlong JNICALL Java_Main_objectAddress(JNIEnv* env, jclass, 
   return reinterpret_cast<jlong>(soa.Decode<mirror::Object>(object).Ptr());
 }
 
+extern "C" JNIEXPORT jboolean JNICALL Java_Main_supportCollectorTransition(JNIEnv*, jclass) {
+  // Same as supportHomogeneousSpaceCompact for now.
+  return Runtime::Current()->GetHeap()->SupportHomogeneousSpaceCompactAndCollectorTransitions() ?
+      JNI_TRUE : JNI_FALSE;
+}
+
+extern "C" JNIEXPORT void JNICALL Java_Main_transitionToSS(JNIEnv*, jclass) {
+  Runtime::Current()->GetHeap()->TransitionCollector(gc::kCollectorTypeSS);
+}
+
+extern "C" JNIEXPORT void JNICALL Java_Main_transitionToCMS(JNIEnv*, jclass) {
+  Runtime::Current()->GetHeap()->TransitionCollector(gc::kCollectorTypeCMS);
+}
+
 }  // namespace
 }  // namespace art

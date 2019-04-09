@@ -22,6 +22,7 @@ public class Main {
   public static void main(String[] args) {
     System.loadLibrary(args[0]);
     testHomogeneousCompaction();
+    testCollectorTransitions();
     System.out.println("Done.");
   }
 
@@ -67,10 +68,40 @@ public class Main {
     }
   }
 
+  private static void testCollectorTransitions() {
+    if (supportCollectorTransition()) {
+      Object o = new Object();
+      // Transition to semi-space collector.
+      allocateStuff();
+      transitionToSS();
+      allocateStuff();
+      long addressBefore = objectAddress(o);
+      Runtime.getRuntime().gc();
+      long addressAfter = objectAddress(o);
+      if (addressBefore == addressAfter) {
+        System.out.println("error: Expected different adddress " + addressBefore + " vs " +
+            addressAfter);
+      }
+      // Transition back to CMS.
+      transitionToCMS();
+      allocateStuff();
+      addressBefore = objectAddress(o);
+      Runtime.getRuntime().gc();
+      addressAfter = objectAddress(o);
+      if (addressBefore != addressAfter) {
+        System.out.println("error: Expected same adddress " + addressBefore + " vs " +
+            addressAfter);
+      }
+    }
+  }
+
   // Methods to get access to ART internals.
   private static native boolean supportHomogeneousSpaceCompact();
   private static native boolean performHomogeneousSpaceCompact();
   private static native void incrementDisableMovingGC();
   private static native void decrementDisableMovingGC();
   private static native long objectAddress(Object object);
+  private static native boolean supportCollectorTransition();
+  private static native void transitionToSS();
+  private static native void transitionToCMS();
 }
