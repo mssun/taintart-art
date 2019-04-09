@@ -20,11 +20,24 @@
 
 #include "art_method.h"
 #include "base/macros.h"
+#include "base/mutex-inl.h"
 #include "class_linker.h"
 #include "monitor.h"
-#include "thread.h"
+#include "thread-current-inl.h"
 
 namespace art {
+
+RuntimeCallbacks::RuntimeCallbacks()
+    : callback_lock_(new ReaderWriterMutex("Runtime callbacks lock",
+                                           LockLevel::kGenericBottomLock)) {}
+
+// We don't want to be holding any locks when the actual event is called so we use this to define a
+// helper that gets a copy of the current event list and returns it.
+#define COPY(T)                                                   \
+  ([this]() -> decltype(this->T) {                                \
+    ReaderMutexLock mu(Thread::Current(), *this->callback_lock_); \
+    return std::vector<decltype(this->T)::value_type>(this->T);   \
+  })()
 
 template <typename T>
 ALWAYS_INLINE
@@ -36,29 +49,33 @@ static inline void Remove(T* cb, std::vector<T*>* data) {
 }
 
 void RuntimeCallbacks::AddDdmCallback(DdmCallback* cb) {
+  WriterMutexLock mu(Thread::Current(), *callback_lock_);
   ddm_callbacks_.push_back(cb);
 }
 
 void RuntimeCallbacks::RemoveDdmCallback(DdmCallback* cb) {
+  WriterMutexLock mu(Thread::Current(), *callback_lock_);
   Remove(cb, &ddm_callbacks_);
 }
 
 void RuntimeCallbacks::DdmPublishChunk(uint32_t type, const ArrayRef<const uint8_t>& data) {
-  for (DdmCallback* cb : ddm_callbacks_) {
+  for (DdmCallback* cb : COPY(ddm_callbacks_)) {
     cb->DdmPublishChunk(type, data);
   }
 }
 
 void RuntimeCallbacks::AddDebuggerControlCallback(DebuggerControlCallback* cb) {
+  WriterMutexLock mu(Thread::Current(), *callback_lock_);
   debugger_control_callbacks_.push_back(cb);
 }
 
 void RuntimeCallbacks::RemoveDebuggerControlCallback(DebuggerControlCallback* cb) {
+  WriterMutexLock mu(Thread::Current(), *callback_lock_);
   Remove(cb, &debugger_control_callbacks_);
 }
 
 bool RuntimeCallbacks::IsDebuggerConfigured() {
-  for (DebuggerControlCallback* cb : debugger_control_callbacks_) {
+  for (DebuggerControlCallback* cb : COPY(debugger_control_callbacks_)) {
     if (cb->IsDebuggerConfigured()) {
       return true;
     }
@@ -67,27 +84,29 @@ bool RuntimeCallbacks::IsDebuggerConfigured() {
 }
 
 void RuntimeCallbacks::StartDebugger() {
-  for (DebuggerControlCallback* cb : debugger_control_callbacks_) {
+  for (DebuggerControlCallback* cb : COPY(debugger_control_callbacks_)) {
     cb->StartDebugger();
   }
 }
 
 void RuntimeCallbacks::StopDebugger() {
-  for (DebuggerControlCallback* cb : debugger_control_callbacks_) {
+  for (DebuggerControlCallback* cb : COPY(debugger_control_callbacks_)) {
     cb->StopDebugger();
   }
 }
 
 void RuntimeCallbacks::AddMethodInspectionCallback(MethodInspectionCallback* cb) {
+  WriterMutexLock mu(Thread::Current(), *callback_lock_);
   method_inspection_callbacks_.push_back(cb);
 }
 
 void RuntimeCallbacks::RemoveMethodInspectionCallback(MethodInspectionCallback* cb) {
+  WriterMutexLock mu(Thread::Current(), *callback_lock_);
   Remove(cb, &method_inspection_callbacks_);
 }
 
 bool RuntimeCallbacks::IsMethodSafeToJit(ArtMethod* m) {
-  for (MethodInspectionCallback* cb : method_inspection_callbacks_) {
+  for (MethodInspectionCallback* cb : COPY(method_inspection_callbacks_)) {
     if (!cb->IsMethodSafeToJit(m)) {
       DCHECK(cb->IsMethodBeingInspected(m))
           << "Contract requires that !IsMethodSafeToJit(m) -> IsMethodBeingInspected(m)";
@@ -98,7 +117,7 @@ bool RuntimeCallbacks::IsMethodSafeToJit(ArtMethod* m) {
 }
 
 bool RuntimeCallbacks::IsMethodBeingInspected(ArtMethod* m) {
-  for (MethodInspectionCallback* cb : method_inspection_callbacks_) {
+  for (MethodInspectionCallback* cb : COPY(method_inspection_callbacks_)) {
     if (cb->IsMethodBeingInspected(m)) {
       return true;
     }
@@ -107,7 +126,7 @@ bool RuntimeCallbacks::IsMethodBeingInspected(ArtMethod* m) {
 }
 
 bool RuntimeCallbacks::MethodNeedsDebugVersion(ArtMethod* m) {
-  for (MethodInspectionCallback* cb : method_inspection_callbacks_) {
+  for (MethodInspectionCallback* cb : COPY(method_inspection_callbacks_)) {
     if (cb->MethodNeedsDebugVersion(m)) {
       return true;
     }
@@ -116,87 +135,95 @@ bool RuntimeCallbacks::MethodNeedsDebugVersion(ArtMethod* m) {
 }
 
 void RuntimeCallbacks::AddThreadLifecycleCallback(ThreadLifecycleCallback* cb) {
+  WriterMutexLock mu(Thread::Current(), *callback_lock_);
   thread_callbacks_.push_back(cb);
 }
 
 void RuntimeCallbacks::MonitorContendedLocking(Monitor* m) {
-  for (MonitorCallback* cb : monitor_callbacks_) {
+  for (MonitorCallback* cb : COPY(monitor_callbacks_)) {
     cb->MonitorContendedLocking(m);
   }
 }
 
 void RuntimeCallbacks::MonitorContendedLocked(Monitor* m) {
-  for (MonitorCallback* cb : monitor_callbacks_) {
+  for (MonitorCallback* cb : COPY(monitor_callbacks_)) {
     cb->MonitorContendedLocked(m);
   }
 }
 
 void RuntimeCallbacks::ObjectWaitStart(Handle<mirror::Object> m, int64_t timeout) {
-  for (MonitorCallback* cb : monitor_callbacks_) {
+  for (MonitorCallback* cb : COPY(monitor_callbacks_)) {
     cb->ObjectWaitStart(m, timeout);
   }
 }
 
 void RuntimeCallbacks::MonitorWaitFinished(Monitor* m, bool timeout) {
-  for (MonitorCallback* cb : monitor_callbacks_) {
+  for (MonitorCallback* cb : COPY(monitor_callbacks_)) {
     cb->MonitorWaitFinished(m, timeout);
   }
 }
 
 void RuntimeCallbacks::AddMonitorCallback(MonitorCallback* cb) {
+  WriterMutexLock mu(Thread::Current(), *callback_lock_);
   monitor_callbacks_.push_back(cb);
 }
 
 void RuntimeCallbacks::RemoveMonitorCallback(MonitorCallback* cb) {
+  WriterMutexLock mu(Thread::Current(), *callback_lock_);
   Remove(cb, &monitor_callbacks_);
 }
 
 void RuntimeCallbacks::ThreadParkStart(bool is_absolute, int64_t timeout) {
-  for (ParkCallback * cb : park_callbacks_) {
+  for (ParkCallback * cb : COPY(park_callbacks_)) {
     cb->ThreadParkStart(is_absolute, timeout);
   }
 }
 
 void RuntimeCallbacks::ThreadParkFinished(bool timeout) {
-  for (ParkCallback * cb : park_callbacks_) {
+  for (ParkCallback * cb : COPY(park_callbacks_)) {
     cb->ThreadParkFinished(timeout);
   }
 }
 
 void RuntimeCallbacks::AddParkCallback(ParkCallback* cb) {
+  WriterMutexLock mu(Thread::Current(), *callback_lock_);
   park_callbacks_.push_back(cb);
 }
 
 void RuntimeCallbacks::RemoveParkCallback(ParkCallback* cb) {
+  WriterMutexLock mu(Thread::Current(), *callback_lock_);
   Remove(cb, &park_callbacks_);
 }
 
 void RuntimeCallbacks::RemoveThreadLifecycleCallback(ThreadLifecycleCallback* cb) {
+  WriterMutexLock mu(Thread::Current(), *callback_lock_);
   Remove(cb, &thread_callbacks_);
 }
 
 void RuntimeCallbacks::ThreadStart(Thread* self) {
-  for (ThreadLifecycleCallback* cb : thread_callbacks_) {
+  for (ThreadLifecycleCallback* cb : COPY(thread_callbacks_)) {
     cb->ThreadStart(self);
   }
 }
 
 void RuntimeCallbacks::ThreadDeath(Thread* self) {
-  for (ThreadLifecycleCallback* cb : thread_callbacks_) {
+  for (ThreadLifecycleCallback* cb : COPY(thread_callbacks_)) {
     cb->ThreadDeath(self);
   }
 }
 
 void RuntimeCallbacks::AddClassLoadCallback(ClassLoadCallback* cb) {
+  WriterMutexLock mu(Thread::Current(), *callback_lock_);
   class_callbacks_.push_back(cb);
 }
 
 void RuntimeCallbacks::RemoveClassLoadCallback(ClassLoadCallback* cb) {
+  WriterMutexLock mu(Thread::Current(), *callback_lock_);
   Remove(cb, &class_callbacks_);
 }
 
 void RuntimeCallbacks::ClassLoad(Handle<mirror::Class> klass) {
-  for (ClassLoadCallback* cb : class_callbacks_) {
+  for (ClassLoadCallback* cb : COPY(class_callbacks_)) {
     cb->ClassLoad(klass);
   }
 }
@@ -210,7 +237,7 @@ void RuntimeCallbacks::ClassPreDefine(const char* descriptor,
                                       /*out*/dex::ClassDef const** final_class_def) {
   DexFile const* current_dex_file = &initial_dex_file;
   dex::ClassDef const* current_class_def = &initial_class_def;
-  for (ClassLoadCallback* cb : class_callbacks_) {
+  for (ClassLoadCallback* cb : COPY(class_callbacks_)) {
     DexFile const* new_dex_file = nullptr;
     dex::ClassDef const* new_class_def = nullptr;
     cb->ClassPreDefine(descriptor,
@@ -232,44 +259,50 @@ void RuntimeCallbacks::ClassPreDefine(const char* descriptor,
 }
 
 void RuntimeCallbacks::ClassPrepare(Handle<mirror::Class> temp_klass, Handle<mirror::Class> klass) {
-  for (ClassLoadCallback* cb : class_callbacks_) {
+  for (ClassLoadCallback* cb : COPY(class_callbacks_)) {
     cb->ClassPrepare(temp_klass, klass);
   }
 }
 
 void RuntimeCallbacks::AddRuntimeSigQuitCallback(RuntimeSigQuitCallback* cb) {
+  WriterMutexLock mu(Thread::Current(), *callback_lock_);
   sigquit_callbacks_.push_back(cb);
 }
 
 void RuntimeCallbacks::RemoveRuntimeSigQuitCallback(RuntimeSigQuitCallback* cb) {
+  WriterMutexLock mu(Thread::Current(), *callback_lock_);
   Remove(cb, &sigquit_callbacks_);
 }
 
 void RuntimeCallbacks::SigQuit() {
-  for (RuntimeSigQuitCallback* cb : sigquit_callbacks_) {
+  for (RuntimeSigQuitCallback* cb : COPY(sigquit_callbacks_)) {
     cb->SigQuit();
   }
 }
 
 void RuntimeCallbacks::AddRuntimePhaseCallback(RuntimePhaseCallback* cb) {
+  WriterMutexLock mu(Thread::Current(), *callback_lock_);
   phase_callbacks_.push_back(cb);
 }
 
 void RuntimeCallbacks::RemoveRuntimePhaseCallback(RuntimePhaseCallback* cb) {
+  WriterMutexLock mu(Thread::Current(), *callback_lock_);
   Remove(cb, &phase_callbacks_);
 }
 
 void RuntimeCallbacks::NextRuntimePhase(RuntimePhaseCallback::RuntimePhase phase) {
-  for (RuntimePhaseCallback* cb : phase_callbacks_) {
+  for (RuntimePhaseCallback* cb : COPY(phase_callbacks_)) {
     cb->NextRuntimePhase(phase);
   }
 }
 
 void RuntimeCallbacks::AddMethodCallback(MethodCallback* cb) {
+  WriterMutexLock mu(Thread::Current(), *callback_lock_);
   method_callbacks_.push_back(cb);
 }
 
 void RuntimeCallbacks::RemoveMethodCallback(MethodCallback* cb) {
+  WriterMutexLock mu(Thread::Current(), *callback_lock_);
   Remove(cb, &method_callbacks_);
 }
 
@@ -278,7 +311,7 @@ void RuntimeCallbacks::RegisterNativeMethod(ArtMethod* method,
                                             /*out*/void** new_method) {
   void* cur_method = const_cast<void*>(in_cur_method);
   *new_method = cur_method;
-  for (MethodCallback* cb : method_callbacks_) {
+  for (MethodCallback* cb : COPY(method_callbacks_)) {
     cb->RegisterNativeMethod(method, cur_method, new_method);
     if (*new_method != nullptr) {
       cur_method = *new_method;

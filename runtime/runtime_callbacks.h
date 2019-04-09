@@ -42,6 +42,7 @@ class DexFile;
 class Thread;
 class MethodCallback;
 class Monitor;
+class ReaderWriterMutex;
 class ThreadLifecycleCallback;
 
 // Note: RuntimeCallbacks uses the mutator lock to synchronize the callback lists. A thread must
@@ -54,6 +55,8 @@ class ThreadLifecycleCallback;
 //       * A listener must never add or remove itself or any other listener while running.
 //       * It is the responsibility of the owner to not remove the listener while it is running
 //         (and suspended).
+//       * The owner should never deallocate a listener once it has been registered, even if it has
+//         been removed.
 //
 //       The simplest way to satisfy these restrictions is to never remove a listener, and to do
 //       any state checking (is the listener enabled) in the listener itself. For an example, see
@@ -155,6 +158,8 @@ class MethodInspectionCallback {
 
 class RuntimeCallbacks {
  public:
+  RuntimeCallbacks();
+
   void AddThreadLifecycleCallback(ThreadLifecycleCallback* cb) REQUIRES(Locks::mutator_lock_);
   void RemoveThreadLifecycleCallback(ThreadLifecycleCallback* cb) REQUIRES(Locks::mutator_lock_);
 
@@ -253,26 +258,28 @@ class RuntimeCallbacks {
       REQUIRES_SHARED(Locks::mutator_lock_);
 
  private:
+  std::unique_ptr<ReaderWriterMutex> callback_lock_ BOTTOM_MUTEX_ACQUIRED_AFTER;
+
   std::vector<ThreadLifecycleCallback*> thread_callbacks_
-      GUARDED_BY(Locks::mutator_lock_);
+      GUARDED_BY(callback_lock_);
   std::vector<ClassLoadCallback*> class_callbacks_
-      GUARDED_BY(Locks::mutator_lock_);
+      GUARDED_BY(callback_lock_);
   std::vector<RuntimeSigQuitCallback*> sigquit_callbacks_
-      GUARDED_BY(Locks::mutator_lock_);
+      GUARDED_BY(callback_lock_);
   std::vector<RuntimePhaseCallback*> phase_callbacks_
-      GUARDED_BY(Locks::mutator_lock_);
+      GUARDED_BY(callback_lock_);
   std::vector<MethodCallback*> method_callbacks_
-      GUARDED_BY(Locks::mutator_lock_);
+      GUARDED_BY(callback_lock_);
   std::vector<MonitorCallback*> monitor_callbacks_
-      GUARDED_BY(Locks::mutator_lock_);
+      GUARDED_BY(callback_lock_);
   std::vector<ParkCallback*> park_callbacks_
-      GUARDED_BY(Locks::mutator_lock_);
+      GUARDED_BY(callback_lock_);
   std::vector<MethodInspectionCallback*> method_inspection_callbacks_
-      GUARDED_BY(Locks::mutator_lock_);
+      GUARDED_BY(callback_lock_);
   std::vector<DdmCallback*> ddm_callbacks_
-      GUARDED_BY(Locks::mutator_lock_);
+      GUARDED_BY(callback_lock_);
   std::vector<DebuggerControlCallback*> debugger_control_callbacks_
-      GUARDED_BY(Locks::mutator_lock_);
+      GUARDED_BY(callback_lock_);
 };
 
 }  // namespace art
