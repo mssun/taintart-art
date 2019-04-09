@@ -459,9 +459,6 @@ art_cc_test {
     },
 
     header_libs: ["dex2oat_headers"],
-    include_dirs: [
-        "external/zlib",
-    ],
     shared_libs: [
         "libartbased",
         "libartd-compiler",
