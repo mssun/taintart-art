@@ -17,6 +17,7 @@
 #ifndef ART_LIBARTPALETTE_INCLUDE_PALETTE_PALETTE_METHOD_LIST_H_
 #define ART_LIBARTPALETTE_INCLUDE_PALETTE_PALETTE_METHOD_LIST_H_
 
+#include <stddef.h>
 #include <stdint.h>
 
 // Methods in version 1 API
@@ -24,6 +25,7 @@
   M(PaletteGetVersion, /*out*/int32_t* version)                             \
   M(PaletteSchedSetPriority, int32_t tid, int32_t java_priority)            \
   M(PaletteSchedGetPriority, int32_t tid, /*out*/int32_t* java_priority)    \
+  M(PaletteTombstonedMessage, const char* msg, size_t msg_len)              \
   M(PaletteTraceEnabled, /*out*/int32_t* enabled)                           \
   M(PaletteTraceBegin, const char* name)                                    \
   M(PaletteTraceEnd)                                                        \

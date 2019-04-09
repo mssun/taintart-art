@@ -450,9 +450,6 @@ class ReleaseChecker:
     self._checker.check_optional_native_library('libclang_rt.hwasan*')
     self._checker.check_optional_native_library('libclang_rt.ubsan*')
 
-    # TODO(b/130025619): Get rid of this dependency.
-    self._checker.check_native_library('libcutils')
-
 
 class ReleaseTargetChecker:
   def __init__(self, checker):
@@ -497,7 +494,6 @@ class ReleaseTargetChecker:
     self._checker.check_native_library('libicui18n')
     self._checker.check_native_library('libicuuc')
     self._checker.check_native_library('libpac')
-    self._checker.check_native_library('libtombstoned_client')
     self._checker.check_native_library('libz')
 
     # TODO(b/124293228): Cuttlefish puts ARM libs in a lib/arm subdirectory.
