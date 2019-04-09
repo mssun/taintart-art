@@ -1014,153 +1014,144 @@ jvmtiError StackUtil::NotifyFramePop(jvmtiEnv* env, jthread thread, jint depth) 
   ArtJvmTiEnv* tienv = ArtJvmTiEnv::AsArtJvmTiEnv(env);
   art::Thread* self = art::Thread::Current();
   art::Thread* target;
-  do {
-    ThreadUtil::SuspendCheck(self);
-    art::MutexLock ucsl_mu(self, *art::Locks::user_code_suspension_lock_);
-    // Make sure we won't be suspended in the middle of holding the thread_suspend_count_lock_ by a
-    // user-code suspension. We retry and do another SuspendCheck to clear this.
-    if (ThreadUtil::WouldSuspendForUserCodeLocked(self)) {
-      continue;
-    }
-    // From now on we know we cannot get suspended by user-code.
-    // NB This does a SuspendCheck (during thread state change) so we need to make sure we don't
-    // have the 'suspend_lock' locked here.
-    art::ScopedObjectAccess soa(self);
-    art::MutexLock tll_mu(self, *art::Locks::thread_list_lock_);
-    jvmtiError err = ERR(INTERNAL);
-    if (!ThreadUtil::GetAliveNativeThread(thread, soa, &target, &err)) {
-      return err;
-    }
-    if (target != self) {
-      // TODO This is part of the spec but we could easily avoid needing to do it. We would just put
-      // all the logic into a sync-checkpoint.
-      art::MutexLock tscl_mu(self, *art::Locks::thread_suspend_count_lock_);
-      if (target->GetUserCodeSuspendCount() == 0) {
-        return ERR(THREAD_NOT_SUSPENDED);
-      }
-    }
-    // We hold the user_code_suspension_lock_ so the target thread is staying suspended until we are
-    // done (unless it's 'self' in which case we don't care since we aren't going to be returning).
-    // TODO We could implement this using a synchronous checkpoint and not bother with any of the
-    // suspension stuff. The spec does specifically say to return THREAD_NOT_SUSPENDED though.
-    // Find the requested stack frame.
-    std::unique_ptr<art::Context> context(art::Context::Create());
-    FindFrameAtDepthVisitor visitor(target, context.get(), depth);
-    visitor.WalkStack();
-    if (!visitor.FoundFrame()) {
-      return ERR(NO_MORE_FRAMES);
-    }
-    art::ArtMethod* method = visitor.GetMethod();
-    if (method->IsNative()) {
-      return ERR(OPAQUE_FRAME);
-    }
-    // From here we are sure to succeed.
-    bool needs_instrument = false;
-    // Get/create a shadow frame
-    art::ShadowFrame* shadow_frame = visitor.GetOrCreateShadowFrame(&needs_instrument);
-    {
-      art::WriterMutexLock lk(self, tienv->event_info_mutex_);
-      if (LIKELY(!shadow_frame->NeedsNotifyPop())) {
-        // Ensure we won't miss exceptions being thrown if we get jit-compiled. We only do this for
-        // the first NotifyPopFrame.
-        target->IncrementForceInterpreterCount();
 
-        // Mark shadow frame as needs_notify_pop_
-        shadow_frame->SetNotifyPop(true);
-      }
-      tienv->notify_frames.insert(shadow_frame);
+  ScopedNoUserCodeSuspension snucs(self);
+  // From now on we know we cannot get suspended by user-code.
+  // NB This does a SuspendCheck (during thread state change) so we need to make
+  // sure we don't have the 'suspend_lock' locked here.
+  art::ScopedObjectAccess soa(self);
+  art::MutexLock tll_mu(self, *art::Locks::thread_list_lock_);
+  jvmtiError err = ERR(INTERNAL);
+  if (!ThreadUtil::GetAliveNativeThread(thread, soa, &target, &err)) {
+    return err;
+  }
+  if (target != self) {
+    // TODO This is part of the spec but we could easily avoid needing to do it.
+    // We would just put all the logic into a sync-checkpoint.
+    art::MutexLock tscl_mu(self, *art::Locks::thread_suspend_count_lock_);
+    if (target->GetUserCodeSuspendCount() == 0) {
+      return ERR(THREAD_NOT_SUSPENDED);
     }
-    // Make sure can we will go to the interpreter and use the shadow frames.
-    if (needs_instrument) {
-      art::Runtime::Current()->GetInstrumentation()->InstrumentThreadStack(target);
+  }
+  // We hold the user_code_suspension_lock_ so the target thread is staying
+  // suspended until we are done (unless it's 'self' in which case we don't care
+  // since we aren't going to be returning).
+  // TODO We could implement this using a synchronous checkpoint and not bother
+  // with any of the suspension stuff. The spec does specifically say to return
+  // THREAD_NOT_SUSPENDED though. Find the requested stack frame.
+  std::unique_ptr<art::Context> context(art::Context::Create());
+  FindFrameAtDepthVisitor visitor(target, context.get(), depth);
+  visitor.WalkStack();
+  if (!visitor.FoundFrame()) {
+    return ERR(NO_MORE_FRAMES);
+  }
+  art::ArtMethod* method = visitor.GetMethod();
+  if (method->IsNative()) {
+    return ERR(OPAQUE_FRAME);
+  }
+  // From here we are sure to succeed.
+  bool needs_instrument = false;
+  // Get/create a shadow frame
+  art::ShadowFrame* shadow_frame =
+      visitor.GetOrCreateShadowFrame(&needs_instrument);
+  {
+    art::WriterMutexLock lk(self, tienv->event_info_mutex_);
+    if (LIKELY(!shadow_frame->NeedsNotifyPop())) {
+      // Ensure we won't miss exceptions being thrown if we get jit-compiled. We
+      // only do this for the first NotifyPopFrame.
+      target->IncrementForceInterpreterCount();
+
+      // Mark shadow frame as needs_notify_pop_
+      shadow_frame->SetNotifyPop(true);
     }
-    return OK;
-  } while (true);
+    tienv->notify_frames.insert(shadow_frame);
+  }
+  // Make sure can we will go to the interpreter and use the shadow frames.
+  if (needs_instrument) {
+    art::Runtime::Current()->GetInstrumentation()->InstrumentThreadStack(
+        target);
+  }
+  return OK;
 }
 
 jvmtiError StackUtil::PopFrame(jvmtiEnv* env, jthread thread) {
   art::Thread* self = art::Thread::Current();
   art::Thread* target;
-  do {
-    ThreadUtil::SuspendCheck(self);
-    art::MutexLock ucsl_mu(self, *art::Locks::user_code_suspension_lock_);
-    // Make sure we won't be suspended in the middle of holding the thread_suspend_count_lock_ by a
-    // user-code suspension. We retry and do another SuspendCheck to clear this.
-    if (ThreadUtil::WouldSuspendForUserCodeLocked(self)) {
-      continue;
-    }
-    // From now on we know we cannot get suspended by user-code.
-    // NB This does a SuspendCheck (during thread state change) so we need to make sure we don't
-    // have the 'suspend_lock' locked here.
-    art::ScopedObjectAccess soa(self);
-    art::MutexLock tll_mu(self, *art::Locks::thread_list_lock_);
-    jvmtiError err = ERR(INTERNAL);
-    if (!ThreadUtil::GetAliveNativeThread(thread, soa, &target, &err)) {
-      return err;
-    }
-    {
-      art::MutexLock tscl_mu(self, *art::Locks::thread_suspend_count_lock_);
-      if (target == self || target->GetUserCodeSuspendCount() == 0) {
-        // We cannot be the current thread for this function.
-        return ERR(THREAD_NOT_SUSPENDED);
-      }
-    }
-    JvmtiGlobalTLSData* tls_data = ThreadUtil::GetGlobalTLSData(target);
-    constexpr art::StackVisitor::StackWalkKind kWalkKind =
-        art::StackVisitor::StackWalkKind::kIncludeInlinedFrames;
-    if (tls_data != nullptr &&
-        tls_data->disable_pop_frame_depth != JvmtiGlobalTLSData::kNoDisallowedPopFrame &&
-        tls_data->disable_pop_frame_depth == art::StackVisitor::ComputeNumFrames(target,
-                                                                                 kWalkKind)) {
-      JVMTI_LOG(WARNING, env) << "Disallowing frame pop due to in-progress class-load/prepare. "
-                              << "Frame at depth " << tls_data->disable_pop_frame_depth << " was "
-                              << "marked as un-poppable by the jvmti plugin. See b/117615146 for "
-                              << "more information.";
-      return ERR(OPAQUE_FRAME);
-    }
-    // We hold the user_code_suspension_lock_ so the target thread is staying suspended until we are
-    // done.
-    std::unique_ptr<art::Context> context(art::Context::Create());
-    FindFrameAtDepthVisitor final_frame(target, context.get(), 0);
-    FindFrameAtDepthVisitor penultimate_frame(target, context.get(), 1);
-    final_frame.WalkStack();
-    penultimate_frame.WalkStack();
 
-    if (!final_frame.FoundFrame() || !penultimate_frame.FoundFrame()) {
-      // Cannot do it if there is only one frame!
-      return ERR(NO_MORE_FRAMES);
+  ScopedNoUserCodeSuspension snucs(self);
+  // From now on we know we cannot get suspended by user-code.
+  // NB This does a SuspendCheck (during thread state change) so we need to make
+  // sure we don't have the 'suspend_lock' locked here.
+  art::ScopedObjectAccess soa(self);
+  art::MutexLock tll_mu(self, *art::Locks::thread_list_lock_);
+  jvmtiError err = ERR(INTERNAL);
+  if (!ThreadUtil::GetAliveNativeThread(thread, soa, &target, &err)) {
+    return err;
+  }
+  {
+    art::MutexLock tscl_mu(self, *art::Locks::thread_suspend_count_lock_);
+    if (target == self || target->GetUserCodeSuspendCount() == 0) {
+      // We cannot be the current thread for this function.
+      return ERR(THREAD_NOT_SUSPENDED);
     }
+  }
+  JvmtiGlobalTLSData* tls_data = ThreadUtil::GetGlobalTLSData(target);
+  constexpr art::StackVisitor::StackWalkKind kWalkKind =
+      art::StackVisitor::StackWalkKind::kIncludeInlinedFrames;
+  if (tls_data != nullptr &&
+      tls_data->disable_pop_frame_depth !=
+          JvmtiGlobalTLSData::kNoDisallowedPopFrame &&
+      tls_data->disable_pop_frame_depth ==
+          art::StackVisitor::ComputeNumFrames(target, kWalkKind)) {
+    JVMTI_LOG(WARNING, env)
+        << "Disallowing frame pop due to in-progress class-load/prepare. "
+        << "Frame at depth " << tls_data->disable_pop_frame_depth << " was "
+        << "marked as un-poppable by the jvmti plugin. See b/117615146 for "
+        << "more information.";
+    return ERR(OPAQUE_FRAME);
+  }
+  // We hold the user_code_suspension_lock_ so the target thread is staying
+  // suspended until we are done.
+  std::unique_ptr<art::Context> context(art::Context::Create());
+  FindFrameAtDepthVisitor final_frame(target, context.get(), 0);
+  FindFrameAtDepthVisitor penultimate_frame(target, context.get(), 1);
+  final_frame.WalkStack();
+  penultimate_frame.WalkStack();
 
-    art::ArtMethod* called_method = final_frame.GetMethod();
-    art::ArtMethod* calling_method = penultimate_frame.GetMethod();
-    if (calling_method->IsNative() || called_method->IsNative()) {
-      return ERR(OPAQUE_FRAME);
-    }
-    // From here we are sure to succeed.
+  if (!final_frame.FoundFrame() || !penultimate_frame.FoundFrame()) {
+    // Cannot do it if there is only one frame!
+    return ERR(NO_MORE_FRAMES);
+  }
 
-    // Get/create a shadow frame
-    bool created_final_frame = false;
-    bool created_penultimate_frame = false;
-    art::ShadowFrame* called_shadow_frame =
-        final_frame.GetOrCreateShadowFrame(&created_final_frame);
-    art::ShadowFrame* calling_shadow_frame =
-        penultimate_frame.GetOrCreateShadowFrame(&created_penultimate_frame);
+  art::ArtMethod* called_method = final_frame.GetMethod();
+  art::ArtMethod* calling_method = penultimate_frame.GetMethod();
+  if (calling_method->IsNative() || called_method->IsNative()) {
+    return ERR(OPAQUE_FRAME);
+  }
+  // From here we are sure to succeed.
 
-    CHECK_NE(called_shadow_frame, calling_shadow_frame)
-        << "Frames at different depths not different!";
+  // Get/create a shadow frame
+  bool created_final_frame = false;
+  bool created_penultimate_frame = false;
+  art::ShadowFrame* called_shadow_frame =
+      final_frame.GetOrCreateShadowFrame(&created_final_frame);
+  art::ShadowFrame* calling_shadow_frame =
+      penultimate_frame.GetOrCreateShadowFrame(&created_penultimate_frame);
 
-    // Tell the shadow-frame to return immediately and skip all exit events.
-    called_shadow_frame->SetForcePopFrame(true);
-    calling_shadow_frame->SetForceRetryInstruction(true);
+  CHECK_NE(called_shadow_frame, calling_shadow_frame)
+      << "Frames at different depths not different!";
 
-    // Make sure can we will go to the interpreter and use the shadow frames. The early return for
-    // the final frame will force everything to the interpreter so we only need to instrument if it
-    // was not present.
-    if (created_final_frame) {
-      DeoptManager::Get()->DeoptimizeThread(target);
-    }
-    return OK;
-  } while (true);
+  // Tell the shadow-frame to return immediately and skip all exit events.
+  called_shadow_frame->SetForcePopFrame(true);
+  calling_shadow_frame->SetForceRetryInstruction(true);
+
+  // Make sure can we will go to the interpreter and use the shadow frames. The
+  // early return for the final frame will force everything to the interpreter
+  // so we only need to instrument if it was not present.
+  if (created_final_frame) {
+    DeoptManager::Get()->DeoptimizeThread(target);
+  }
+  return OK;
 }
 
 }  // namespace openjdkjvmti
