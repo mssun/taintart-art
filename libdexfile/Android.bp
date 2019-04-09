@@ -200,9 +200,6 @@ art_cc_test {
         "libbacktrace",
         "libziparchive",
     ],
-    include_dirs: [
-        "external/zlib",
-    ],
 }
 
 cc_library_headers {
