@@ -50,7 +50,7 @@ TEST(memory_type_range, range_overlaps) {
 
   {
     // |<----- a ----->| |<----- c ----->|
-    MemoryTypeRange<int> c(a.Limit()+ a.Size(), a.Limit() + 2 * a.Size(), kMemoryType);
+    MemoryTypeRange<int> c(a.Limit() + a.Size(), a.Limit() + 2 * a.Size(), kMemoryType);
     EXPECT_FALSE(a.Overlaps(c));
     EXPECT_FALSE(c.Overlaps(a));
   }
@@ -101,7 +101,7 @@ TEST(memory_type_range, range_adjoins) {
 
   {
     // |<--- a --->| |<--- c --->|
-    MemoryTypeRange<int> c(a.Limit()+ a.Size(), a.Limit() + 2 * a.Size(), kMemoryType);
+    MemoryTypeRange<int> c(a.Limit() + a.Size(), a.Limit() + 2 * a.Size(), kMemoryType);
     EXPECT_FALSE(a.Adjoins(c));
     EXPECT_FALSE(c.Adjoins(a));
   }
@@ -109,7 +109,7 @@ TEST(memory_type_range, range_adjoins) {
   {
     // |<--- a --->|
     //       |<--- d --->|
-    MemoryTypeRange<int> d(a.Start()+ a.Size() / 2, a.Limit() + a.Size() / 2, kMemoryType);
+    MemoryTypeRange<int> d(a.Start() + a.Size() / 2, a.Limit() + a.Size() / 2, kMemoryType);
     EXPECT_FALSE(a.Adjoins(d));
     EXPECT_FALSE(d.Adjoins(a));
   }
@@ -141,7 +141,7 @@ TEST(memory_type_range, is_valid) {
                                    std::numeric_limits<uintptr_t>::max(),
                                    0).IsValid());
   EXPECT_TRUE(MemoryTypeRange<int>(1u, 2u, 0).IsValid());
-  EXPECT_FALSE(MemoryTypeRange<int>(0u, 0u, 0).IsValid());
+  EXPECT_TRUE(MemoryTypeRange<int>(0u, 0u, 0).IsValid());
   EXPECT_FALSE(MemoryTypeRange<int>(2u, 1u, 0).IsValid());
   EXPECT_FALSE(MemoryTypeRange<int>(std::numeric_limits<uintptr_t>::max(),
                                     std::numeric_limits<uintptr_t>::min(),
