@@ -545,6 +545,26 @@ const void* JitCodeCache::FindCompiledCodeForInstrumentation(ArtMethod* method) 
   return info->GetSavedEntryPoint();
 }
 
+const void* JitCodeCache::GetZygoteSavedEntryPoint(ArtMethod* method) {
+  if (!Runtime::Current()->IsUsingDefaultBootImageLocation() &&
+      // Currently only applies to boot classpath
+      method->GetDeclaringClass()->GetClassLoader() == nullptr) {
+    const void* entry_point = nullptr;
+    if (method->IsNative()) {
+      const void* code_ptr = GetJniStubCode(method);
+      if (code_ptr != nullptr) {
+        entry_point = OatQuickMethodHeader::FromCodePointer(code_ptr)->GetEntryPoint();
+      }
+    } else if (method->GetProfilingInfo(kRuntimePointerSize) != nullptr) {
+      entry_point = method->GetProfilingInfo(kRuntimePointerSize)->GetSavedEntryPoint();
+    }
+    if (Runtime::Current()->IsZygote() || IsInZygoteExecSpace(entry_point)) {
+      return entry_point;
+    }
+  }
+  return nullptr;
+}
+
 class ScopedCodeCacheWrite : ScopedTrace {
  public:
   explicit ScopedCodeCacheWrite(const JitCodeCache* const code_cache)
@@ -1066,9 +1086,9 @@ uint8_t* JitCodeCache::CommitCodeInternal(Thread* self,
     DCHECK(cha_single_implementation_list.empty() || !Runtime::Current()->IsJavaDebuggable())
         << "Should not be using cha on debuggable apps/runs!";
 
+    ClassLinker* class_linker = Runtime::Current()->GetClassLinker();
     for (ArtMethod* single_impl : cha_single_implementation_list) {
-      Runtime::Current()->GetClassLinker()->GetClassHierarchyAnalysis()->AddDependency(
-          single_impl, method, method_header);
+      class_linker->GetClassHierarchyAnalysis()->AddDependency(single_impl, method, method_header);
     }
 
     if (UNLIKELY(method->IsNative())) {
@@ -1081,7 +1101,9 @@ uint8_t* JitCodeCache::CommitCodeInternal(Thread* self,
       data->SetCode(code_ptr);
       instrumentation::Instrumentation* instrum = Runtime::Current()->GetInstrumentation();
       for (ArtMethod* m : data->GetMethods()) {
-        instrum->UpdateMethodsCode(m, method_header->GetEntryPoint());
+        if (!class_linker->IsQuickResolutionStub(m->GetEntryPointFromQuickCompiledCode())) {
+          instrum->UpdateMethodsCode(m, method_header->GetEntryPoint());
+        }
       }
     } else {
       // Fill the root table before updating the entry point.
@@ -1096,6 +1118,17 @@ uint8_t* JitCodeCache::CommitCodeInternal(Thread* self,
       if (osr) {
         number_of_osr_compilations_++;
         osr_code_map_.Put(method, code_ptr);
+      } else if (class_linker->IsQuickResolutionStub(
+          method->GetEntryPointFromQuickCompiledCode())) {
+        // This situation currently only occurs in the jit-zygote mode.
+        DCHECK(Runtime::Current()->IsZygote());
+        DCHECK(!Runtime::Current()->IsUsingDefaultBootImageLocation());
+        DCHECK(method->GetProfilingInfo(kRuntimePointerSize) != nullptr);
+        DCHECK(method->GetDeclaringClass()->GetClassLoader() == nullptr);
+        // Save the entrypoint, so it can be fethed later once the class is
+        // initialized.
+        method->GetProfilingInfo(kRuntimePointerSize)->SetSavedEntryPoint(
+            method_header->GetEntryPoint());
       } else {
         Runtime::Current()->GetInstrumentation()->UpdateMethodsCode(
             method, method_header->GetEntryPoint());
@@ -1979,14 +2012,16 @@ bool JitCodeCache::NotifyCompilationOf(ArtMethod* method, Thread* self, bool osr
 
   ClassLinker* class_linker = Runtime::Current()->GetClassLinker();
   if (class_linker->IsQuickResolutionStub(method->GetEntryPointFromQuickCompiledCode())) {
-    // We currently don't save the JIT compiled code if we cannot update the entrypoint due
-    // to having the resolution stub.
-    VLOG(jit) << "Not compiling "
-              << method->PrettyMethod()
-              << " because it has the resolution stub";
-    // Give it a new chance to be hot.
-    ClearMethodCounter(method, /*was_warm=*/ false);
-    return false;
+    if (Runtime::Current()->IsUsingDefaultBootImageLocation() || !Runtime::Current()->IsZygote()) {
+      // Unless we're running as zygote in the jitzygote experiment, we currently don't save
+      // the JIT compiled code if we cannot update the entrypoint due to having the resolution stub.
+      VLOG(jit) << "Not compiling "
+                << method->PrettyMethod()
+                << " because it has the resolution stub";
+      // Give it a new chance to be hot.
+      ClearMethodCounter(method, /*was_warm=*/ false);
+      return false;
+    }
   }
 
   MutexLock mu(self, lock_);
@@ -2017,7 +2052,9 @@ bool JitCodeCache::NotifyCompilationOf(ArtMethod* method, Thread* self, bool osr
       for (ArtMethod* m : data->GetMethods()) {
         // Call the dedicated method instead of the more generic UpdateMethodsCode, because
         // `m` might be in the process of being deleted.
-        instrumentation->UpdateNativeMethodsCodeToJitCode(m, entrypoint);
+        if (!class_linker->IsQuickResolutionStub(m->GetEntryPointFromQuickCompiledCode())) {
+          instrumentation->UpdateNativeMethodsCodeToJitCode(m, entrypoint);
+        }
       }
       if (collection_in_progress_) {
         CHECK(!IsInZygoteExecSpace(data->GetCode()));

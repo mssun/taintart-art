@@ -262,6 +262,12 @@ class JitCodeCache {
       REQUIRES(!lock_)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
+  // Fetch the entrypoint that zygote may have saved for a method. The zygote saves an entrypoint
+  // only for the case when the method's declaring class is not initialized.
+  const void* GetZygoteSavedEntryPoint(ArtMethod* method)
+      REQUIRES(!lock_)
+      REQUIRES_SHARED(Locks::mutator_lock_);
+
   void PostForkChildAction(bool is_system_server, bool is_zygote);
 
   // Clear the entrypoints of JIT compiled methods that belong in the zygote space.

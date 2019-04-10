@@ -727,7 +727,8 @@ void Jit::AddNonAotBootMethodsToQueue(Thread* self) {
       // we currently have no place to safely store the compiled code, we just don't
       // compile it for now.
       if (class_linker->IsQuickToInterpreterBridge(entry_point) ||
-          class_linker->IsQuickGenericJniStub(entry_point)) {
+          class_linker->IsQuickGenericJniStub(entry_point) ||
+          class_linker->IsQuickResolutionStub(entry_point)) {
         if (!method->IsNative()) {
           // The compiler requires a ProfilingInfo object for non-native methods.
           ProfilingInfo::Create(self, method, /* retry_allocation= */ true);
