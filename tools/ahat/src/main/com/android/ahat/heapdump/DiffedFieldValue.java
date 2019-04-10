@@ -114,6 +114,10 @@ public class DiffedFieldValue {
     this.status = status;
   }
 
+  @Override public int hashCode() {
+    return Objects.hash(name, type, current, baseline, status);
+  }
+
   @Override
   public boolean equals(Object otherObject) {
     if (otherObject instanceof DiffedFieldValue) {

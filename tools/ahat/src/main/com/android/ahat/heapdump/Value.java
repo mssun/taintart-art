@@ -16,6 +16,8 @@
 
 package com.android.ahat.heapdump;
 
+import java.util.Objects;
+
 /**
  * A Java instance or primitive value from a parsed heap dump.
  * Note: To save memory, a null Value is used to represent a null Java
@@ -226,6 +228,9 @@ public abstract class Value {
   }
 
   @Override
+  public abstract int hashCode();
+
+  @Override
   public abstract boolean equals(Object other);
 
   private static class BooleanValue extends Value {
@@ -243,6 +248,10 @@ public abstract class Value {
     @Override
     public String toString() {
       return Boolean.toString(mBool);
+    }
+
+    @Override public int hashCode() {
+      return Objects.hash(mBool);
     }
 
     @Override public boolean equals(Object other) {
@@ -276,6 +285,10 @@ public abstract class Value {
       return Byte.toString(mByte);
     }
 
+    @Override public int hashCode() {
+      return Objects.hash(mByte);
+    }
+
     @Override public boolean equals(Object other) {
       if (other instanceof ByteValue) {
         ByteValue value = (ByteValue)other;
@@ -307,6 +320,10 @@ public abstract class Value {
       return Character.toString(mChar);
     }
 
+    @Override public int hashCode() {
+      return Objects.hash(mChar);
+    }
+
     @Override public boolean equals(Object other) {
       if (other instanceof CharValue) {
         CharValue value = (CharValue)other;
@@ -333,6 +350,10 @@ public abstract class Value {
       return Double.toString(mDouble);
     }
 
+    @Override public int hashCode() {
+      return Objects.hash(mDouble);
+    }
+
     @Override public boolean equals(Object other) {
       if (other instanceof DoubleValue) {
         DoubleValue value = (DoubleValue)other;
@@ -357,6 +378,10 @@ public abstract class Value {
     @Override
     public String toString() {
       return Float.toString(mFloat);
+    }
+
+    @Override public int hashCode() {
+      return Objects.hash(mFloat);
     }
 
     @Override public boolean equals(Object other) {
@@ -401,6 +426,10 @@ public abstract class Value {
       return InstanceValue.pack(mInstance.getBaseline());
     }
 
+    @Override public int hashCode() {
+      return Objects.hash(mInstance);
+    }
+
     @Override public boolean equals(Object other) {
       if (other instanceof InstanceValue) {
         InstanceValue value = (InstanceValue)other;
@@ -435,6 +464,10 @@ public abstract class Value {
     @Override
     public String toString() {
       return Integer.toString(mInt);
+    }
+
+    @Override public int hashCode() {
+      return Objects.hash(mInt);
     }
 
     @Override public boolean equals(Object other) {
@@ -473,6 +506,10 @@ public abstract class Value {
       return Long.toString(mLong);
     }
 
+    @Override public int hashCode() {
+      return Objects.hash(mLong);
+    }
+
     @Override public boolean equals(Object other) {
       if (other instanceof LongValue) {
         LongValue value = (LongValue)other;
@@ -497,6 +534,10 @@ public abstract class Value {
     @Override
     public String toString() {
       return Short.toString(mShort);
+    }
+
+    @Override public int hashCode() {
+      return Objects.hash(mShort);
     }
 
     @Override public boolean equals(Object other) {
