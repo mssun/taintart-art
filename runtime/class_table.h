@@ -64,9 +64,7 @@ class ClassTable {
       return *this;
     }
 
-    bool IsNull() const REQUIRES_SHARED(Locks::mutator_lock_) {
-      return Read<kWithoutReadBarrier>() == nullptr;
-    }
+    bool IsNull() const REQUIRES_SHARED(Locks::mutator_lock_);
 
     uint32_t Hash() const {
       return MaskHash(data_.load(std::memory_order_relaxed));
