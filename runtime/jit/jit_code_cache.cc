@@ -1977,6 +1977,18 @@ bool JitCodeCache::NotifyCompilationOf(ArtMethod* method, Thread* self, bool osr
     return false;
   }
 
+  ClassLinker* class_linker = Runtime::Current()->GetClassLinker();
+  if (class_linker->IsQuickResolutionStub(method->GetEntryPointFromQuickCompiledCode())) {
+    // We currently don't save the JIT compiled code if we cannot update the entrypoint due
+    // to having the resolution stub.
+    VLOG(jit) << "Not compiling "
+              << method->PrettyMethod()
+              << " because it has the resolution stub";
+    // Give it a new chance to be hot.
+    ClearMethodCounter(method, /*was_warm=*/ false);
+    return false;
+  }
+
   MutexLock mu(self, lock_);
   if (osr && (osr_code_map_.find(method) != osr_code_map_.end())) {
     return false;
