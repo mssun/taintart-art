@@ -23,7 +23,7 @@ log_info "=== ART pre-boot integrity checks ==="
 # Measure (and enable) fsverity to see if things are installed. Enable is not
 # idempotent, and we'd need to parse the error string to see whether it says
 # data was installed. Rather do a two-step.
-FILES=`find /data/dalvik-cache -type f -a -name 'system@framework@boot*'`
+FILES=`find /data/dalvik-cache -type f -a -name 'system@framework@boot*' -o name 'system@framework@*jar*'`
 
 if [ ! -f "/system/bin/fsverity" ] ; then
   log_error "Device is not fsverity-enabled."
