@@ -27,6 +27,7 @@ cc_defaults {
         "base/enums.cc",
         "base/file_magic.cc",
         "base/file_utils.cc",
+        "base/globals.cc",
         "base/hex_dump.cc",
         "base/hiddenapi_flags.cc",
         "base/logging.cc",

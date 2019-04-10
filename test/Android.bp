@@ -538,7 +538,7 @@ art_cc_test_library {
 
 art_cc_test_library {
     name: "libnativebridgetest",
-    shared_libs: ["libart"],
+    shared_libs: ["libartd"],
     defaults: [
         "art_test_defaults",
         "art_debug_defaults",
