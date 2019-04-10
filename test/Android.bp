@@ -323,6 +323,7 @@ art_cc_defaults {
         "1944-sudden-exit/sudden_exit.cc",
         // "1952-pop-frame-jit/pop_frame.cc",
         "1959-redefine-object-instrument/fake_redef_object.cc",
+        "1960-obsolete-jit-multithread-native/native_say_hi.cc",
     ],
     static_libs: [
         "libz",

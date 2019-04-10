@@ -1,0 +1,2 @@
+Tests issue found in b/73333076 where multiple threads sharing the same obsolete method could
+cause a crash.
