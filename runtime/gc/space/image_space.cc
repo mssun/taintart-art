@@ -1213,13 +1213,13 @@ class ImageSpace::Loader {
           ClassTable::ClassSet temp_set(data, /*make_copy_of_data=*/ false, &read_count);
           for (ClassTable::TableSlot& slot : temp_set) {
             slot.VisitRoot(class_table_visitor);
-            mirror::Class* klass = slot.Read<kWithoutReadBarrier>();
-            if (!app_image_objects.InDest(klass)) {
+            ObjPtr<mirror::Class> klass = slot.Read<kWithoutReadBarrier>();
+            if (!app_image_objects.InDest(klass.Ptr())) {
               continue;
             }
-            const bool already_marked = visited_bitmap->Set(klass);
+            const bool already_marked = visited_bitmap->Set(klass.Ptr());
             CHECK(!already_marked) << "App image class already visited";
-            patch_object_visitor.VisitClass(klass);
+            patch_object_visitor.VisitClass(klass.Ptr());
             // Then patch the non-embedded vtable and iftable.
             ObjPtr<mirror::PointerArray> vtable =
                 klass->GetVTable<kVerifyNone, kWithoutReadBarrier>();
@@ -1609,10 +1609,10 @@ class ImageSpace::BootImageLoader {
         ClassTableVisitor class_table_visitor(relocate_visitor);
         for (ClassTable::TableSlot& slot : temp_set) {
           slot.VisitRoot(class_table_visitor);
-          mirror::Class* klass = slot.Read<kWithoutReadBarrier>();
+          ObjPtr<mirror::Class> klass = slot.Read<kWithoutReadBarrier>();
           DCHECK(klass != nullptr);
-          patched_objects->Set(klass);
-          patch_object_visitor.VisitClass(klass);
+          patched_objects->Set(klass.Ptr());
+          patch_object_visitor.VisitClass(klass.Ptr());
           if (kIsDebugBuild) {
             mirror::Class* class_class = klass->GetClass<kVerifyNone, kWithoutReadBarrier>();
             if (dcheck_class_class == nullptr) {

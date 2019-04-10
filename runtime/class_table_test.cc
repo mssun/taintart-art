@@ -87,9 +87,9 @@ TEST_F(ClassTableTest, ClassTable) {
 
   // Add h_X to the class table.
   table.Insert(h_X.Get());
-  EXPECT_EQ(table.LookupByDescriptor(h_X.Get()), h_X.Get());
-  EXPECT_EQ(table.Lookup(descriptor_x, ComputeModifiedUtf8Hash(descriptor_x)), h_X.Get());
-  EXPECT_EQ(table.Lookup("NOT_THERE", ComputeModifiedUtf8Hash("NOT_THERE")), nullptr);
+  EXPECT_OBJ_PTR_EQ(table.LookupByDescriptor(h_X.Get()), h_X.Get());
+  EXPECT_OBJ_PTR_EQ(table.Lookup(descriptor_x, ComputeModifiedUtf8Hash(descriptor_x)), h_X.Get());
+  EXPECT_TRUE(table.Lookup("NOT_THERE", ComputeModifiedUtf8Hash("NOT_THERE")) == nullptr);
   EXPECT_EQ(table.NumZygoteClasses(class_loader.Get()), 0u);
   EXPECT_EQ(table.NumNonZygoteClasses(class_loader.Get()), 1u);
 
@@ -99,11 +99,11 @@ TEST_F(ClassTableTest, ClassTable) {
   EXPECT_EQ(table.NumNonZygoteClasses(class_loader.Get()), 0u);
 
   // Test inserting and related lookup functions.
-  EXPECT_EQ(table.LookupByDescriptor(h_Y.Get()), nullptr);
+  EXPECT_TRUE(table.LookupByDescriptor(h_Y.Get()) == nullptr);
   EXPECT_FALSE(table.Contains(h_Y.Get()));
   table.Insert(h_Y.Get());
-  EXPECT_EQ(table.LookupByDescriptor(h_X.Get()), h_X.Get());
-  EXPECT_EQ(table.LookupByDescriptor(h_Y.Get()), h_Y.Get());
+  EXPECT_OBJ_PTR_EQ(table.LookupByDescriptor(h_X.Get()), h_X.Get());
+  EXPECT_OBJ_PTR_EQ(table.LookupByDescriptor(h_Y.Get()), h_Y.Get());
   EXPECT_TRUE(table.Contains(h_X.Get()));
   EXPECT_TRUE(table.Contains(h_Y.Get()));
 
