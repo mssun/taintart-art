@@ -27,6 +27,7 @@
 namespace art {
 
 class DexFile;
+class Mutex;
 class Thread;
 
 // This method is declared in the compiler library.
@@ -59,6 +60,11 @@ void RemoveNativeDebugInfoForJit(Thread* self, const void* code_ptr);
 
 // Returns approximate memory used by debug info for JIT code.
 size_t GetJitMiniDebugInfoMemUsage();
+
+// Get the lock which protects the native debug info.
+// Used only in tests to unwind while the JIT thread is running.
+// TODO: Unwinding should be race-free. Remove this.
+Mutex* GetNativeDebugInfoLock();
 
 }  // namespace art
 

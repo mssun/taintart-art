@@ -423,4 +423,8 @@ size_t GetJitMiniDebugInfoMemUsage() {
   return size;
 }
 
+Mutex* GetNativeDebugInfoLock() {
+  return &g_jit_debug_lock;
+}
+
 }  // namespace art
