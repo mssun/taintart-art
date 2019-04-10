@@ -40,9 +40,9 @@ std::string GetAndroidRuntimeRoot();
 std::string GetAndroidRuntimeRootSafe(/*out*/ std::string* error_msg);
 
 // Find $ANDROID_DATA, /data, or abort.
-const char* GetAndroidData();
-// Find $ANDROID_DATA, /data, or return null.
-const char* GetAndroidDataSafe(/*out*/ std::string* error_msg);
+std::string GetAndroidData();
+// Find $ANDROID_DATA, /data, or return an empty string.
+std::string GetAndroidDataSafe(/*out*/ std::string* error_msg);
 
 // Returns the default boot image location (ANDROID_ROOT/framework/boot.art).
 // Returns an empty string if ANDROID_ROOT is not set.
