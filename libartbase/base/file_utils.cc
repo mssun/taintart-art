@@ -150,17 +150,18 @@ std::string GetAndroidRoot() {
 
 static const char* GetAndroidDirSafe(const char* env_var,
                                      const char* default_dir,
+                                     bool must_exist,
                                      std::string* error_msg) {
   const char* android_dir = getenv(env_var);
   if (android_dir == nullptr) {
-    if (OS::DirectoryExists(default_dir)) {
+    if (!must_exist || OS::DirectoryExists(default_dir)) {
       android_dir = default_dir;
     } else {
       *error_msg = StringPrintf("%s not set and %s does not exist", env_var, default_dir);
       return nullptr;
     }
   }
-  if (!OS::DirectoryExists(android_dir)) {
+  if (must_exist && !OS::DirectoryExists(android_dir)) {
     *error_msg = StringPrintf("Failed to find %s directory %s", env_var, android_dir);
     return nullptr;
   }
@@ -169,7 +170,7 @@ static const char* GetAndroidDirSafe(const char* env_var,
 
 static const char* GetAndroidDir(const char* env_var, const char* default_dir) {
   std::string error_msg;
-  const char* dir = GetAndroidDirSafe(env_var, default_dir, &error_msg);
+  const char* dir = GetAndroidDirSafe(env_var, default_dir, /* must_exist= */ true, &error_msg);
   if (dir != nullptr) {
     return dir;
   } else {
@@ -179,8 +180,10 @@ static const char* GetAndroidDir(const char* env_var, const char* default_dir) {
 }
 
 std::string GetAndroidRuntimeRootSafe(std::string* error_msg) {
-  const char* android_dir =
-      GetAndroidDirSafe(kAndroidRuntimeRootEnvVar, kAndroidRuntimeApexDefaultPath, error_msg);
+  const char* android_dir = GetAndroidDirSafe(kAndroidRuntimeRootEnvVar,
+                                              kAndroidRuntimeApexDefaultPath,
+                                              /* must_exist= */ true,
+                                              error_msg);
   return (android_dir != nullptr) ? android_dir : "";
 }
 
@@ -189,8 +192,10 @@ std::string GetAndroidRuntimeRoot() {
 }
 
 std::string GetAndroidDataSafe(std::string* error_msg) {
-  const char* android_dir =
-      GetAndroidDirSafe(kAndroidDataEnvVar, kAndroidDataDefaultPath, error_msg);
+  const char* android_dir = GetAndroidDirSafe(kAndroidDataEnvVar,
+                                              kAndroidDataDefaultPath,
+                                              /* must_exist= */ true,
+                                              error_msg);
   return (android_dir != nullptr) ? android_dir : "";
 }
 
@@ -304,15 +309,59 @@ std::string ReplaceFileExtension(const std::string& filename, const std::string&
   }
 }
 
+static bool StartsWithSlash(const char* str) {
+  DCHECK(str != nullptr);
+  return str[0] == '/';
+}
+
+static bool EndsWithSlash(const char* str) {
+  DCHECK(str != nullptr);
+  size_t len = strlen(str);
+  return len > 0 && str[len - 1] == '/';
+}
+
+// Returns true if `full_path` is located in folder either provided with `env_var`
+// or in `default_path` otherwise. The caller may optionally provide a `subdir`
+// which will be appended to the tested prefix.
+// All of `default_path`, `subdir` and the value of environment variable `env_var`
+// are expected to begin with a slash and not end with one. If this ever changes,
+// the path-building logic should be updated.
 static bool IsLocationOnModule(const char* full_path,
                                const char* env_var,
-                               const char* default_path) {
+                               const char* default_path,
+                               const char* subdir = nullptr) {
   std::string unused_error_msg;
-  const char* module_path = GetAndroidDirSafe(env_var, default_path, &unused_error_msg);
+  const char* module_path = GetAndroidDirSafe(env_var,
+                                              default_path,
+                                              /* must_exist= */ kIsTargetBuild,
+                                              &unused_error_msg);
   if (module_path == nullptr) {
     return false;
   }
-  return android::base::StartsWith(full_path, module_path);
+
+  // Build the path which we will check is a prefix of `full_path`. The prefix must
+  // end with a slash, so that "/foo/bar" does not match "/foo/barz", but we assume
+  // `module_path` does not end with a slash. It will be appended at the very end.
+  DCHECK(StartsWithSlash(module_path) && !EndsWithSlash(module_path)) << module_path;
+  std::string path_prefix(module_path);
+  if (subdir != nullptr) {
+    // If `subdir` is provided, we assume it is provided starting with a slash
+    // but ending without one, e.g. "/sub/dir". `path_prefix` does not end with
+    // a slash at this point, so we simply append `subdir`.
+    DCHECK(StartsWithSlash(subdir) && !EndsWithSlash(subdir)) << subdir;
+    path_prefix.append(subdir);
+  }
+  // Append final slash. `path_prefix` does not end with one at this point.
+  path_prefix.append("/");
+
+  return android::base::StartsWith(full_path, path_prefix);
+}
+
+bool LocationIsOnSystemFramework(const char* full_path) {
+  return IsLocationOnModule(full_path,
+                            kAndroidRootEnvVar,
+                            kAndroidRootDefaultPath,
+                            /* subdir= */ "/framework");
 }
 
 bool LocationIsOnRuntimeModule(const char* full_path) {
@@ -340,23 +389,19 @@ bool LocationIsOnSystem(const char* path) {
 #endif
 }
 
-bool LocationIsOnSystemFramework(const char* full_path) {
-  std::string unused_error_msg;
-  std::string root_path = GetAndroidRootSafe(&unused_error_msg);
-  if (root_path.empty()) {
-    // Could not find Android root.
-    // TODO(dbrazdil): change to stricter GetAndroidRoot() once b/76452688 is resolved.
-    return false;
-  }
-  std::string framework_path = root_path + "/framework/";
-  return android::base::StartsWith(full_path, framework_path);
-}
-
 bool RuntimeModuleRootDistinctFromAndroidRoot() {
-  std::string unused_error_msg;
-  std::string android_root = GetAndroidRootSafe(&unused_error_msg);
-  std::string runtime_root = GetAndroidRuntimeRootSafe(&unused_error_msg);
-  return !android_root.empty() && !runtime_root.empty() && (android_root != runtime_root);
+  std::string error_msg;
+  const char* android_root = GetAndroidDirSafe(kAndroidRootEnvVar,
+                                               kAndroidRootDefaultPath,
+                                               /* must_exist= */ kIsTargetBuild,
+                                               &error_msg);
+  const char* runtime_root = GetAndroidDirSafe(kAndroidRuntimeRootEnvVar,
+                                               kAndroidRuntimeApexDefaultPath,
+                                               /* must_exist= */ kIsTargetBuild,
+                                               &error_msg);
+  return (android_root != nullptr)
+      && (runtime_root != nullptr)
+      && (std::string_view(android_root) != std::string_view(runtime_root));
 }
 
 int DupCloexec(int fd) {
