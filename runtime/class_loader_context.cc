@@ -1122,10 +1122,6 @@ std::unique_ptr<ClassLoaderContext> ClassLoaderContext::CreateContextForClassLoa
   return result;
 }
 
-static bool IsAbsoluteLocation(const std::string& location) {
-  return !location.empty() && location[0] == '/';
-}
-
 ClassLoaderContext::VerificationResult ClassLoaderContext::VerifyClassLoaderContextMatch(
     const std::string& context_spec,
     bool verify_names,
@@ -1213,15 +1209,17 @@ bool ClassLoaderContext::ClassLoaderInfoMatch(
         // The runtime name is absolute but the compiled name (the expected one) is relative.
         // This is the case for split apks which depend on base or on other splits.
         dex_name = info.classpath[k];
-        expected_dex_name = OatFile::ResolveRelativeEncodedDexLocation(
-            info.classpath[k].c_str(), expected_info.classpath[k]);
+        OatFile::ResolveRelativeEncodedDexLocation(info.classpath[k].c_str(),
+                                                   expected_info.classpath[k],
+                                                   &expected_dex_name);
       } else if (is_expected_dex_name_absolute) {
         // The runtime name is relative but the compiled name is absolute.
         // There is no expected use case that would end up here as dex files are always loaded
         // with their absolute location. However, be tolerant and do the best effort (in case
         // there are unexpected new use case...).
-        dex_name = OatFile::ResolveRelativeEncodedDexLocation(
-            expected_info.classpath[k].c_str(), info.classpath[k]);
+        OatFile::ResolveRelativeEncodedDexLocation(expected_info.classpath[k].c_str(),
+                                                   info.classpath[k],
+                                                   &dex_name);
         expected_dex_name = expected_info.classpath[k];
       } else {
         // Both locations are relative. In this case there's not much we can be sure about
