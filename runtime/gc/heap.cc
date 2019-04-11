@@ -313,9 +313,10 @@ Heap::Heap(size_t initial_size,
   if (kUseReadBarrier) {
     CHECK_EQ(foreground_collector_type_, kCollectorTypeCC);
     CHECK_EQ(background_collector_type_, kCollectorTypeCCBackground);
-  } else {
+  } else if (background_collector_type_ != gc::kCollectorTypeHomogeneousSpaceCompact) {
     CHECK_EQ(IsMovingGc(foreground_collector_type_), IsMovingGc(background_collector_type_))
-        << "Changing from moving to non-moving GC (or visa versa) is not supported.";
+        << "Changing from " << foreground_collector_type_ << " to "
+        << background_collector_type_ << " (or visa versa) is not supported.";
   }
   verification_.reset(new Verification(this));
   CHECK_GE(large_object_threshold, kMinLargeObjectThreshold);
