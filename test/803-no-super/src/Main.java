@@ -21,7 +21,7 @@ public class Main {
     public static void main(String[] args) throws Exception {
         try {
             Class<?> c = Class.forName("NoSuper1");
-        } catch (Exception e) {
+        } catch (Error e) {
             System.out.println(e);
         }
         System.out.println("Done!");
