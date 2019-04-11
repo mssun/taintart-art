@@ -229,13 +229,11 @@ inline ArtMethod* GetInterfaceMemberIfProxy(ArtMethod* method)
   return method->GetInterfaceMethodIfProxy(kRuntimePointerSize);
 }
 
-}  // namespace detail
-
 // Returns access flags for the runtime representation of a class member (ArtField/ArtMember).
-ALWAYS_INLINE inline uint32_t CreateRuntimeFlags(const ClassAccessor::BaseItem& member) {
+ALWAYS_INLINE inline uint32_t CreateRuntimeFlags_Impl(uint32_t dex_flags) {
   uint32_t runtime_flags = 0u;
 
-  ApiList api_list(member.GetHiddenapiFlags());
+  ApiList api_list(dex_flags);
   DCHECK(api_list.IsValid());
 
   if (api_list.Contains(ApiList::Whitelist())) {
@@ -251,6 +249,19 @@ ALWAYS_INLINE inline uint32_t CreateRuntimeFlags(const ClassAccessor::BaseItem& 
   DCHECK_EQ(runtime_flags & kAccHiddenapiBits, runtime_flags)
       << "Runtime flags not in reserved access flags bits";
   return runtime_flags;
+}
+
+}  // namespace detail
+
+// Returns access flags for the runtime representation of a class member (ArtField/ArtMember).
+ALWAYS_INLINE inline uint32_t CreateRuntimeFlags(const ClassAccessor::BaseItem& member) {
+  return detail::CreateRuntimeFlags_Impl(member.GetHiddenapiFlags());
+}
+
+// Returns access flags for the runtime representation of a class member (ArtField/ArtMember).
+template<typename T>
+ALWAYS_INLINE inline uint32_t CreateRuntimeFlags(T* member) REQUIRES_SHARED(Locks::mutator_lock_) {
+  return detail::CreateRuntimeFlags_Impl(detail::GetDexFlags(member));
 }
 
 // Extracts hiddenapi runtime flags from access flags of ArtField.

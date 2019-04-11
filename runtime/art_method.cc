@@ -706,7 +706,9 @@ void ArtMethod::SetIntrinsic(uint32_t intrinsic) {
     bool is_default_conflict = IsDefaultConflicting();
     bool is_compilable = IsCompilable();
     bool must_count_locks = MustCountLocks();
-    uint32_t hiddenapi_flags = hiddenapi::GetRuntimeFlags(this);
+    // Recompute flags instead of getting them from the current access flags because
+    // access flags may have been changed to deduplicate warning messages (b/129063331).
+    uint32_t hiddenapi_flags = hiddenapi::CreateRuntimeFlags(this);
     SetAccessFlags(new_value);
     DCHECK_EQ(java_flags, (GetAccessFlags() & kAccJavaFlagsMask));
     DCHECK_EQ(is_constructor, IsConstructor());
@@ -722,10 +724,7 @@ void ArtMethod::SetIntrinsic(uint32_t intrinsic) {
     DCHECK_EQ(must_count_locks, MustCountLocks());
     // Only DCHECK that we have preserved the hidden API access flags if the
     // original method was not on the whitelist. This is because the core image
-    // does not have the access flags set (b/77733081). It is fine to hard-code
-    // these because (a) warnings on greylist do not change semantics, and
-    // (b) only VarHandle intrinsics are blacklisted at the moment and they
-    // should not be used outside tests with disabled API checks.
+    // does not have the access flags set (b/77733081).
     if ((hiddenapi_flags & kAccHiddenapiBits) != kAccPublicApi) {
       DCHECK_EQ(hiddenapi_flags, hiddenapi::GetRuntimeFlags(this)) << PrettyMethod();
     }
