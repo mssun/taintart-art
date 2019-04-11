@@ -120,7 +120,12 @@ RUNTIME_OPTIONS_KEY (verifier::VerifyMode, \
                                           Verify,                         verifier::VerifyMode::kEnable)
 RUNTIME_OPTIONS_KEY (unsigned int,        TargetSdkVersion, \
                                           static_cast<unsigned int>(SdkVersion::kUnset))
-RUNTIME_OPTIONS_KEY (Unit,                HiddenApiChecks)
+RUNTIME_OPTIONS_KEY (hiddenapi::EnforcementPolicy,
+                                          HiddenApiPolicy,
+                                          hiddenapi::EnforcementPolicy::kDisabled)
+RUNTIME_OPTIONS_KEY (hiddenapi::EnforcementPolicy,
+                                          CorePlatformApiPolicy,
+                                          hiddenapi::EnforcementPolicy::kDisabled)
 RUNTIME_OPTIONS_KEY (std::string,         NativeBridge)
 RUNTIME_OPTIONS_KEY (unsigned int,        ZygoteMaxFailedBoots,           10)
 RUNTIME_OPTIONS_KEY (Unit,                NoDexFileFallback)
