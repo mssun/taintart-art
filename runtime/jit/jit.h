@@ -29,6 +29,7 @@ namespace art {
 
 class ArtMethod;
 class ClassLinker;
+class OatDexFile;
 struct RuntimeArgumentMap;
 union JValue;
 
@@ -337,6 +338,7 @@ class Jit {
   const JitOptions* const options_;
 
   std::unique_ptr<ThreadPool> thread_pool_;
+  std::vector<std::unique_ptr<OatDexFile>> type_lookup_tables_;
 
   // Performance monitoring.
   CumulativeLogger cumulative_timings_;
