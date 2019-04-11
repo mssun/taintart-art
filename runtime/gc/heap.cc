@@ -2254,8 +2254,10 @@ void Heap::PreZygoteFork() {
     if (temp_space_ != nullptr) {
       CHECK(temp_space_->IsEmpty());
     }
-    total_objects_freed_ever_ += GetCurrentGcIteration()->GetFreedObjects();
-    total_bytes_freed_ever_ += GetCurrentGcIteration()->GetFreedBytes();
+    total_objects_freed_ever_ += GetCurrentGcIteration()->GetFreedObjects() +
+        GetCurrentGcIteration()->GetFreedLargeObjects();
+    total_bytes_freed_ever_ += GetCurrentGcIteration()->GetFreedBytes() +
+        GetCurrentGcIteration()->GetFreedLargeObjectBytes();
     // Update the end and write out image.
     non_moving_space_->SetEnd(target_space.End());
     non_moving_space_->SetLimit(target_space.Limit());
@@ -2533,8 +2535,10 @@ collector::GcType Heap::CollectGarbageInternal(collector::GcType gc_type,
       << "Could not find garbage collector with collector_type="
       << static_cast<size_t>(collector_type_) << " and gc_type=" << gc_type;
   collector->Run(gc_cause, clear_soft_references || runtime->IsZygote());
-  total_objects_freed_ever_ += GetCurrentGcIteration()->GetFreedObjects();
-  total_bytes_freed_ever_ += GetCurrentGcIteration()->GetFreedBytes();
+  total_objects_freed_ever_ += GetCurrentGcIteration()->GetFreedObjects() +
+      GetCurrentGcIteration()->GetFreedLargeObjects();
+  total_bytes_freed_ever_ += GetCurrentGcIteration()->GetFreedBytes() +
+      GetCurrentGcIteration()->GetFreedLargeObjectBytes();
   RequestTrim(self);
   // Enqueue cleared references.
   reference_processor_->EnqueueClearedReferences(self);
