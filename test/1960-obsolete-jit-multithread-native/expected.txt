@@ -1,0 +1,100 @@
+Thread 0: 	Hello - Start method sayHi
+Thread 0: 	Not doing anything here
+Thread 0: 	Hello - End method sayHi
+Thread 0: 	Hello - Start method sayHi
+Thread 0: 	Requesting redefinition
+Thread 0: 	Hello - End method sayHi
+Thread 0: 	goodbye - Start method sayHi
+Thread 0: 	Not doing anything here
+Thread 0: 	goodbye - End method sayHi
+
+Thread 1: 	Hello - Start method sayHi
+Thread 1: 	Not doing anything here
+Thread 1: 	Hello - End method sayHi
+Thread 1: 	Hello - Start method sayHi
+Thread 1: 	Requesting redefinition
+Thread 1: 	Hello - End method sayHi
+Thread 1: 	goodbye - Start method sayHi
+Thread 1: 	Not doing anything here
+Thread 1: 	goodbye - End method sayHi
+
+Thread 2: 	Hello - Start method sayHi
+Thread 2: 	Not doing anything here
+Thread 2: 	Hello - End method sayHi
+Thread 2: 	Hello - Start method sayHi
+Thread 2: 	Requesting redefinition
+Thread 2: 	Hello - End method sayHi
+Thread 2: 	goodbye - Start method sayHi
+Thread 2: 	Not doing anything here
+Thread 2: 	goodbye - End method sayHi
+
+Thread 3: 	Hello - Start method sayHi
+Thread 3: 	Not doing anything here
+Thread 3: 	Hello - End method sayHi
+Thread 3: 	Hello - Start method sayHi
+Thread 3: 	Requesting redefinition
+Thread 3: 	Hello - End method sayHi
+Thread 3: 	goodbye - Start method sayHi
+Thread 3: 	Not doing anything here
+Thread 3: 	goodbye - End method sayHi
+
+Thread 4: 	Hello - Start method sayHi
+Thread 4: 	Not doing anything here
+Thread 4: 	Hello - End method sayHi
+Thread 4: 	Hello - Start method sayHi
+Thread 4: 	Requesting redefinition
+Thread 4: 	Hello - End method sayHi
+Thread 4: 	goodbye - Start method sayHi
+Thread 4: 	Not doing anything here
+Thread 4: 	goodbye - End method sayHi
+
+Thread 5: 	Hello - Start method sayHi
+Thread 5: 	Not doing anything here
+Thread 5: 	Hello - End method sayHi
+Thread 5: 	Hello - Start method sayHi
+Thread 5: 	Requesting redefinition
+Thread 5: 	Hello - End method sayHi
+Thread 5: 	goodbye - Start method sayHi
+Thread 5: 	Not doing anything here
+Thread 5: 	goodbye - End method sayHi
+
+Thread 6: 	Hello - Start method sayHi
+Thread 6: 	Not doing anything here
+Thread 6: 	Hello - End method sayHi
+Thread 6: 	Hello - Start method sayHi
+Thread 6: 	Requesting redefinition
+Thread 6: 	Hello - End method sayHi
+Thread 6: 	goodbye - Start method sayHi
+Thread 6: 	Not doing anything here
+Thread 6: 	goodbye - End method sayHi
+
+Thread 7: 	Hello - Start method sayHi
+Thread 7: 	Not doing anything here
+Thread 7: 	Hello - End method sayHi
+Thread 7: 	Hello - Start method sayHi
+Thread 7: 	Requesting redefinition
+Thread 7: 	Hello - End method sayHi
+Thread 7: 	goodbye - Start method sayHi
+Thread 7: 	Not doing anything here
+Thread 7: 	goodbye - End method sayHi
+
+Thread 8: 	Hello - Start method sayHi
+Thread 8: 	Not doing anything here
+Thread 8: 	Hello - End method sayHi
+Thread 8: 	Hello - Start method sayHi
+Thread 8: 	Requesting redefinition
+Thread 8: 	Hello - End method sayHi
+Thread 8: 	goodbye - Start method sayHi
+Thread 8: 	Not doing anything here
+Thread 8: 	goodbye - End method sayHi
+
+Thread 9: 	Hello - Start method sayHi
+Thread 9: 	Not doing anything here
+Thread 9: 	Hello - End method sayHi
+Thread 9: 	Hello - Start method sayHi
+Thread 9: 	Requesting redefinition
+Thread 9: 	Hello - End method sayHi
+Thread 9: 	goodbye - Start method sayHi
+Thread 9: 	Not doing anything here
+Thread 9: 	goodbye - End method sayHi
+
