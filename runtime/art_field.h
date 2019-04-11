@@ -225,11 +225,6 @@ class ArtField final {
   std::string PrettyField(bool with_type = true)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
-  // Update the declaring class with the passed in visitor. Does not use read barrier.
-  template <typename Visitor>
-  ALWAYS_INLINE void UpdateObjects(const Visitor& visitor)
-      REQUIRES_SHARED(Locks::mutator_lock_);
-
  private:
   bool IsProxyField() REQUIRES_SHARED(Locks::mutator_lock_);
 

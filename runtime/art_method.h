@@ -692,12 +692,6 @@ class ArtMethod final {
   std::string JniLongName()
       REQUIRES_SHARED(Locks::mutator_lock_);
 
-  // Update heap objects and non-entrypoint pointers by the passed in visitor for image relocation.
-  // Does not use read barrier.
-  template <typename Visitor>
-  ALWAYS_INLINE void UpdateObjectsForImageRelocation(const Visitor& visitor)
-      REQUIRES_SHARED(Locks::mutator_lock_);
-
   // Update entry points by passing them through the visitor.
   template <typename Visitor>
   ALWAYS_INLINE void UpdateEntrypoints(const Visitor& visitor, PointerSize pointer_size);
