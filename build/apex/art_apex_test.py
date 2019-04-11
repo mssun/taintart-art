@@ -483,6 +483,9 @@ class ReleaseTargetChecker:
     self._checker.check_native_library('bionic/libc')
     self._checker.check_native_library('bionic/libdl')
     self._checker.check_native_library('bionic/libm')
+    # ... and its internal dependencies
+    self._checker.check_native_library('libc_malloc_hooks')
+    self._checker.check_native_library('libc_malloc_debug')
 
     # Check exported native libraries for Managed Core Library.
     self._checker.check_native_library('libandroidicu')
