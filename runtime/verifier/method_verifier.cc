@@ -57,6 +57,7 @@
 #include "reg_type-inl.h"
 #include "register_line-inl.h"
 #include "runtime.h"
+#include "scoped_newline.h"
 #include "scoped_thread_state_change-inl.h"
 #include "stack.h"
 #include "vdex_file.h"
@@ -690,9 +691,11 @@ std::ostream& MethodVerifier::Fail(VerifyError error) {
   return *failure_message;
 }
 
-std::ostream& MethodVerifier::LogVerifyInfo() {
-  return info_messages_ << "VFY: " << dex_file_->PrettyMethod(dex_method_idx_)
-                        << '[' << reinterpret_cast<void*>(work_insn_idx_) << "] : ";
+ScopedNewLine MethodVerifier::LogVerifyInfo() {
+  ScopedNewLine ret{info_messages_};
+  ret << "VFY: " << dex_file_->PrettyMethod(dex_method_idx_)
+      << '[' << reinterpret_cast<void*>(work_insn_idx_) << "] : ";
+  return ret;
 }
 
 void MethodVerifier::PrependToLastFailMessage(std::string prepend) {
@@ -1814,8 +1817,8 @@ bool MethodVerifier::CodeFlowVerifyInstruction(uint32_t* start_guess) {
   bool just_set_result = false;
   if (UNLIKELY(VLOG_IS_ON(verifier_debug))) {
     // Generate processing back trace to debug verifier
-    LogVerifyInfo() << "Processing " << inst->DumpString(dex_file_) << "\n"
-                    << work_line_->Dump(this) << "\n";
+    LogVerifyInfo() << "Processing " << inst->DumpString(dex_file_) << std::endl
+                    << work_line_->Dump(this);
   }
 
   /*
@@ -4751,7 +4754,7 @@ bool MethodVerifier::UpdateRegisters(uint32_t next_insn, RegisterLine* merge_lin
                       << " to [" << reinterpret_cast<void*>(next_insn) << "]: " << "\n"
                       << copy->Dump(this) << "  MERGE\n"
                       << merge_line->Dump(this) << "  ==\n"
-                      << target_line->Dump(this) << "\n";
+                      << target_line->Dump(this);
     }
     if (update_merge_line && changed) {
       merge_line->CopyFromLine(target_line);
