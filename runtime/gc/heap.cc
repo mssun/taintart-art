@@ -35,6 +35,7 @@
 #include "base/histogram-inl.h"
 #include "base/logging.h"  // For VLOG.
 #include "base/memory_tool.h"
+#include "base/mutex.h"
 #include "base/os.h"
 #include "base/stl_util.h"
 #include "base/systrace.h"
@@ -841,6 +842,7 @@ void Heap::IncrementDisableThreadFlip(Thread* self) {
   }
   ScopedThreadStateChange tsc(self, kWaitingForGcThreadFlip);
   MutexLock mu(self, *thread_flip_lock_);
+  thread_flip_cond_->CheckSafeToWait(self);
   bool has_waited = false;
   uint64_t wait_start = NanoTime();
   if (thread_flip_running_) {
@@ -886,6 +888,7 @@ void Heap::ThreadFlipBegin(Thread* self) {
   CHECK(kUseReadBarrier);
   ScopedThreadStateChange tsc(self, kWaitingForGcThreadFlip);
   MutexLock mu(self, *thread_flip_lock_);
+  thread_flip_cond_->CheckSafeToWait(self);
   bool has_waited = false;
   uint64_t wait_start = NanoTime();
   CHECK(!thread_flip_running_);
@@ -3278,6 +3281,7 @@ collector::GcType Heap::WaitForGcToComplete(GcCause cause, Thread* self) {
 }
 
 collector::GcType Heap::WaitForGcToCompleteLocked(GcCause cause, Thread* self) {
+  gc_complete_cond_->CheckSafeToWait(self);
   collector::GcType last_gc_type = collector::kGcTypeNone;
   GcCause last_gc_cause = kGcCauseNone;
   uint64_t wait_start = NanoTime();
