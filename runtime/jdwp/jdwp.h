@@ -205,7 +205,9 @@ struct JdwpState {
    *
    * "returnValue" is non-null for MethodExit events only.
    */
-  void PostLocationEvent(const EventLocation* pLoc, mirror::Object* thisPtr, int eventFlags,
+  void PostLocationEvent(const EventLocation* pLoc,
+                         ObjPtr<mirror::Object> thisPtr,
+                         int eventFlags,
                          const JValue* returnValue)
      REQUIRES(!event_list_lock_, !jdwp_token_lock_) REQUIRES_SHARED(Locks::mutator_lock_);
 
@@ -216,8 +218,11 @@ struct JdwpState {
    * "fieldValue" is non-null for field modification events only.
    * "is_modification" is true for field modification, false for field access.
    */
-  void PostFieldEvent(const EventLocation* pLoc, ArtField* field, mirror::Object* thisPtr,
-                      const JValue* fieldValue, bool is_modification)
+  void PostFieldEvent(const EventLocation* pLoc,
+                      ArtField* field,
+                      ObjPtr<mirror::Object> thisPtr,
+                      const JValue* fieldValue,
+                      bool is_modification)
       REQUIRES(!event_list_lock_, !jdwp_token_lock_) REQUIRES_SHARED(Locks::mutator_lock_);
 
   /*
@@ -225,8 +230,10 @@ struct JdwpState {
    *
    * Pass in a zeroed-out "*pCatchLoc" if the exception wasn't caught.
    */
-  void PostException(const EventLocation* pThrowLoc, mirror::Throwable* exception_object,
-                     const EventLocation* pCatchLoc, mirror::Object* thisPtr)
+  void PostException(const EventLocation* pThrowLoc,
+                     ObjPtr<mirror::Throwable> exception_object,
+                     const EventLocation* pCatchLoc,
+                     ObjPtr<mirror::Object> thisPtr)
       REQUIRES(!event_list_lock_, !jdwp_token_lock_) REQUIRES_SHARED(Locks::mutator_lock_);
 
   /*
@@ -238,7 +245,7 @@ struct JdwpState {
   /*
    * Class has been prepared.
    */
-  void PostClassPrepare(mirror::Class* klass)
+  void PostClassPrepare(ObjPtr<mirror::Class> klass)
       REQUIRES(!event_list_lock_, !jdwp_token_lock_) REQUIRES_SHARED(Locks::mutator_lock_);
 
   /*

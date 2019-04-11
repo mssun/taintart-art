@@ -359,11 +359,13 @@ class Dbg {
   static bool MatchType(ObjPtr<mirror::Class> event_class, JDWP::RefTypeId class_id)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
-  static bool MatchField(JDWP::RefTypeId expected_type_id, JDWP::FieldId expected_field_id,
+  static bool MatchField(JDWP::RefTypeId expected_type_id,
+                         JDWP::FieldId expected_field_id,
                          ArtField* event_field)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
-  static bool MatchInstance(JDWP::ObjectId expected_instance_id, mirror::Object* event_instance)
+  static bool MatchInstance(JDWP::ObjectId expected_instance_id,
+                            ObjPtr<mirror::Object> event_instance)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
   //
@@ -486,7 +488,8 @@ class Dbg {
 
   // Fills 'thread_ids' with the threads in the given thread group. If thread_group_id == 0,
   // returns all threads.
-  static void GetThreads(mirror::Object* thread_group, std::vector<JDWP::ObjectId>* thread_ids)
+  static void GetThreads(ObjPtr<mirror::Object> thread_group,
+                         std::vector<JDWP::ObjectId>* thread_ids)
       REQUIRES(!Locks::thread_list_lock_) REQUIRES_SHARED(Locks::mutator_lock_);
 
   static JDWP::JdwpError GetThreadFrameCount(JDWP::ObjectId thread_id, size_t* result)
@@ -532,19 +535,26 @@ class Dbg {
     kMethodEntry    = 0x04,
     kMethodExit     = 0x08,
   };
-  static void PostFieldAccessEvent(ArtMethod* m, int dex_pc, mirror::Object* this_object,
+  static void PostFieldAccessEvent(ArtMethod* m,
+                                   int dex_pc,
+                                   ObjPtr<mirror::Object> this_object,
                                    ArtField* f)
       REQUIRES_SHARED(Locks::mutator_lock_);
-  static void PostFieldModificationEvent(ArtMethod* m, int dex_pc,
-                                         mirror::Object* this_object, ArtField* f,
+  static void PostFieldModificationEvent(ArtMethod* m,
+                                         int dex_pc,
+                                         ObjPtr<mirror::Object> this_object,
+                                         ArtField* f,
                                          const JValue* field_value)
       REQUIRES_SHARED(Locks::mutator_lock_);
-  static void PostException(mirror::Throwable* exception)
+  static void PostException(ObjPtr<mirror::Throwable> exception)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
-  static void UpdateDebugger(Thread* thread, mirror::Object* this_object,
-                             ArtMethod* method, uint32_t new_dex_pc,
-                             int event_flags, const JValue* return_value)
+  static void UpdateDebugger(Thread* thread,
+                             ObjPtr<mirror::Object> this_object,
+                             ArtMethod* method,
+                             uint32_t new_dex_pc,
+                             int event_flags,
+                             const JValue* return_value)
       REQUIRES(!Locks::breakpoint_lock_) REQUIRES_SHARED(Locks::mutator_lock_);
 
   // Indicates whether we need deoptimization for debugging.
@@ -774,11 +784,13 @@ class Dbg {
   static void PostThreadStartOrStop(Thread*, uint32_t)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
-  static void PostClassPrepare(mirror::Class* c)
+  static void PostClassPrepare(ObjPtr<mirror::Class> c)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
-  static void PostLocationEvent(ArtMethod* method, int pcOffset,
-                                mirror::Object* thisPtr, int eventFlags,
+  static void PostLocationEvent(ArtMethod* method,
+                                int pcOffset,
+                                ObjPtr<mirror::Object> thisPtr,
+                                int eventFlags,
                                 const JValue* return_value)
       REQUIRES_SHARED(Locks::mutator_lock_);
 

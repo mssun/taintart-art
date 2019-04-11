@@ -176,7 +176,7 @@ void ObjectRegistry::Clear() {
   id_to_entry_.clear();
 }
 
-mirror::Object* ObjectRegistry::InternalGet(JDWP::ObjectId id, JDWP::JdwpError* error) {
+ObjPtr<mirror::Object> ObjectRegistry::InternalGet(JDWP::ObjectId id, JDWP::JdwpError* error) {
   Thread* self = Thread::Current();
   MutexLock mu(self, lock_);
   auto it = id_to_entry_.find(id);
@@ -186,7 +186,7 @@ mirror::Object* ObjectRegistry::InternalGet(JDWP::ObjectId id, JDWP::JdwpError* 
   }
   ObjectRegistryEntry& entry = *it->second;
   *error = JDWP::ERR_NONE;
-  return self->DecodeJObject(entry.jni_reference).Ptr();
+  return self->DecodeJObject(entry.jni_reference);
 }
 
 jobject ObjectRegistry::GetJObject(JDWP::ObjectId id) {
