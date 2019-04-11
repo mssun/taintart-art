@@ -218,6 +218,14 @@ static void ForceJitCompiled(Thread* self, ArtMethod* method) REQUIRES(!Locks::m
       ThrowIllegalStateException(msg.c_str());
       return;
     }
+    // We force initialization of the declaring class to make sure the method doesn't keep
+    // the resolution stub as entrypoint.
+    StackHandleScope<1> hs(self);
+    Handle<mirror::Class> h_klass(hs.NewHandle(method->GetDeclaringClass()));
+    if (!Runtime::Current()->GetClassLinker()->EnsureInitialized(self, h_klass, true, true)) {
+      self->AssertPendingException();
+      return;
+    }
   }
   jit::Jit* jit = GetJitIfEnabled();
   jit::JitCodeCache* code_cache = jit->GetCodeCache();
