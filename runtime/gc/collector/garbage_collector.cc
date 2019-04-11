@@ -288,7 +288,7 @@ void GarbageCollector::DumpPerformanceInfo(std::ostream& os) {
   }
   os << Dumpable<CumulativeLogger>(logger);
   const uint64_t total_ns = logger.GetTotalNs();
-  double seconds = NsToMs(logger.GetTotalNs()) / 1000.0;
+  const double seconds = NsToMs(total_ns) / 1000.0;
   const uint64_t freed_bytes = GetTotalFreedBytes();
   const uint64_t freed_objects = GetTotalFreedObjects();
   {
@@ -319,7 +319,7 @@ void GarbageCollector::DumpPerformanceInfo(std::ostream& os) {
     freed_bytes_histogram_.DumpBins(os);
     os << "\n";
   }
-  double cpu_seconds = NsToMs(GetTotalCpuTime()) / 1000.0;
+  const double cpu_seconds = NsToMs(GetTotalCpuTime()) / 1000.0;
   os << GetName() << " total time: " << PrettyDuration(total_ns)
      << " mean time: " << PrettyDuration(total_ns / iterations) << "\n"
      << GetName() << " freed: " << freed_objects
