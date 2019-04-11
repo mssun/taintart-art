@@ -306,7 +306,13 @@ static ALWAYS_INLINE bool CanUpdateRuntimeFlags(ArtMethod* method) {
 template<typename T>
 static ALWAYS_INLINE void MaybeUpdateAccessFlags(Runtime* runtime, T* member, uint32_t flag)
     REQUIRES_SHARED(Locks::mutator_lock_) {
-  if (CanUpdateRuntimeFlags(member) && runtime->ShouldDedupeHiddenApiWarnings()) {
+  // Update the access flags unless:
+  // (a) `member` is an intrinsic
+  // (b) this is AOT compiler, as we do not want the updated access flags in the boot/app image
+  // (c) deduping warnings has been explicitly switched off.
+  if (CanUpdateRuntimeFlags(member) &&
+      !runtime->IsAotCompiler() &&
+      runtime->ShouldDedupeHiddenApiWarnings()) {
     member->SetAccessFlags(member->GetAccessFlags() | flag);
   }
 }
