@@ -29,11 +29,26 @@ namespace art {
 
 bool ReadFileToString(const std::string& file_name, std::string* result);
 
+// These methods return the Android Root, which is the historical location of
+// the Android "system" directory, containing the built Android artifacts. On
+// target, this is normally "/system". On host this is usually a directory under
+// the build tree, e.g. "$ANDROID_BUILD_TOP/out/host/linux-x86". The location of
+// the Android Root can be overriden using the ANDROID_ROOT environment
+// variable.
+//
 // Find $ANDROID_ROOT, /system, or abort.
 std::string GetAndroidRoot();
 // Find $ANDROID_ROOT, /system, or return an empty string.
 std::string GetAndroidRootSafe(/*out*/ std::string* error_msg);
 
+// These methods return the Android Runtime Root, which is the location of the
+// (activated) Android Runtime APEX module. On target, this is normally
+// "/apex/com.android.runtime". On host, this is usually a subdirectory of the
+// Android Root, e.g.
+// "$ANDROID_BUILD_TOP/out/host/linux-x86/com.android.runtime". The location of
+// the Android Runtime Root can be overriden using the ANDROID_RUNTIME_ROOT
+// environment variable.
+//
 // Find $ANDROID_RUNTIME_ROOT, /apex/com.android.runtime, or abort.
 std::string GetAndroidRuntimeRoot();
 // Find $ANDROID_RUNTIME_ROOT, /apex/com.android.runtime, or return an empty string.

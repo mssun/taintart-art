@@ -79,19 +79,22 @@ TEST_F(FileUtilsTest, GetAndroidRootSafe) {
   ASSERT_EQ(0, setenv("ANDROID_ROOT", "/this/is/obviously/bogus", /* overwrite */ 1));
   EXPECT_EQ(GetAndroidRootSafe(&error_msg), "");
 
-  // Unset ANDROID_ROOT and see that it still returns something (as libart code is running).
-  ASSERT_EQ(0, unsetenv("ANDROID_ROOT"));
-  std::string android_root3 = GetAndroidRootSafe(&error_msg);
-  // This should be the same as the other root (modulo realpath), otherwise the test setup is
-  // broken. On non-bionic. On bionic we can be running with a different libart that lives outside
-  // of ANDROID_ROOT
-  UniqueCPtr<char> real_root3(realpath(android_root3.c_str(), nullptr));
+  // Inferring the Android Root from the location of libartbase only works on host.
+  if (!kIsTargetBuild) {
+    // Unset ANDROID_ROOT and see that it still returns something (as libartbase code is running).
+    ASSERT_EQ(0, unsetenv("ANDROID_ROOT"));
+    std::string android_root3 = GetAndroidRootSafe(&error_msg);
+    // This should be the same as the other root (modulo realpath), otherwise the test setup is
+    // broken. On non-bionic. On bionic we can be running with a different libartbase that lives
+    // outside of ANDROID_ROOT.
+    UniqueCPtr<char> real_root3(realpath(android_root3.c_str(), nullptr));
 #if !defined(__BIONIC__ ) || defined(__ANDROID__)
-  UniqueCPtr<char> real_root(realpath(android_root.c_str(), nullptr));
-  EXPECT_STREQ(real_root.get(), real_root3.get()) << error_msg;
+    UniqueCPtr<char> real_root(realpath(android_root.c_str(), nullptr));
+    EXPECT_STREQ(real_root.get(), real_root3.get()) << error_msg;
 #else
-  EXPECT_STRNE(real_root3.get(), "") << error_msg;
+    EXPECT_STRNE(real_root3.get(), "") << error_msg;
 #endif
+  }
 
   // Reset ANDROID_ROOT, as other things may depend on it.
   ASSERT_EQ(0, setenv("ANDROID_ROOT", android_root_env.c_str(), /* overwrite */ 1));
@@ -117,6 +120,32 @@ TEST_F(FileUtilsTest, GetAndroidRuntimeRootSafe) {
   // Set a bogus value for ANDROID_RUNTIME_ROOT. This should be an error.
   ASSERT_EQ(0, setenv("ANDROID_RUNTIME_ROOT", "/this/is/obviously/bogus", /* overwrite */ 1));
   EXPECT_EQ(GetAndroidRuntimeRootSafe(&error_msg), "");
+
+  // Inferring the Android Runtime Root from the location of libartbase only works on target.
+  if (kIsTargetBuild) {
+    // Disabled for now, as we cannot reliably use `GetRootContainingLibartbase`
+    // to find the Android Runtime Root on target yet (see comment in
+    // `GetAndroidRuntimeRootSafe`).
+    //
+    // TODO(b/129534335): Re-enable this part of the test on target when the
+    // only instance of libartbase is the one from the Runtime APEX.
+    if ((false)) {
+      // Unset ANDROID_RUNTIME_ROOT and see that it still returns something (as
+      // libartbase code is running).
+      ASSERT_EQ(0, unsetenv("ANDROID_RUNTIME_ROOT"));
+      std::string android_runtime_root3 = GetAndroidRuntimeRootSafe(&error_msg);
+      // This should be the same as the other root (modulo realpath), otherwise
+      // the test setup is broken. On non-bionic. On bionic we can be running
+      // with a different libartbase that lives outside of ANDROID_RUNTIME_ROOT.
+      UniqueCPtr<char> real_root3(realpath(android_runtime_root3.c_str(), nullptr));
+#if !defined(__BIONIC__ ) || defined(__ANDROID__)
+      UniqueCPtr<char> real_root(realpath(android_runtime_root.c_str(), nullptr));
+      EXPECT_STREQ(real_root.get(), real_root3.get()) << error_msg;
+#else
+      EXPECT_STRNE(real_root3.get(), "") << error_msg;
+#endif
+    }
+  }
 
   // Reset ANDROID_RUNTIME_ROOT, as other things may depend on it.
   ASSERT_EQ(0, setenv("ANDROID_RUNTIME_ROOT", android_runtime_root_env.c_str(), /* overwrite */ 1));
