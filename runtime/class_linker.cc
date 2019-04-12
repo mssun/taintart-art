@@ -3458,6 +3458,15 @@ static void LinkCode(ClassLinker* class_linker,
       DCHECK(class_linker->IsQuickGenericJniStub(entry_point) ||
              class_linker->IsQuickResolutionStub(entry_point));
     }
+
+    // For the jitzygote configuration we want JNI stubs to be compiled, just like boot classpath
+    // AOT where we compile all native entries.
+    if (!Runtime::Current()->IsUsingDefaultBootImageLocation() &&
+        method->GetDeclaringClass()->GetClassLoader() == nullptr &&
+        Runtime::Current()->GetJit() != nullptr) {
+      Runtime::Current()->GetJit()->CompileMethod(
+          method, Thread::Current(), /* baseline= */ false, /* osr= */ false);
+    }
   }
 }
 
