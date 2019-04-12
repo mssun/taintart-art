@@ -54,6 +54,9 @@ std::string GetAndroidRuntimeRoot();
 // Find $ANDROID_RUNTIME_ROOT, /apex/com.android.runtime, or return an empty string.
 std::string GetAndroidRuntimeRootSafe(/*out*/ std::string* error_msg);
 
+// Return the path to the directory containing the Android Runtime binaries.
+std::string GetAndroidRuntimeBinDir();
+
 // Find $ANDROID_DATA, /data, or abort.
 std::string GetAndroidData();
 // Find $ANDROID_DATA, /data, or return an empty string.

@@ -253,14 +253,14 @@ static void WriteFileBase64(const char* base64, const char* location) {
 class DexLayoutTest : public CommonArtTest {
  protected:
   std::string GetDexLayoutPath() {
-    return GetTestAndroidRoot() + "/bin/dexlayoutd";
+    return GetAndroidRuntimeBinDir() + "/dexlayoutd";
   }
 
   // Runs FullPlainOutput test.
   bool FullPlainOutputExec(std::string* error_msg) {
     ScratchFile dexdump_output;
     const std::string& dexdump_filename = dexdump_output.GetFilename();
-    std::string dexdump = GetTestAndroidRoot() + "/bin/dexdump";
+    std::string dexdump = GetAndroidRuntimeBinDir() + "/dexdump";
     EXPECT_TRUE(OS::FileExists(dexdump.c_str())) << dexdump << " should be a valid file path";
 
     ScratchFile dexlayout_output;

@@ -26,6 +26,7 @@
 
 #include <android-base/logging.h>
 
+#include "base/file_utils.h"
 #include "base/globals.h"
 #include "base/mutex.h"
 #include "base/os.h"
@@ -183,8 +184,6 @@ class CommonArtTestImpl {
   std::unique_ptr<const DexFile> LoadExpectSingleDexFile(const char* location);
 
   void ClearDirectory(const char* dirpath, bool recursive = true);
-
-  std::string GetTestAndroidRoot();
 
   // Open a file (allows reading of framework jars).
   std::vector<std::unique_ptr<const DexFile>> OpenDexFiles(const char* filename);
