@@ -722,10 +722,6 @@ void Jit::AddNonAotBootMethodsToQueue(Thread* self) {
         continue;
       }
       const void* entry_point = method->GetEntryPointFromQuickCompiledCode();
-      // TODO: if the entry point is the resolution stub, we should not update the
-      // entrypoint as we rely on the stub for doing the class initialization. Because
-      // we currently have no place to safely store the compiled code, we just don't
-      // compile it for now.
       if (class_linker->IsQuickToInterpreterBridge(entry_point) ||
           class_linker->IsQuickGenericJniStub(entry_point) ||
           class_linker->IsQuickResolutionStub(entry_point)) {
@@ -733,8 +729,16 @@ void Jit::AddNonAotBootMethodsToQueue(Thread* self) {
           // The compiler requires a ProfilingInfo object for non-native methods.
           ProfilingInfo::Create(self, method, /* retry_allocation= */ true);
         }
-        thread_pool_->AddTask(self,
-            new JitCompileTask(method, JitCompileTask::TaskKind::kCompile));
+        // Special case ZygoteServer class so that it gets compiled before the
+        // zygote enters it. This avoids needing to do OSR during app startup.
+        // TODO: have a profile instead.
+        if (method->GetDeclaringClass()->DescriptorEquals(
+                "Lcom/android/internal/os/ZygoteServer;")) {
+          CompileMethod(method, self, /* baseline= */ false, /* osr= */ false);
+        } else {
+          thread_pool_->AddTask(self,
+              new JitCompileTask(method, JitCompileTask::TaskKind::kCompile));
+        }
       }
     }
   }
