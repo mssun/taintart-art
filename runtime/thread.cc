@@ -3536,7 +3536,7 @@ void Thread::QuickDeliverException() {
     // Instrumentation may cause GC so keep the exception object safe.
     StackHandleScope<1> hs(this);
     HandleWrapperObjPtr<mirror::Throwable> h_exception(hs.NewHandleWrapper(&exception));
-    instrumentation->ExceptionThrownEvent(this, exception.Ptr());
+    instrumentation->ExceptionThrownEvent(this, exception);
   }
   // Does instrumentation need to deoptimize the stack or otherwise go to interpreter for something?
   // Note: we do this *after* reporting the exception to instrumentation in case it now requires
