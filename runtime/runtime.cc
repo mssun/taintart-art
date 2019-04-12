@@ -279,7 +279,7 @@ Runtime::Runtime()
       is_low_memory_mode_(false),
       safe_mode_(false),
       hidden_api_policy_(hiddenapi::EnforcementPolicy::kDisabled),
-      core_platform_api_policy_(hiddenapi::EnforcementPolicy::kJustWarn),
+      core_platform_api_policy_(hiddenapi::EnforcementPolicy::kDisabled),
       dedupe_hidden_api_warnings_(true),
       hidden_api_access_event_log_rate_(0),
       dump_native_stack_on_sig_quit_(true),
@@ -1232,18 +1232,21 @@ bool Runtime::Init(RuntimeArgumentMap&& runtime_options_in) {
 
   target_sdk_version_ = runtime_options.GetOrDefault(Opt::TargetSdkVersion);
 
-  // Check whether to enforce hidden API access checks. The checks are disabled
-  // by default and we only enable them if:
-  // (a) runtime was started with a flag that enables the checks, or
+  // Set hidden API enforcement policy. The checks are disabled by default and
+  // we only enable them if:
+  // (a) runtime was started with a command line flag that enables the checks, or
   // (b) Zygote forked a new process that is not exempt (see ZygoteHooks).
-  bool do_hidden_api_checks = runtime_options.Exists(Opt::HiddenApiChecks);
-  DCHECK(!is_zygote_ || !do_hidden_api_checks);
-  // TODO pass the actual enforcement policy in, rather than just a single bit.
-  // As is, we're encoding some logic here about which specific policy to use, which would be better
-  // controlled by the framework.
-  hidden_api_policy_ = do_hidden_api_checks
-      ? hiddenapi::EnforcementPolicy::kEnabled
-      : hiddenapi::EnforcementPolicy::kDisabled;
+  hidden_api_policy_ = runtime_options.GetOrDefault(Opt::HiddenApiPolicy);
+  DCHECK(!is_zygote_ || hidden_api_policy_ == hiddenapi::EnforcementPolicy::kDisabled);
+
+  // Set core platform API enforcement policy. The checks are disabled by default and
+  // can be enabled with a command line flag. AndroidRuntime will pass the flag if
+  // a system property is set.
+  core_platform_api_policy_ = runtime_options.GetOrDefault(Opt::CorePlatformApiPolicy);
+  if (core_platform_api_policy_ != hiddenapi::EnforcementPolicy::kDisabled) {
+    LOG(INFO) << "Core platform API reporting enabled, enforcing="
+        << (core_platform_api_policy_ == hiddenapi::EnforcementPolicy::kEnabled ? "true" : "false");
+  }
 
   no_sig_chain_ = runtime_options.Exists(Opt::NoSigChain);
   force_native_bridge_ = runtime_options.Exists(Opt::ForceNativeBridge);

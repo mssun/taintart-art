@@ -53,9 +53,9 @@ bool DexoptTest::Dex2Oat(const std::vector<std::string>& args, std::string* erro
   }
 
   Runtime* runtime = Runtime::Current();
-  if (runtime->GetHiddenApiEnforcementPolicy() != hiddenapi::EnforcementPolicy::kDisabled) {
+  if (runtime->GetHiddenApiEnforcementPolicy() == hiddenapi::EnforcementPolicy::kEnabled) {
     argv.push_back("--runtime-arg");
-    argv.push_back("-Xhidden-api-checks");
+    argv.push_back("-Xhidden-api-policy:enabled");
   }
 
   if (!kIsTargetBuild) {

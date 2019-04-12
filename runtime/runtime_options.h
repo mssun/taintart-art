@@ -28,6 +28,7 @@
 #include "gc/collector_type.h"
 #include "gc/space/image_space_loading_order.h"
 #include "gc/space/large_object_space.h"
+#include "hidden_api.h"
 #include "jdwp/jdwp.h"
 #include "jit/jit.h"
 #include "jit/jit_code_cache.h"

@@ -403,7 +403,7 @@ struct CmdlineParseArgument : CmdlineParseArgumentAny {
 
       std::string allowed_values_flat = android::base::Join(allowed_values, ',');
       return CmdlineResult(CmdlineResult::kFailure,
-                           "Argument value '" + argument + "' does not match any of known valid"
+                           "Argument value '" + argument + "' does not match any of known valid "
                             "values: {" + allowed_values_flat + "}");
     }
 
