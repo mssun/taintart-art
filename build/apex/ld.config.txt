@@ -21,7 +21,10 @@ namespace.default.asan.search.paths = /apex/com.android.runtime/${LIB}
 # files for CTS.
 namespace.default.permitted.paths = /system/framework
 namespace.default.links = platform
-# TODO(b/119867084): Restrict fallback to platform namespace to PALette library.
+# Need allow_all_shared_libs because libart.so can dlopen oat files in
+# /system/framework and /data.
+# TODO(b/130340935): Use a dynamically created linker namespace similar to
+# classloader-namespace for oat files, and tighten this up.
 namespace.default.link.platform.allow_all_shared_libs = true
 
 # Keep in sync with the default namespace in /system/etc/ld.config.txt.
