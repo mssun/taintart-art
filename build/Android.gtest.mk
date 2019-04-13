@@ -353,19 +353,19 @@ ART_GTEST_oatdump_test_HOST_DEPS := \
   $(HOST_CORE_IMAGE_DEFAULT_32) \
   $(HOST_OUT_EXECUTABLES)/oatdumpd \
   $(HOST_OUT_EXECUTABLES)/oatdumpds \
-  $(HOST_OUT_EXECUTABLES)/dexdump
+  $(HOST_OUT_EXECUTABLES)/dexdump \
+  $(HOST_OUT_EXECUTABLES)/dex2oatd \
+  $(HOST_OUT_EXECUTABLES)/dex2oatds
 ART_GTEST_oatdump_test_TARGET_DEPS := \
   $(TARGET_CORE_IMAGE_DEFAULT_64) \
   $(TARGET_CORE_IMAGE_DEFAULT_32) \
   $(TARGET_OUT_EXECUTABLES)/oatdumpd \
-  $(TARGET_OUT_EXECUTABLES)/dexdump
+  $(TARGET_OUT_EXECUTABLES)/dexdump \
+  $(TARGET_OUT_EXECUTABLES)/dex2oatd
 ART_GTEST_oatdump_image_test_HOST_DEPS := $(ART_GTEST_oatdump_test_HOST_DEPS)
 ART_GTEST_oatdump_image_test_TARGET_DEPS := $(ART_GTEST_oatdump_test_TARGET_DEPS)
-ART_GTEST_oatdump_app_test_HOST_DEPS := $(ART_GTEST_oatdump_test_HOST_DEPS) \
-  $(HOST_OUT_EXECUTABLES)/dex2oatd \
-  $(HOST_OUT_EXECUTABLES)/dex2oatds
-ART_GTEST_oatdump_app_test_TARGET_DEPS := $(ART_GTEST_oatdump_test_TARGET_DEPS) \
-  $(TARGET_OUT_EXECUTABLES)/dex2oatd
+ART_GTEST_oatdump_app_test_HOST_DEPS := $(ART_GTEST_oatdump_test_HOST_DEPS)
+ART_GTEST_oatdump_app_test_TARGET_DEPS := $(ART_GTEST_oatdump_test_TARGET_DEPS)
 
 # Profile assistant tests requires profman utility.
 ART_GTEST_profile_assistant_test_HOST_DEPS := $(HOST_OUT_EXECUTABLES)/profmand
