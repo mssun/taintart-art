@@ -555,8 +555,11 @@ const void* JitCodeCache::GetZygoteSavedEntryPoint(ArtMethod* method) {
       if (code_ptr != nullptr) {
         entry_point = OatQuickMethodHeader::FromCodePointer(code_ptr)->GetEntryPoint();
       }
-    } else if (method->GetProfilingInfo(kRuntimePointerSize) != nullptr) {
-      entry_point = method->GetProfilingInfo(kRuntimePointerSize)->GetSavedEntryPoint();
+    } else {
+      ProfilingInfo* profiling_info = method->GetProfilingInfo(kRuntimePointerSize);
+      if (profiling_info != nullptr) {
+        entry_point = profiling_info->GetSavedEntryPoint();
+      }
     }
     if (Runtime::Current()->IsZygote() || IsInZygoteExecSpace(entry_point)) {
       return entry_point;
