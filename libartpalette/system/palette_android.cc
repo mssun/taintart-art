@@ -115,16 +115,16 @@ enum PaletteStatus PaletteTombstonedMessage(/*in*/const char* msg, size_t msg_le
 
   bool success = true;
   if (!android::base::WriteFully(output_fd, msg, msg_len)) {
-    LOG(ERROR) << "Failed to write tombstoned output: " << strerror(errno);
+    PLOG(ERROR) << "Failed to write tombstoned output";
     success = false;
   } else if (TEMP_FAILURE_RETRY(fsync(output_fd)) == -1) {
-    LOG(ERROR) << "Failed to fsync tombstoned output: " << strerror(errno);
+    PLOG(ERROR) << "Failed to fsync tombstoned output";
     success = false;
   } else if (close(output_fd.release()) == -1) {
     // Shouldn't retry close after EINTR because the fd has been closed anyway,
     // but don't count it as a failure either.
     if (errno != EINTR) {
-      LOG(ERROR) << "Failed to close tombstoned output: " << strerror(errno);
+      PLOG(ERROR) << "Failed to close tombstoned output";
       success = false;
     }
   }

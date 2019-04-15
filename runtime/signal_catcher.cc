@@ -18,7 +18,6 @@
 
 #include <csignal>
 #include <cstdlib>
-#include <cstring>
 #include <fcntl.h>
 #include <pthread.h>
 #include <sys/stat.h>
@@ -111,7 +110,7 @@ void SignalCatcher::Output(const std::string& s) {
     LOG(INFO) << "Wrote stack traces to tombstoned";
   } else {
     CHECK(status == PaletteStatus::kCheckErrno);
-    PLOG(ERROR) << "Failed to write stack traces to tombstoned: " << strerror(errno);
+    LOG(ERROR) << "Failed to write stack traces to tombstoned";
     LOG(INFO) << s;
   }
 #else
