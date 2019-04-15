@@ -38,21 +38,24 @@ art_cc_binary {
                 "libz",
                 "libziparchive",
             ],
-	},
-	not_windows: {
+        },
+        not_windows: {
             shared_libs: [
                 "libdexfile",
                 "libartbase",
                 "libbase",
             ],
-	},
-	android: {
+        },
+        android: {
             shared_libs: [
                 "libdexfile",
                 "libartbase",
                 "libbase",
             ],
-	},
+        },
+        darwin: {
+            enabled: true,
+        },
     }
 }
 
