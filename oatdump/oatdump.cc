@@ -2119,7 +2119,11 @@ class ImageDumper {
   const void* GetQuickOatCodeBegin(ArtMethod* m) REQUIRES_SHARED(Locks::mutator_lock_) {
     const void* quick_code = m->GetEntryPointFromQuickCompiledCodePtrSize(
         image_header_.GetPointerSize());
-    if (Runtime::Current()->GetClassLinker()->IsQuickResolutionStub(quick_code)) {
+    ClassLinker* class_linker = Runtime::Current()->GetClassLinker();
+    if (class_linker->IsQuickResolutionStub(quick_code) ||
+        class_linker->IsQuickToInterpreterBridge(quick_code) ||
+        class_linker->IsQuickGenericJniStub(quick_code) ||
+        class_linker->IsJniDlsymLookupStub(quick_code)) {
       quick_code = oat_dumper_->GetQuickOatCode(m);
     }
     if (oat_dumper_->GetInstructionSet() == InstructionSet::kThumb2) {
@@ -2134,7 +2138,9 @@ class ImageDumper {
     if (oat_code_begin == nullptr) {
       return 0;
     }
-    return oat_code_begin[-1];
+    OatQuickMethodHeader* method_header = reinterpret_cast<OatQuickMethodHeader*>(
+        reinterpret_cast<uintptr_t>(oat_code_begin) - sizeof(OatQuickMethodHeader));
+    return method_header->GetCodeSize();
   }
 
   const void* GetQuickOatCodeEnd(ArtMethod* m)
@@ -2332,12 +2338,9 @@ class ImageDumper {
   void DumpMethod(ArtMethod* method, std::ostream& indent_os)
       REQUIRES_SHARED(Locks::mutator_lock_) {
     DCHECK(method != nullptr);
-    const void* quick_oat_code_begin = GetQuickOatCodeBegin(method);
-    const void* quick_oat_code_end = GetQuickOatCodeEnd(method);
     const PointerSize pointer_size = image_header_.GetPointerSize();
-    OatQuickMethodHeader* method_header = reinterpret_cast<OatQuickMethodHeader*>(
-        reinterpret_cast<uintptr_t>(quick_oat_code_begin) - sizeof(OatQuickMethodHeader));
     if (method->IsNative()) {
+      const void* quick_oat_code_begin = GetQuickOatCodeBegin(method);
       bool first_occurrence;
       uint32_t quick_oat_code_size = GetQuickOatCodeSize(method);
       ComputeOatSize(quick_oat_code_begin, &first_occurrence);
@@ -2364,11 +2367,16 @@ class ImageDumper {
       size_t dex_instruction_bytes = code_item_accessor.InsnsSizeInCodeUnits() * 2;
       stats_.dex_instruction_bytes += dex_instruction_bytes;
 
+      const void* quick_oat_code_begin = GetQuickOatCodeBegin(method);
+      const void* quick_oat_code_end = GetQuickOatCodeEnd(method);
+
       bool first_occurrence;
       size_t vmap_table_bytes = 0u;
-      if (!method_header->IsOptimized()) {
-        // Method compiled with the optimizing compiler have no vmap table.
-        vmap_table_bytes = ComputeOatSize(method_header->GetVmapTable(), &first_occurrence);
+      if (quick_oat_code_begin != nullptr) {
+        OatQuickMethodHeader* method_header = reinterpret_cast<OatQuickMethodHeader*>(
+            reinterpret_cast<uintptr_t>(quick_oat_code_begin) - sizeof(OatQuickMethodHeader));
+        vmap_table_bytes = ComputeOatSize(method_header->GetOptimizedCodeInfoPtr(),
+                                          &first_occurrence);
         if (first_occurrence) {
           stats_.vmap_table_bytes += vmap_table_bytes;
         }
