@@ -342,7 +342,6 @@ libart_cc_defaults {
             ],
             shared_libs: [
                 "libdl_android",
-                "libtombstoned_client",
             ],
             static_libs: [
                 "libz",  // For adler32.
@@ -417,11 +416,6 @@ libart_cc_defaults {
 
 libart_static_cc_defaults {
     name: "libart_static_base_defaults",
-    target: {
-        android: {
-            static_libs: ["libtombstoned_client_static"],
-        },
-    },
     static_libs: [
         "libartpalette",
         "libbacktrace",

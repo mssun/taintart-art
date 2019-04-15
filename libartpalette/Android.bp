@@ -32,9 +32,11 @@ art_cc_library {
           srcs: ["system/palette_android.cc",],
           header_libs: ["libbase_headers"],
           shared_libs: [
+            "libbase",
             "libcutils",
             "liblog",
             "libprocessgroup",
+            "libtombstoned_client",
           ],
         },
         host: {

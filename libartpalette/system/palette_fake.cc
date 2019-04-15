@@ -52,6 +52,11 @@ enum PaletteStatus PaletteSchedGetPriority(int32_t tid,
   return PaletteStatus::kOkay;
 }
 
+enum PaletteStatus PaletteTombstonedMessage(/*in*/ const char* msg ATTRIBUTE_UNUSED,
+                                            size_t msg_len ATTRIBUTE_UNUSED) {
+  return PaletteStatus::kOkay;
+}
+
 enum PaletteStatus PaletteTraceEnabled(/*out*/int32_t* enabled) {
   *enabled = 0;
   return PaletteStatus::kOkay;

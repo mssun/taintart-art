@@ -16,10 +16,11 @@
 
 #include "signal_catcher.h"
 
+#include <csignal>
+#include <cstdlib>
+#include <cstring>
 #include <fcntl.h>
 #include <pthread.h>
-#include <signal.h>
-#include <stdlib.h>
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <sys/types.h>
@@ -29,20 +30,15 @@
 
 #include <android-base/stringprintf.h>
 
-#if defined(ART_TARGET_ANDROID)
-#include <tombstoned/tombstoned.h>
-#endif
-
 #include "arch/instruction_set.h"
-#include "base/file_utils.h"
 #include "base/logging.h"  // For GetCmdLine.
 #include "base/os.h"
 #include "base/time_utils.h"
-#include "base/unix_file/fd_file.h"
 #include "base/utils.h"
 #include "class_linker.h"
 #include "gc/heap.h"
 #include "jit/profile_saver.h"
+#include "palette/palette.h"
 #include "runtime.h"
 #include "scoped_thread_state_change-inl.h"
 #include "signal_set.h"
@@ -109,30 +105,14 @@ bool SignalCatcher::ShouldHalt() {
 
 void SignalCatcher::Output(const std::string& s) {
 #if defined(ART_TARGET_ANDROID)
-  android::base::unique_fd tombstone_fd;
-  android::base::unique_fd output_fd;
-  if (!tombstoned_connect(getpid(), &tombstone_fd, &output_fd, kDebuggerdJavaBacktrace)) {
-    LOG(INFO) << s;
-    return;
-  }
-
   ScopedThreadStateChange tsc(Thread::Current(), kWaitingForSignalCatcherOutput);
-
-  std::unique_ptr<File> file(new File(output_fd.release(), true /* check_usage= */));
-  bool success = file->WriteFully(s.data(), s.size());
-  if (success) {
-    success = file->FlushCloseOrErase() == 0;
-  } else {
-    file->Erase();
-  }
-
-  if (success) {
+  PaletteStatus status = PaletteTombstonedMessage(s.data(), s.size());
+  if (status == PaletteStatus::kOkay) {
     LOG(INFO) << "Wrote stack traces to tombstoned";
   } else {
-    PLOG(ERROR) << "Failed to write stack traces to tombstoned";
-  }
-  if (!tombstoned_notify_completion(tombstone_fd)) {
-    PLOG(WARNING) << "Unable to notify tombstoned of dump completion";
+    CHECK(status == PaletteStatus::kCheckErrno);
+    PLOG(ERROR) << "Failed to write stack traces to tombstoned: " << strerror(errno);
+    LOG(INFO) << s;
   }
 #else
   LOG(INFO) << s;
