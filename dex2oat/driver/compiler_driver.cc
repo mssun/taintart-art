@@ -1520,13 +1520,16 @@ static void CheckAndClearResolveException(Thread* self)
   std::string temp;
   const char* descriptor = exception->GetClass()->GetDescriptor(&temp);
   const char* expected_exceptions[] = {
+      "Ljava/lang/ClassFormatError;",
+      "Ljava/lang/ClassCircularityError;",
       "Ljava/lang/IllegalAccessError;",
       "Ljava/lang/IncompatibleClassChangeError;",
       "Ljava/lang/InstantiationError;",
       "Ljava/lang/LinkageError;",
       "Ljava/lang/NoClassDefFoundError;",
       "Ljava/lang/NoSuchFieldError;",
-      "Ljava/lang/NoSuchMethodError;"
+      "Ljava/lang/NoSuchMethodError;",
+      "Ljava/lang/VerifyError;",
   };
   bool found = false;
   for (size_t i = 0; (found == false) && (i < arraysize(expected_exceptions)); ++i) {

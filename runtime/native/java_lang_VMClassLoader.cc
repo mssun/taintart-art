@@ -57,7 +57,11 @@ class VMClassLoader {
       REQUIRES_SHARED(Locks::mutator_lock_) {
     ObjPtr<mirror::Class> result;
     if (cl->FindClassInBaseDexClassLoader(soa, self, descriptor, hash, class_loader, &result)) {
+      DCHECK(!self->IsExceptionPending());
       return result;
+    }
+    if (self->IsExceptionPending()) {
+      self->ClearException();
     }
     return nullptr;
   }
