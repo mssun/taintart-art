@@ -109,7 +109,11 @@
 
     /* Cache alignment for function entry */
 MACRO0(ALIGN_FUNCTION_ENTRY)
-    .balign 16
+    // ART-compiled functions have OatQuickMethodHeader but assembly funtions do not.
+    // Prefix the assembly code with 0xFFs, which means there is no method header.
+    .byte 0xFF, 0xFF, 0xFF, 0xFF
+    // Cache alignment for function entry.
+    .balign 16, 0xFF
 END_MACRO
 
 // TODO: we might need to use SYMBOL() here to add the underscore prefix
