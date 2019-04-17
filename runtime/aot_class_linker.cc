@@ -26,8 +26,7 @@
 
 namespace art {
 
-AotClassLinker::AotClassLinker(InternTable* intern_table)
-    : ClassLinker(intern_table, /*fast_class_not_found_exceptions=*/ false) {}
+AotClassLinker::AotClassLinker(InternTable *intern_table) : ClassLinker(intern_table) {}
 
 AotClassLinker::~AotClassLinker() {}
 
