@@ -264,6 +264,9 @@ public abstract class AhatInstance implements Diffable<AhatInstance> {
    * @return the immediate dominator of this instance
    */
   public AhatInstance getImmediateDominator() {
+    if (mImmediateDominator instanceof SuperRoot) {
+      return null;
+    }
     return mImmediateDominator;
   }
 

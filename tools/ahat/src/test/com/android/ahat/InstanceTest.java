@@ -412,6 +412,15 @@ public class InstanceTest {
   }
 
   @Test
+  public void isRoot() throws IOException {
+    // We expect the Main class to be a root.
+    TestDump dump = TestDump.getTestDump();
+    AhatInstance main = dump.findClass("Main");
+    assertTrue(main.isRoot());
+    assertNull(main.getImmediateDominator());
+  }
+
+  @Test
   public void isNotRoot() throws IOException {
     TestDump dump = TestDump.getTestDump();
     AhatInstance obj = dump.getDumpedAhatInstance("anObject");
