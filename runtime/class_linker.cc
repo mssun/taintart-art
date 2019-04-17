@@ -4730,7 +4730,7 @@ bool ClassLinker::VerifyClassUsingOatFile(const DexFile& dex_file,
       // 1) updatable boot classpath classes, and
       // 2) classes in /system referencing updatable classes
       // will be verified at runtime.
-      if (!Runtime::Current()->IsUsingDefaultBootImageLocation()) {
+      if (Runtime::Current()->IsUsingApexBootImageLocation()) {
         oat_file_class_status = ClassStatus::kVerified;
         return true;
       }

@@ -641,7 +641,7 @@ void Jit::CreateThreadPool() {
   // If we're not using the default boot image location, request a JIT task to
   // compile all methods in the boot image profile.
   Runtime* runtime = Runtime::Current();
-  if (runtime->IsZygote() && !runtime->IsUsingDefaultBootImageLocation() && UseJitCompilation()) {
+  if (runtime->IsZygote() && runtime->IsUsingApexBootImageLocation() && UseJitCompilation()) {
     thread_pool_->AddTask(Thread::Current(), new ZygoteTask());
   }
 }
