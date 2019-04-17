@@ -165,4 +165,6 @@ RUNTIME_OPTIONS_KEY (gc::space::ImageSpaceLoadingOrder, \
                      ImageSpaceLoadingOrder, \
                      gc::space::ImageSpaceLoadingOrder::kSystemFirst)
 
+RUNTIME_OPTIONS_KEY (bool,                FastClassNotFoundException,     true)
+
 #undef RUNTIME_OPTIONS_KEY
