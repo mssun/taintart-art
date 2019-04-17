@@ -98,6 +98,7 @@ inline RetType VisitClassLoaderDexElements(ScopedObjectAccessAlreadyRunnable& so
         }
       }
     }
+    self->AssertNoPendingException();
   }
   return defaultReturn;
 }
