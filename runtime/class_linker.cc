@@ -117,6 +117,7 @@
 #include "mirror/reference-inl.h"
 #include "mirror/stack_trace_element.h"
 #include "mirror/string-inl.h"
+#include "mirror/throwable.h"
 #include "mirror/var_handle.h"
 #include "native/dalvik_system_DexFile.h"
 #include "nativehelper/scoped_local_ref.h"
@@ -2744,7 +2745,7 @@ bool ClassLinker::FindClassInBaseDexClassLoader(ScopedObjectAccessAlreadyRunnabl
 
     // Search the current class loader classpath.
     *result = FindClassInBaseDexClassLoaderClassPath(soa, descriptor, hash, class_loader);
-    return true;
+    return !soa.Self()->IsExceptionPending();
   }
 
   if (IsDelegateLastClassLoader(soa, class_loader)) {
@@ -2756,6 +2757,11 @@ bool ClassLinker::FindClassInBaseDexClassLoader(ScopedObjectAccessAlreadyRunnabl
     *result = FindClassInBootClassLoaderClassPath(self, descriptor, hash);
     if (*result != nullptr) {
       return true;  // The class is part of the boot class path.
+    }
+    if (self->IsExceptionPending()) {
+      // Pending exception means there was an error other than ClassNotFound that must be returned
+      // to the caller.
+      return false;
     }
 
     if (!FindClassInSharedLibraries(soa, self, descriptor, hash, class_loader, result)) {
@@ -2769,6 +2775,11 @@ bool ClassLinker::FindClassInBaseDexClassLoader(ScopedObjectAccessAlreadyRunnabl
     if (*result != nullptr) {
       return true;  // Found the class in the current class loader
     }
+    if (self->IsExceptionPending()) {
+      // Pending exception means there was an error other than ClassNotFound that must be returned
+      // to the caller.
+      return false;
+    }
 
     // Handles as RegisterDexFile may allocate dex caches (and cause thread suspension).
     StackHandleScope<1> hs(self);
@@ -2780,6 +2791,31 @@ bool ClassLinker::FindClassInBaseDexClassLoader(ScopedObjectAccessAlreadyRunnabl
   *result = nullptr;
   return false;
 }
+
+namespace {
+
+// Matches exceptions caught in DexFile.defineClass.
+ALWAYS_INLINE bool MatchesDexFileCaughtExceptions(ObjPtr<mirror::Throwable> throwable,
+                                                  ClassLinker* class_linker)
+    REQUIRES_SHARED(Locks::mutator_lock_) {
+  return
+      // ClassNotFoundException.
+      throwable->InstanceOf(GetClassRoot(ClassRoot::kJavaLangClassNotFoundException,
+                                         class_linker))
+      ||
+      // NoClassDefFoundError. TODO: Reconsider this. b/130746382.
+      throwable->InstanceOf(Runtime::Current()->GetPreAllocatedNoClassDefFoundError()->GetClass());
+}
+
+// Clear exceptions caught in DexFile.defineClass.
+ALWAYS_INLINE void FilterDexFileCaughtExceptions(Thread* self, ClassLinker* class_linker)
+    REQUIRES_SHARED(Locks::mutator_lock_) {
+  if (MatchesDexFileCaughtExceptions(self->GetException(), class_linker)) {
+    self->ClearException();
+  }
+}
+
+}  // namespace
 
 // Finds the class in the boot class loader.
 // If the class is found the method returns the resolved class. Otherwise it returns null.
@@ -2802,7 +2838,7 @@ ObjPtr<mirror::Class> ClassLinker::FindClassInBootClassLoaderClassPath(Thread* s
     }
     if (result == nullptr) {
       CHECK(self->IsExceptionPending()) << descriptor;
-      self->ClearException();
+      FilterDexFileCaughtExceptions(self, this);
     }
   }
   return result;
@@ -2830,8 +2866,10 @@ ObjPtr<mirror::Class> ClassLinker::FindClassInBaseDexClassLoaderClassPath(
                                                 *dex_class_def);
       if (klass == nullptr) {
         CHECK(soa.Self()->IsExceptionPending()) << descriptor;
-        soa.Self()->ClearException();
+        FilterDexFileCaughtExceptions(soa.Self(), this);
         // TODO: Is it really right to break here, and not check the other dex files?
+      } else {
+        DCHECK(!soa.Self()->IsExceptionPending());
       }
       ret = klass;
       return false;  // Found a Class (or error == nullptr), stop visit.
@@ -2900,8 +2938,10 @@ ObjPtr<mirror::Class> ClassLinker::FindClass(Thread* self,
       DCHECK(known_hierarchy);
       DCHECK(result_ptr->DescriptorEquals(descriptor));
       descriptor_equals = true;
-    } else {
+    } else if (!self->IsExceptionPending()) {
       // Either the chain wasn't understood or the class wasn't found.
+      // If there is a pending exception we didn't clear, it is a not a ClassNotFoundException and
+      // we should return it instead of silently clearing and retrying.
       //
       // If the chain was understood but we did not find the class, let the Java-side
       // rediscover all this and throw the exception with the right stack trace. Note that
@@ -2932,9 +2972,9 @@ ObjPtr<mirror::Class> ClassLinker::FindClass(Thread* self,
         ThrowNoClassDefFoundError("Invalid descriptor: %s.", descriptor);
         return nullptr;
       }
+
       std::string class_name_string(descriptor + 1, descriptor_length - 2);
       std::replace(class_name_string.begin(), class_name_string.end(), '/', '.');
-
       ScopedLocalRef<jobject> class_loader_object(
           soa.Env(), soa.AddLocalReference<jobject>(class_loader.Get()));
       ScopedLocalRef<jobject> result(soa.Env(), nullptr);
@@ -2960,6 +3000,8 @@ ObjPtr<mirror::Class> ClassLinker::FindClass(Thread* self,
       result_ptr = soa.Decode<mirror::Class>(result.get());
       // Check the name of the returned class.
       descriptor_equals = (result_ptr != nullptr) && result_ptr->DescriptorEquals(descriptor);
+    } else {
+      DCHECK(!MatchesDexFileCaughtExceptions(self->GetException(), this));
     }
   }
 
