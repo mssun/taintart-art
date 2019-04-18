@@ -1486,10 +1486,13 @@ bool Runtime::Init(RuntimeArgumentMap&& runtime_options_in) {
   GetHeap()->EnableObjectValidation();
 
   CHECK_GE(GetHeap()->GetContinuousSpaces().size(), 1U);
+
   if (UNLIKELY(IsAotCompiler())) {
     class_linker_ = new AotClassLinker(intern_table_);
   } else {
-    class_linker_ = new ClassLinker(intern_table_);
+    class_linker_ = new ClassLinker(
+        intern_table_,
+        runtime_options.GetOrDefault(Opt::FastClassNotFoundException));
   }
   if (GetHeap()->HasBootImageSpace()) {
     bool result = class_linker_->InitFromBootImage(&error_msg);
