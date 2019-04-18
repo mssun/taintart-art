@@ -37,6 +37,7 @@
 #include "art_field-inl.h"
 #include "art_jvmti.h"
 #include "base/mutex.h"
+#include "deopt_manager.h"
 #include "events-inl.h"
 #include "gc/system_weak.h"
 #include "gc/collector_type.h"
@@ -1101,7 +1102,7 @@ jvmtiError ThreadUtil::StopThread(jvmtiEnv* env ATTRIBUTE_UNUSED,
 
     void Run(art::Thread* me) override REQUIRES_SHARED(art::Locks::mutator_lock_) {
       // Make sure the thread is prepared to notice the exception.
-      art::Runtime::Current()->GetInstrumentation()->InstrumentThreadStack(me);
+      DeoptManager::Get()->DeoptimizeThread(me);
       me->SetAsyncException(exception_.Get());
       // Wake up the thread if it is sleeping.
       me->Notify();

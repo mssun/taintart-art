@@ -45,6 +45,7 @@
 #include "base/bit_utils.h"
 #include "base/enums.h"
 #include "base/mutex.h"
+#include "deopt_manager.h"
 #include "dex/code_item_accessors-inl.h"
 #include "dex/dex_file.h"
 #include "dex/dex_file_annotations.h"
@@ -1020,18 +1021,22 @@ jvmtiError StackUtil::NotifyFramePop(jvmtiEnv* env, jthread thread, jint depth) 
   // NB This does a SuspendCheck (during thread state change) so we need to make
   // sure we don't have the 'suspend_lock' locked here.
   art::ScopedObjectAccess soa(self);
-  art::MutexLock tll_mu(self, *art::Locks::thread_list_lock_);
+  art::Locks::thread_list_lock_->ExclusiveLock(self);
   jvmtiError err = ERR(INTERNAL);
   if (!ThreadUtil::GetAliveNativeThread(thread, soa, &target, &err)) {
+    art::Locks::thread_list_lock_->ExclusiveUnlock(self);
     return err;
   }
   if (target != self) {
     // TODO This is part of the spec but we could easily avoid needing to do it.
     // We would just put all the logic into a sync-checkpoint.
-    art::MutexLock tscl_mu(self, *art::Locks::thread_suspend_count_lock_);
+    art::Locks::thread_suspend_count_lock_->ExclusiveLock(self);
     if (target->GetUserCodeSuspendCount() == 0) {
+      art::Locks::thread_suspend_count_lock_->ExclusiveUnlock(self);
+      art::Locks::thread_list_lock_->ExclusiveUnlock(self);
       return ERR(THREAD_NOT_SUSPENDED);
     }
+    art::Locks::thread_suspend_count_lock_->ExclusiveUnlock(self);
   }
   // We hold the user_code_suspension_lock_ so the target thread is staying
   // suspended until we are done (unless it's 'self' in which case we don't care
@@ -1043,10 +1048,12 @@ jvmtiError StackUtil::NotifyFramePop(jvmtiEnv* env, jthread thread, jint depth) 
   FindFrameAtDepthVisitor visitor(target, context.get(), depth);
   visitor.WalkStack();
   if (!visitor.FoundFrame()) {
+    art::Locks::thread_list_lock_->ExclusiveUnlock(self);
     return ERR(NO_MORE_FRAMES);
   }
   art::ArtMethod* method = visitor.GetMethod();
   if (method->IsNative()) {
+    art::Locks::thread_list_lock_->ExclusiveUnlock(self);
     return ERR(OPAQUE_FRAME);
   }
   // From here we are sure to succeed.
@@ -1068,8 +1075,12 @@ jvmtiError StackUtil::NotifyFramePop(jvmtiEnv* env, jthread thread, jint depth) 
   }
   // Make sure can we will go to the interpreter and use the shadow frames.
   if (needs_instrument) {
-    art::Runtime::Current()->GetInstrumentation()->InstrumentThreadStack(
-        target);
+    art::FunctionClosure fc([](art::Thread* self) REQUIRES_SHARED(art::Locks::mutator_lock_) {
+      DeoptManager::Get()->DeoptimizeThread(self);
+    });
+    target->RequestSynchronousCheckpoint(&fc);
+  } else {
+    art::Locks::thread_list_lock_->ExclusiveUnlock(self);
   }
   return OK;
 }
@@ -1083,17 +1094,21 @@ jvmtiError StackUtil::PopFrame(jvmtiEnv* env, jthread thread) {
   // NB This does a SuspendCheck (during thread state change) so we need to make
   // sure we don't have the 'suspend_lock' locked here.
   art::ScopedObjectAccess soa(self);
-  art::MutexLock tll_mu(self, *art::Locks::thread_list_lock_);
+  art::Locks::thread_list_lock_->ExclusiveLock(self);
   jvmtiError err = ERR(INTERNAL);
   if (!ThreadUtil::GetAliveNativeThread(thread, soa, &target, &err)) {
+    art::Locks::thread_list_lock_->ExclusiveUnlock(self);
     return err;
   }
   {
-    art::MutexLock tscl_mu(self, *art::Locks::thread_suspend_count_lock_);
+    art::Locks::thread_suspend_count_lock_->ExclusiveLock(self);
     if (target == self || target->GetUserCodeSuspendCount() == 0) {
       // We cannot be the current thread for this function.
+      art::Locks::thread_suspend_count_lock_->ExclusiveUnlock(self);
+      art::Locks::thread_list_lock_->ExclusiveUnlock(self);
       return ERR(THREAD_NOT_SUSPENDED);
     }
+    art::Locks::thread_suspend_count_lock_->ExclusiveUnlock(self);
   }
   JvmtiGlobalTLSData* tls_data = ThreadUtil::GetGlobalTLSData(target);
   constexpr art::StackVisitor::StackWalkKind kWalkKind =
@@ -1108,6 +1123,7 @@ jvmtiError StackUtil::PopFrame(jvmtiEnv* env, jthread thread) {
         << "Frame at depth " << tls_data->disable_pop_frame_depth << " was "
         << "marked as un-poppable by the jvmti plugin. See b/117615146 for "
         << "more information.";
+    art::Locks::thread_list_lock_->ExclusiveUnlock(self);
     return ERR(OPAQUE_FRAME);
   }
   // We hold the user_code_suspension_lock_ so the target thread is staying
@@ -1120,12 +1136,14 @@ jvmtiError StackUtil::PopFrame(jvmtiEnv* env, jthread thread) {
 
   if (!final_frame.FoundFrame() || !penultimate_frame.FoundFrame()) {
     // Cannot do it if there is only one frame!
+    art::Locks::thread_list_lock_->ExclusiveUnlock(self);
     return ERR(NO_MORE_FRAMES);
   }
 
   art::ArtMethod* called_method = final_frame.GetMethod();
   art::ArtMethod* calling_method = penultimate_frame.GetMethod();
   if (calling_method->IsNative() || called_method->IsNative()) {
+    art::Locks::thread_list_lock_->ExclusiveUnlock(self);
     return ERR(OPAQUE_FRAME);
   }
   // From here we are sure to succeed.
@@ -1149,7 +1167,12 @@ jvmtiError StackUtil::PopFrame(jvmtiEnv* env, jthread thread) {
   // early return for the final frame will force everything to the interpreter
   // so we only need to instrument if it was not present.
   if (created_final_frame) {
-    DeoptManager::Get()->DeoptimizeThread(target);
+    art::FunctionClosure fc([](art::Thread* self) REQUIRES_SHARED(art::Locks::mutator_lock_) {
+      DeoptManager::Get()->DeoptimizeThread(self);
+    });
+    target->RequestSynchronousCheckpoint(&fc);
+  } else {
+    art::Locks::thread_list_lock_->ExclusiveUnlock(self);
   }
   return OK;
 }

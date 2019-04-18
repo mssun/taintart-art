@@ -42,6 +42,7 @@
 #include "dex/dex_file_annotations.h"
 #include "dex/modifiers.h"
 #include "events-inl.h"
+#include "gc/collector_type.h"
 #include "gc/heap.h"
 #include "gc/scoped_gc_critical_section.h"
 #include "jit/jit.h"
@@ -49,6 +50,7 @@
 #include "mirror/class-inl.h"
 #include "mirror/object_array-inl.h"
 #include "nativehelper/scoped_local_ref.h"
+#include "read_barrier_config.h"
 #include "runtime_callbacks.h"
 #include "scoped_thread_state_change-inl.h"
 #include "scoped_thread_state_change.h"
@@ -478,6 +480,11 @@ void DeoptManager::AddDeoptimizationRequester() {
 }
 
 void DeoptManager::DeoptimizeThread(art::Thread* target) {
+  // We might or might not be running on the target thread (self) so get Thread::Current
+  // directly.
+  art::gc::ScopedGCCriticalSection sgccs(art::Thread::Current(),
+                                         art::gc::GcCause::kGcCauseDebugger,
+                                         art::gc::CollectorType::kCollectorTypeDebugger);
   art::Runtime::Current()->GetInstrumentation()->InstrumentThreadStack(target);
 }
 

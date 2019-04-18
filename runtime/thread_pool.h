@@ -35,6 +35,17 @@ class Closure {
   virtual void Run(Thread* self) = 0;
 };
 
+class FunctionClosure : public Closure {
+ public:
+  explicit FunctionClosure(std::function<void(Thread*)>&& f) : func_(std::move(f)) {}
+  void Run(Thread* self) override {
+    func_(self);
+  }
+
+ private:
+  std::function<void(Thread*)> func_;
+};
+
 class Task : public Closure {
  public:
   // Called after Closure::Run has been called.
