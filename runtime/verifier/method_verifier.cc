@@ -294,6 +294,15 @@ MethodVerifier::FailureData MethodVerifier::VerifyMethod(Thread* self,
       LOG(ERROR) << verifier.info_messages_.str();
       verifier.Dump(LOG_STREAM(ERROR));
     }
+    // Under verifier-debug, dump the complete log into the error message.
+    if (VLOG_IS_ON(verifier_debug) && hard_failure_msg != nullptr) {
+      hard_failure_msg->append("\n");
+      hard_failure_msg->append(verifier.info_messages_.str());
+      hard_failure_msg->append("\n");
+      std::ostringstream oss;
+      verifier.Dump(oss);
+      hard_failure_msg->append(oss.str());
+    }
   }
   if (kTimeVerifyMethod) {
     uint64_t duration_ns = NanoTime() - start_ns;
