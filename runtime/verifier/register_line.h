@@ -35,6 +35,7 @@ namespace verifier {
 
 class MethodVerifier;
 class RegType;
+class RegTypeCache;
 
 /*
  * Register type categories, for type checking.
@@ -73,7 +74,9 @@ class RegisterLine {
       std::numeric_limits<RegisterStackMask>::digits;
 
   // Create a register line of num_regs registers.
-  static RegisterLine* Create(size_t num_regs, MethodVerifier* verifier);
+  static RegisterLine* Create(size_t num_regs,
+                              ScopedArenaAllocator& allocator,
+                              RegTypeCache* reg_types);
 
   // Implement category-1 "move" instructions. Copy a 32-bit value from "vsrc" to "vdst".
   void CopyRegister1(MethodVerifier* verifier, uint32_t vdst, uint32_t vsrc, TypeCategory cat)
@@ -95,7 +98,7 @@ class RegisterLine {
       REQUIRES_SHARED(Locks::mutator_lock_);
 
   // Set the invisible result register to unknown
-  void SetResultTypeToUnknown(MethodVerifier* verifier) REQUIRES_SHARED(Locks::mutator_lock_);
+  void SetResultTypeToUnknown(RegTypeCache* reg_types) REQUIRES_SHARED(Locks::mutator_lock_);
 
   // Set the type of register N, verifying that the register is valid.  If "newType" is the "Lo"
   // part of a 64-bit value, register N+1 will be set to "newType+1".
@@ -417,7 +420,7 @@ class RegisterLine {
     reg_to_lock_depths_.erase(reg);
   }
 
-  RegisterLine(size_t num_regs, MethodVerifier* verifier);
+  RegisterLine(size_t num_regs, ScopedArenaAllocator& allocator, RegTypeCache* reg_types);
 
   // Storage for the result register's type, valid after an invocation.
   uint16_t result_[2];

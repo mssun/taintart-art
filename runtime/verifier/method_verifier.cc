@@ -79,9 +79,12 @@ static constexpr bool kDumpRegLinesOnHardFailureIfVLOG = true;
 PcToRegisterLineTable::PcToRegisterLineTable(ScopedArenaAllocator& allocator)
     : register_lines_(allocator.Adapter(kArenaAllocVerifier)) {}
 
-void PcToRegisterLineTable::Init(RegisterTrackingMode mode, InstructionFlags* flags,
-                                 uint32_t insns_size, uint16_t registers_size,
-                                 MethodVerifier* verifier) {
+void PcToRegisterLineTable::Init(RegisterTrackingMode mode,
+                                 InstructionFlags* flags,
+                                 uint32_t insns_size,
+                                 uint16_t registers_size,
+                                 ScopedArenaAllocator& allocator,
+                                 RegTypeCache* reg_types) {
   DCHECK_GT(insns_size, 0U);
   register_lines_.resize(insns_size);
   for (uint32_t i = 0; i < insns_size; i++) {
@@ -100,7 +103,7 @@ void PcToRegisterLineTable::Init(RegisterTrackingMode mode, InstructionFlags* fl
         break;
     }
     if (interesting) {
-      register_lines_[i].reset(RegisterLine::Create(registers_size, verifier));
+      register_lines_[i].reset(RegisterLine::Create(registers_size, allocator, reg_types));
     }
   }
 }
@@ -1347,10 +1350,11 @@ bool MethodVerifier::VerifyCodeFlow() {
                   insn_flags_.get(),
                   code_item_accessor_.InsnsSizeInCodeUnits(),
                   registers_size,
-                  this);
+                  allocator_,
+                  GetRegTypeCache());
 
-  work_line_.reset(RegisterLine::Create(registers_size, this));
-  saved_line_.reset(RegisterLine::Create(registers_size, this));
+  work_line_.reset(RegisterLine::Create(registers_size, allocator_, GetRegTypeCache()));
+  saved_line_.reset(RegisterLine::Create(registers_size, allocator_, GetRegTypeCache()));
 
   /* Initialize register types of method arguments. */
   if (!SetTypesFromSignature()) {
@@ -2481,7 +2485,8 @@ bool MethodVerifier::CodeFlowVerifyInstruction(uint32_t* start_guess) {
                 orig_type.IsStrictlyAssignableFrom(
                     cast_type.Merge(orig_type, &reg_types_, this), this))) {
           RegisterLine* update_line = RegisterLine::Create(code_item_accessor_.RegistersSize(),
-                                                           this);
+                                                           allocator_,
+                                                           GetRegTypeCache());
           if (inst->Opcode() == Instruction::IF_EQZ) {
             fallthrough_line.reset(update_line);
           } else {
@@ -3257,7 +3262,7 @@ bool MethodVerifier::CodeFlowVerifyInstruction(uint32_t* start_guess) {
    * not expensive and it makes our debugging output cleaner.)
    */
   if (!just_set_result) {
-    work_line_->SetResultTypeToUnknown(this);
+    work_line_->SetResultTypeToUnknown(GetRegTypeCache());
   }
 
   /*
@@ -4738,7 +4743,7 @@ bool MethodVerifier::UpdateRegisters(uint32_t next_insn, RegisterLine* merge_lin
   } else {
     RegisterLineArenaUniquePtr copy;
     if (UNLIKELY(VLOG_IS_ON(verifier_debug))) {
-      copy.reset(RegisterLine::Create(target_line->NumRegs(), this));
+      copy.reset(RegisterLine::Create(target_line->NumRegs(), allocator_, GetRegTypeCache()));
       copy->CopyFromLine(target_line);
     }
     changed = target_line->MergeRegisters(this, merge_line);

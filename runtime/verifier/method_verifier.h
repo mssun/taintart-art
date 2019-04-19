@@ -82,8 +82,12 @@ class PcToRegisterLineTable {
   // Initialize the RegisterTable. Every instruction address can have a different set of information
   // about what's in which register, but for verification purposes we only need to store it at
   // branch target addresses (because we merge into that).
-  void Init(RegisterTrackingMode mode, InstructionFlags* flags, uint32_t insns_size,
-            uint16_t registers_size, MethodVerifier* verifier);
+  void Init(RegisterTrackingMode mode,
+            InstructionFlags* flags,
+            uint32_t insns_size,
+            uint16_t registers_size,
+            ScopedArenaAllocator& allocator,
+            RegTypeCache* reg_types);
 
   bool IsInitialized() const {
     return !register_lines_.empty();
@@ -182,10 +186,6 @@ class MethodVerifier {
 
   bool IsInstanceConstructor() const {
     return IsConstructor() && !IsStatic();
-  }
-
-  ScopedArenaAllocator& GetScopedAllocator() {
-    return allocator_;
   }
 
  private:
