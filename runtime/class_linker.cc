@@ -403,7 +403,7 @@ static void ShuffleForward(size_t* current_field_idx,
   }
 }
 
-ClassLinker::ClassLinker(InternTable* intern_table)
+ClassLinker::ClassLinker(InternTable* intern_table, bool fast_class_not_found_exceptions)
     : boot_class_table_(new ClassTable()),
       failed_dex_cache_class_lookups_(0),
       class_roots_(nullptr),
@@ -411,6 +411,7 @@ ClassLinker::ClassLinker(InternTable* intern_table)
       init_done_(false),
       log_new_roots_(false),
       intern_table_(intern_table),
+      fast_class_not_found_exceptions_(fast_class_not_found_exceptions),
       quick_resolution_trampoline_(nullptr),
       quick_imt_conflict_trampoline_(nullptr),
       quick_generic_jni_trampoline_(nullptr),
@@ -2978,31 +2979,42 @@ ObjPtr<mirror::Class> ClassLinker::FindClass(Thread* self,
 
       std::string class_name_string(descriptor + 1, descriptor_length - 2);
       std::replace(class_name_string.begin(), class_name_string.end(), '/', '.');
-      ScopedLocalRef<jobject> class_loader_object(
-          soa.Env(), soa.AddLocalReference<jobject>(class_loader.Get()));
-      ScopedLocalRef<jobject> result(soa.Env(), nullptr);
-      {
-        ScopedThreadStateChange tsc(self, kNative);
-        ScopedLocalRef<jobject> class_name_object(
-            soa.Env(), soa.Env()->NewStringUTF(class_name_string.c_str()));
-        if (class_name_object.get() == nullptr) {
-          DCHECK(self->IsExceptionPending());  // OOME.
+      if (known_hierarchy &&
+          fast_class_not_found_exceptions_ &&
+          !Runtime::Current()->IsJavaDebuggable()) {
+        // For known hierarchy, we know that the class is going to throw an exception. If we aren't
+        // debuggable, optimize this path by throwing directly here without going back to Java
+        // language. This reduces how many ClassNotFoundExceptions happen.
+        self->ThrowNewExceptionF("Ljava/lang/ClassNotFoundException;",
+                                 "%s",
+                                 class_name_string.c_str());
+      } else {
+        ScopedLocalRef<jobject> class_loader_object(
+            soa.Env(), soa.AddLocalReference<jobject>(class_loader.Get()));
+        ScopedLocalRef<jobject> result(soa.Env(), nullptr);
+        {
+          ScopedThreadStateChange tsc(self, kNative);
+          ScopedLocalRef<jobject> class_name_object(
+              soa.Env(), soa.Env()->NewStringUTF(class_name_string.c_str()));
+          if (class_name_object.get() == nullptr) {
+            DCHECK(self->IsExceptionPending());  // OOME.
+            return nullptr;
+          }
+          CHECK(class_loader_object.get() != nullptr);
+          result.reset(soa.Env()->CallObjectMethod(class_loader_object.get(),
+                                                   WellKnownClasses::java_lang_ClassLoader_loadClass,
+                                                   class_name_object.get()));
+        }
+        if (result.get() == nullptr && !self->IsExceptionPending()) {
+          // broken loader - throw NPE to be compatible with Dalvik
+          ThrowNullPointerException(StringPrintf("ClassLoader.loadClass returned null for %s",
+                                                 class_name_string.c_str()).c_str());
           return nullptr;
         }
-        CHECK(class_loader_object.get() != nullptr);
-        result.reset(soa.Env()->CallObjectMethod(class_loader_object.get(),
-                                                 WellKnownClasses::java_lang_ClassLoader_loadClass,
-                                                 class_name_object.get()));
+        result_ptr = soa.Decode<mirror::Class>(result.get());
+        // Check the name of the returned class.
+        descriptor_equals = (result_ptr != nullptr) && result_ptr->DescriptorEquals(descriptor);
       }
-      if (result.get() == nullptr && !self->IsExceptionPending()) {
-        // broken loader - throw NPE to be compatible with Dalvik
-        ThrowNullPointerException(StringPrintf("ClassLoader.loadClass returned null for %s",
-                                               class_name_string.c_str()).c_str());
-        return nullptr;
-      }
-      result_ptr = soa.Decode<mirror::Class>(result.get());
-      // Check the name of the returned class.
-      descriptor_equals = (result_ptr != nullptr) && result_ptr->DescriptorEquals(descriptor);
     } else {
       DCHECK(!MatchesDexFileCaughtExceptions(self->GetException(), this));
     }
