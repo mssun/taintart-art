@@ -27,16 +27,7 @@ art_cc_binary {
     defaults: ["dexdump_defaults"],
     host_supported: true,
     target: {
-        android: {
-            shared_libs: [
-                "libdexfile",
-                "libartbase",
-                "libbase",
-            ],
-        },
-        // Use static libs on host: required for Windows build and
-        // static_sdk_tools build.
-        host: {
+        windows: {
             enabled: true,
             static_libs: [
                 "libdexfile",
@@ -47,6 +38,23 @@ art_cc_binary {
                 "libz",
                 "libziparchive",
             ],
+        },
+        not_windows: {
+            shared_libs: [
+                "libdexfile",
+                "libartbase",
+                "libbase",
+            ],
+        },
+        android: {
+            shared_libs: [
+                "libdexfile",
+                "libartbase",
+                "libbase",
+            ],
+        },
+        darwin: {
+            enabled: true,
         },
     }
 }
