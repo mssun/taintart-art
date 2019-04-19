@@ -3610,6 +3610,10 @@ bool MethodVerifier<kVerifierDebug>::CodeFlowVerifyInstruction(uint32_t* start_g
        * "work_regs", because at runtime the exception will be thrown before the instruction
        * modifies any registers.
        */
+      if (kVerifierDebug) {
+        LogVerifyInfo() << "Updating exception handler 0x"
+                        << std::hex << iterator.GetHandlerAddress();
+      }
       if (!UpdateRegisters(iterator.GetHandlerAddress(), saved_line_.get(), false)) {
         return false;
       }
