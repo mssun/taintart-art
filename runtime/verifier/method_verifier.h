@@ -232,6 +232,24 @@ class MethodVerifier {
                                   std::string* hard_failure_msg)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
+  template <bool kVerifierDebug>
+  static FailureData VerifyMethod(Thread* self,
+                                  uint32_t method_idx,
+                                  const DexFile* dex_file,
+                                  Handle<mirror::DexCache> dex_cache,
+                                  Handle<mirror::ClassLoader> class_loader,
+                                  const dex::ClassDef& class_def_idx,
+                                  const dex::CodeItem* code_item,
+                                  ArtMethod* method,
+                                  uint32_t method_access_flags,
+                                  CompilerCallbacks* callbacks,
+                                  bool allow_soft_failures,
+                                  HardFailLogMode log_level,
+                                  bool need_precise_constants,
+                                  uint32_t api_level,
+                                  std::string* hard_failure_msg)
+      REQUIRES_SHARED(Locks::mutator_lock_);
+
   // For VerifierDepsTest. TODO: Refactor.
 
   // Run verification on the method. Returns true if verification completes and false if the input
