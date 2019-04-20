@@ -16,6 +16,7 @@
 
 #include "thread.h"
 
+#include <limits.h>  // for INT_MAX
 #include <pthread.h>
 #include <signal.h>
 #include <sys/resource.h>
@@ -1504,7 +1505,7 @@ bool Thread::PassActiveSuspendBarriers(Thread* self) {
         done = pending_threads->CompareAndSetWeakRelaxed(cur_val, cur_val - 1);
 #if ART_USE_FUTEXES
         if (done && (cur_val - 1) == 0) {  // Weak CAS may fail spuriously.
-          futex(pending_threads->Address(), FUTEX_WAKE_PRIVATE, -1, nullptr, nullptr, 0);
+          futex(pending_threads->Address(), FUTEX_WAKE_PRIVATE, INT_MAX, nullptr, nullptr, 0);
         }
 #endif
       } while (!done);
