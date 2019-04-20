@@ -187,6 +187,7 @@ class Heap {
        size_t max_free,
        double target_utilization,
        double foreground_heap_growth_multiplier,
+       size_t stop_for_native_allocs,
        size_t capacity,
        size_t non_moving_space_capacity,
        const std::vector<std::string>& boot_class_path,
@@ -1439,6 +1440,13 @@ class Heap {
 
   // How much more we grow the heap when we are a foreground app instead of background.
   double foreground_heap_growth_multiplier_;
+
+  // The amount of native memory allocation since the last GC required to cause us to wait for a
+  // collection as a result of native allocation. Very large values can cause the device to run
+  // out of memory, due to lack of finalization to reclaim native memory.  Making it too small can
+  // cause jank in apps like launcher that intentionally allocate large amounts of memory in rapid
+  // succession. (b/122099093) 1/4 to 1/3 of physical memory seems to be a good number.
+  const size_t stop_for_native_allocs_;
 
   // Total time which mutators are paused or waiting for GC to complete.
   uint64_t total_wait_time_;

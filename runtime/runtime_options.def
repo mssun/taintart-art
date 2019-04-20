@@ -51,6 +51,7 @@ RUNTIME_OPTIONS_KEY (MemoryKiB,           HeapGrowthLimit)                // Def
 RUNTIME_OPTIONS_KEY (MemoryKiB,           HeapMinFree,                    gc::Heap::kDefaultMinFree)
 RUNTIME_OPTIONS_KEY (MemoryKiB,           HeapMaxFree,                    gc::Heap::kDefaultMaxFree)
 RUNTIME_OPTIONS_KEY (MemoryKiB,           NonMovingSpaceCapacity,         gc::Heap::kDefaultNonMovingSpaceCapacity)
+RUNTIME_OPTIONS_KEY (MemoryKiB,           StopForNativeAllocs,            1 * GB)
 RUNTIME_OPTIONS_KEY (double,              HeapTargetUtilization,          gc::Heap::kDefaultTargetUtilization)
 RUNTIME_OPTIONS_KEY (double,              ForegroundHeapGrowthMultiplier, gc::Heap::kDefaultHeapGrowthMultiplier)
 RUNTIME_OPTIONS_KEY (unsigned int,        ParallelGCThreads,              0u)

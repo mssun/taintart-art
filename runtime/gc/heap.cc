@@ -173,6 +173,7 @@ Heap::Heap(size_t initial_size,
            size_t max_free,
            double target_utilization,
            double foreground_heap_growth_multiplier,
+           size_t stop_for_native_allocs,
            size_t capacity,
            size_t non_moving_space_capacity,
            const std::vector<std::string>& boot_class_path,
@@ -272,6 +273,7 @@ Heap::Heap(size_t initial_size,
       max_free_(max_free),
       target_utilization_(target_utilization),
       foreground_heap_growth_multiplier_(foreground_heap_growth_multiplier),
+      stop_for_native_allocs_(stop_for_native_allocs),
       total_wait_time_(0),
       verify_object_mode_(kVerifyObjectModeDisabled),
       disable_moving_gc_count_(0),
@@ -3749,15 +3751,9 @@ static constexpr size_t kOldNativeDiscountFactor = 65536;  // Approximately infi
 static constexpr size_t kNewNativeDiscountFactor = 2;
 
 // If weighted java + native memory use exceeds our target by kStopForNativeFactor, and
-// newly allocated memory exceeds kHugeNativeAlloc, we wait for GC to complete to avoid
+// newly allocated memory exceeds stop_for_native_allocs_, we wait for GC to complete to avoid
 // running out of memory.
 static constexpr float kStopForNativeFactor = 4.0;
-// TODO: Allow this to be tuned. We want this much smaller for some apps, like Calculator.
-// But making it too small can cause jank in apps like launcher that intentionally allocate
-// large amounts of memory in rapid succession. (b/122099093)
-// For now, we punt, and use a value that should be easily large enough to disable this in all
-// questionable setting, but that is clearly too large to be effective for small memory devices.
-static constexpr size_t kHugeNativeAllocs = 1 * GB;
 
 // Return the ratio of the weighted native + java allocated bytes to its target value.
 // A return value > 1.0 means we should collect. Significantly larger values mean we're falling
@@ -3797,7 +3793,7 @@ inline void Heap::CheckGCForNative(Thread* self) {
     if (is_gc_concurrent) {
       RequestConcurrentGC(self, kGcCauseForNativeAlloc, /*force_full=*/true);
       if (gc_urgency > kStopForNativeFactor
-          && current_native_bytes > kHugeNativeAllocs) {
+          && current_native_bytes > stop_for_native_allocs_) {
         // We're in danger of running out of memory due to rampant native allocation.
         if (VLOG_IS_ON(heap) || VLOG_IS_ON(startup)) {
           LOG(INFO) << "Stopping for native allocation, urgency: " << gc_urgency;
