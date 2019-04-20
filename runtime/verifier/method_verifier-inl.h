@@ -42,13 +42,6 @@ inline bool MethodVerifier::HasFailures() const {
   return !failure_messages_.empty();
 }
 
-inline const RegType& MethodVerifier::ResolveCheckedClass(dex::TypeIndex class_idx) {
-  DCHECK(!HasFailures());
-  const RegType& result = ResolveClass<CheckAccess::kYes>(class_idx);
-  DCHECK(!HasFailures());
-  return result;
-}
-
 }  // namespace verifier
 }  // namespace art
 

@@ -164,24 +164,25 @@ class VerifierDepsTest : public CommonCompilerDriverTest {
       CHECK(resolved_method != nullptr);
       if (method_name == resolved_method->GetName()) {
         soa.Self()->SetVerifierDeps(callbacks_->GetVerifierDeps());
-        MethodVerifier verifier(soa.Self(),
-                                primary_dex_file_,
-                                dex_cache_handle,
-                                class_loader_handle,
-                                *class_def,
-                                method.GetCodeItem(),
-                                method.GetIndex(),
-                                resolved_method,
-                                method.GetAccessFlags(),
-                                /* can_load_classes= */ true,
-                                /* allow_soft_failures= */ true,
-                                /* need_precise_constants= */ true,
-                                /* verify to dump */ false,
-                                /* allow_thread_suspension= */ true,
-                                /* api_level= */ 0);
-        verifier.Verify();
+        std::unique_ptr<MethodVerifier> verifier(
+            MethodVerifier::CreateVerifier(soa.Self(),
+                                           primary_dex_file_,
+                                           dex_cache_handle,
+                                           class_loader_handle,
+                                           *class_def,
+                                           method.GetCodeItem(),
+                                           method.GetIndex(),
+                                           resolved_method,
+                                           method.GetAccessFlags(),
+                                           /* can_load_classes= */ true,
+                                           /* allow_soft_failures= */ true,
+                                           /* need_precise_constants= */ true,
+                                           /* verify to dump */ false,
+                                           /* allow_thread_suspension= */ true,
+                                           /* api_level= */ 0));
+        verifier->Verify();
         soa.Self()->SetVerifierDeps(nullptr);
-        has_failures = verifier.HasFailures();
+        has_failures = verifier->HasFailures();
         found_method = true;
       }
     }
