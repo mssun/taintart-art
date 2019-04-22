@@ -81,8 +81,8 @@ inline bool RegisterLine::SetRegisterTypeWide(MethodVerifier* verifier, uint32_t
   return true;
 }
 
-inline void RegisterLine::SetResultTypeToUnknown(MethodVerifier* verifier) {
-  result_[0] = verifier->GetRegTypeCache()->Undefined().GetId();
+inline void RegisterLine::SetResultTypeToUnknown(RegTypeCache* reg_types) {
+  result_[0] = reg_types->Undefined().GetId();
   result_[1] = result_[0];
 }
 
@@ -187,19 +187,23 @@ inline size_t RegisterLine::ComputeSize(size_t num_regs) {
   return OFFSETOF_MEMBER(RegisterLine, line_) + num_regs * sizeof(uint16_t);
 }
 
-inline RegisterLine* RegisterLine::Create(size_t num_regs, MethodVerifier* verifier) {
-  void* memory = verifier->GetScopedAllocator().Alloc(ComputeSize(num_regs));
-  return new (memory) RegisterLine(num_regs, verifier);
+inline RegisterLine* RegisterLine::Create(size_t num_regs,
+                                          ScopedArenaAllocator& allocator,
+                                          RegTypeCache* reg_types) {
+  void* memory = allocator.Alloc(ComputeSize(num_regs));
+  return new (memory) RegisterLine(num_regs, allocator, reg_types);
 }
 
-inline RegisterLine::RegisterLine(size_t num_regs, MethodVerifier* verifier)
+inline RegisterLine::RegisterLine(size_t num_regs,
+                                  ScopedArenaAllocator& allocator,
+                                  RegTypeCache* reg_types)
     : num_regs_(num_regs),
-      monitors_(verifier->GetScopedAllocator().Adapter(kArenaAllocVerifier)),
+      monitors_(allocator.Adapter(kArenaAllocVerifier)),
       reg_to_lock_depths_(std::less<uint32_t>(),
-                          verifier->GetScopedAllocator().Adapter(kArenaAllocVerifier)),
+                          allocator.Adapter(kArenaAllocVerifier)),
       this_initialized_(false) {
   std::uninitialized_fill_n(line_, num_regs_, 0u);
-  SetResultTypeToUnknown(verifier);
+  SetResultTypeToUnknown(reg_types);
 }
 
 inline void RegisterLine::ClearRegToLockDepth(size_t reg, size_t depth) {
