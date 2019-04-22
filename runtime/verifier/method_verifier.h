@@ -21,6 +21,8 @@
 #include <sstream>
 #include <vector>
 
+#include <android-base/logging.h>
+
 #include "base/arena_allocator.h"
 #include "base/macros.h"
 #include "base/scoped_arena_containers.h"
@@ -112,8 +114,6 @@ class MethodVerifier {
                                              uint32_t api_level)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
-  uint8_t EncodePcToReferenceMapData() const;
-
   const DexFile& GetDexFile() const {
     DCHECK(dex_file_ != nullptr);
     return *dex_file_;
@@ -128,14 +128,6 @@ class MethodVerifier {
 
   // Log for verification information.
   ScopedNewLine LogVerifyInfo();
-
-  // Dump the failures encountered by the verifier.
-  std::ostream& DumpFailures(std::ostream& os);
-
-  // Dump the state of the verifier, namely each instruction, what flags are set on it, register
-  // information
-  void Dump(std::ostream& os) REQUIRES_SHARED(Locks::mutator_lock_);
-  void Dump(VariableIndentationOutputStream* vios) REQUIRES_SHARED(Locks::mutator_lock_);
 
   // Information structure for a lock held at a certain point in time.
   struct DexLockInfo {
@@ -160,18 +152,7 @@ class MethodVerifier {
   static void Init() REQUIRES_SHARED(Locks::mutator_lock_);
   static void Shutdown();
 
-  bool CanLoadClasses() const {
-    return can_load_classes_;
-  }
-
   ~MethodVerifier();
-
-  // Run verification on the method. Returns true if verification completes and false if the input
-  // has an irrecoverable corruption.
-  bool Verify() REQUIRES_SHARED(Locks::mutator_lock_);
-
-  // Describe VRegs at the given dex pc.
-  std::vector<int32_t> DescribeVRegs(uint32_t dex_pc);
 
   static void VisitStaticRoots(RootVisitor* visitor)
       REQUIRES_SHARED(Locks::mutator_lock_);
@@ -184,26 +165,15 @@ class MethodVerifier {
   }
   RegisterLine* GetRegLine(uint32_t dex_pc);
   ALWAYS_INLINE const InstructionFlags& GetInstructionFlags(size_t index) const;
-  ALWAYS_INLINE InstructionFlags& GetInstructionFlags(size_t index);
-  mirror::ClassLoader* GetClassLoader() REQUIRES_SHARED(Locks::mutator_lock_);
-  mirror::DexCache* GetDexCache() REQUIRES_SHARED(Locks::mutator_lock_);
-  ArtMethod* GetMethod() const;
+
   MethodReference GetMethodReference() const;
-  uint32_t GetAccessFlags() const;
   bool HasCheckCasts() const;
-  bool HasVirtualOrInterfaceInvokes() const;
   bool HasFailures() const;
   bool HasInstructionThatWillThrow() const {
     return have_any_pending_runtime_throw_failure_;
   }
 
   const RegType& ResolveCheckedClass(dex::TypeIndex class_idx)
-      REQUIRES_SHARED(Locks::mutator_lock_);
-  // Returns the method index of an invoke instruction.
-  uint16_t GetMethodIdxOfInvoke(const Instruction* inst)
-      REQUIRES_SHARED(Locks::mutator_lock_);
-  // Returns the field index of a field access instruction.
-  uint16_t GetFieldIdxOfFieldAccess(const Instruction* inst, bool is_static)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
   uint32_t GetEncounteredFailureTypes() {
@@ -671,6 +641,27 @@ class MethodVerifier {
 
   ALWAYS_INLINE bool FailOrAbort(bool condition, const char* error_msg, uint32_t work_insn_idx);
 
+  ALWAYS_INLINE InstructionFlags& GetModifiableInstructionFlags(size_t index);
+
+  // Returns the method index of an invoke instruction.
+  uint16_t GetMethodIdxOfInvoke(const Instruction* inst)
+      REQUIRES_SHARED(Locks::mutator_lock_);
+  // Returns the field index of a field access instruction.
+  uint16_t GetFieldIdxOfFieldAccess(const Instruction* inst, bool is_static)
+      REQUIRES_SHARED(Locks::mutator_lock_);
+
+  // Run verification on the method. Returns true if verification completes and false if the input
+  // has an irrecoverable corruption.
+  bool Verify() REQUIRES_SHARED(Locks::mutator_lock_);
+
+  // Dump the failures encountered by the verifier.
+  std::ostream& DumpFailures(std::ostream& os);
+
+  // Dump the state of the verifier, namely each instruction, what flags are set on it, register
+  // information
+  void Dump(std::ostream& os) REQUIRES_SHARED(Locks::mutator_lock_);
+  void Dump(VariableIndentationOutputStream* vios) REQUIRES_SHARED(Locks::mutator_lock_);
+
   // The thread we're verifying on.
   Thread* const self_;
 
@@ -734,10 +725,6 @@ class MethodVerifier {
   // Info message log use primarily for verifier diagnostics.
   std::ostringstream info_messages_;
 
-  // The number of occurrences of specific opcodes.
-  size_t new_instance_count_;
-  size_t monitor_enter_count_;
-
   // Bitset of the encountered failure types. Bits are according to the values in VerifyError.
   uint32_t encountered_failure_types_;
 
@@ -757,10 +744,6 @@ class MethodVerifier {
   // instruction. Aput-object operations implicitly check for array-store exceptions, similar to
   // check-cast.
   bool has_check_casts_;
-
-  // Indicates the method being verified contains at least one invoke-virtual/range
-  // or invoke-interface/range.
-  bool has_virtual_or_interface_invokes_;
 
   // Indicates whether we verify to dump the info. In that case we accept quickened instructions
   // even though we might detect to be a compiler. Should only be set when running

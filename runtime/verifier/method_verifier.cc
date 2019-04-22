@@ -48,12 +48,14 @@
 #include "intern_table.h"
 #include "mirror/class-inl.h"
 #include "mirror/class.h"
+#include "mirror/class_loader.h"
 #include "mirror/dex_cache-inl.h"
 #include "mirror/method_handle_impl.h"
 #include "mirror/method_type.h"
 #include "mirror/object-inl.h"
 #include "mirror/object_array-inl.h"
 #include "mirror/var_handle.h"
+#include "obj_ptr-inl.h"
 #include "reg_type-inl.h"
 #include "register_line-inl.h"
 #include "runtime.h"
@@ -132,14 +134,6 @@ inline bool MethodVerifier::FailOrAbort(bool condition,
   }
 
   return false;
-}
-
-static void SafelyMarkAllRegistersAsConflicts(MethodVerifier* verifier, RegisterLine* reg_line) {
-  if (verifier->IsInstanceConstructor()) {
-    // Before we mark all regs as conflicts, check that we don't have an uninitialized this.
-    reg_line->CheckConstructorReturn(verifier);
-  }
-  reg_line->MarkAllRegistersAsConflicts(verifier);
 }
 
 static FailureKind FailureKindMax(FailureKind fk1, FailureKind fk2) {
@@ -393,14 +387,11 @@ MethodVerifier::MethodVerifier(Thread* self,
       have_pending_runtime_throw_failure_(false),
       have_pending_experimental_failure_(false),
       have_any_pending_runtime_throw_failure_(false),
-      new_instance_count_(0),
-      monitor_enter_count_(0),
       encountered_failure_types_(0),
       can_load_classes_(can_load_classes),
       allow_soft_failures_(allow_soft_failures),
       need_precise_constants_(need_precise_constants),
       has_check_casts_(false),
-      has_virtual_or_interface_invokes_(false),
       verify_to_dump_(verify_to_dump),
       allow_thread_suspension_(allow_thread_suspension),
       is_constructor_(false),
@@ -724,9 +715,6 @@ void MethodVerifier::AppendToLastFailMessage(const std::string& append) {
 }
 
 bool MethodVerifier::ComputeWidthsAndCountOps() {
-  size_t new_instance_count = 0;
-  size_t monitor_enter_count = 0;
-
   // We can't assume the instruction is well formed, handle the case where calculating the size
   // goes past the end of the code item.
   SafeDexInstructionIterator it(code_item_accessor_.begin(), code_item_accessor_.end());
@@ -743,22 +731,10 @@ bool MethodVerifier::ComputeWidthsAndCountOps() {
       case Instruction::CHECK_CAST:
         has_check_casts_ = true;
         break;
-      case Instruction::INVOKE_VIRTUAL:
-      case Instruction::INVOKE_VIRTUAL_RANGE:
-      case Instruction::INVOKE_INTERFACE:
-      case Instruction::INVOKE_INTERFACE_RANGE:
-        has_virtual_or_interface_invokes_ = true;
-        break;
-      case Instruction::MONITOR_ENTER:
-        monitor_enter_count++;
-        break;
-      case Instruction::NEW_INSTANCE:
-        new_instance_count++;
-        break;
       default:
         break;
     }
-    GetInstructionFlags(it.DexPc()).SetIsOpcode();
+    GetModifiableInstructionFlags(it.DexPc()).SetIsOpcode();
   }
 
   if (it != code_item_accessor_.end()) {
@@ -768,8 +744,6 @@ bool MethodVerifier::ComputeWidthsAndCountOps() {
     return false;
   }
 
-  new_instance_count_ = new_instance_count;
-  monitor_enter_count_ = monitor_enter_count;
   return true;
 }
 
@@ -794,7 +768,7 @@ bool MethodVerifier::ScanTryCatchBlocks() {
     }
     DexInstructionIterator end_it(code_item_accessor_.Insns(), end);
     for (DexInstructionIterator it(code_item_accessor_.Insns(), start); it < end_it; ++it) {
-      GetInstructionFlags(it.DexPc()).SetInTry();
+      GetModifiableInstructionFlags(it.DexPc()).SetInTry();
     }
   }
   // Iterate over each of the handlers to verify target addresses.
@@ -815,7 +789,7 @@ bool MethodVerifier::ScanTryCatchBlocks() {
             << "exception handler begins with move-result* (" << dex_pc << ")";
         return false;
       }
-      GetInstructionFlags(dex_pc).SetBranchTarget();
+      GetModifiableInstructionFlags(dex_pc).SetBranchTarget();
       // Ensure exception types are resolved so that they don't need resolution to be delivered,
       // unresolved exception types will be ignored by exception delivery
       if (iterator.GetHandlerTypeIndex().IsValid()) {
@@ -835,8 +809,8 @@ bool MethodVerifier::ScanTryCatchBlocks() {
 template <bool kAllowRuntimeOnlyInstructions>
 bool MethodVerifier::VerifyInstructions() {
   /* Flag the start of the method as a branch target, and a GC point due to stack overflow errors */
-  GetInstructionFlags(0).SetBranchTarget();
-  GetInstructionFlags(0).SetCompileTimeInfoPoint();
+  GetModifiableInstructionFlags(0).SetBranchTarget();
+  GetModifiableInstructionFlags(0).SetCompileTimeInfoPoint();
   for (const DexInstructionPcPair& inst : code_item_accessor_) {
     const uint32_t dex_pc = inst.DexPc();
     if (!VerifyInstruction<kAllowRuntimeOnlyInstructions>(&inst.Inst(), dex_pc)) {
@@ -847,18 +821,18 @@ bool MethodVerifier::VerifyInstructions() {
     // All invoke points are marked as "Throw" points already.
     // We are relying on this to also count all the invokes as interesting.
     if (inst->IsBranch()) {
-      GetInstructionFlags(dex_pc).SetCompileTimeInfoPoint();
+      GetModifiableInstructionFlags(dex_pc).SetCompileTimeInfoPoint();
       // The compiler also needs safepoints for fall-through to loop heads.
       // Such a loop head must be a target of a branch.
       int32_t offset = 0;
       bool cond, self_ok;
       bool target_ok = GetBranchOffset(dex_pc, &offset, &cond, &self_ok);
       DCHECK(target_ok);
-      GetInstructionFlags(dex_pc + offset).SetCompileTimeInfoPoint();
+      GetModifiableInstructionFlags(dex_pc + offset).SetCompileTimeInfoPoint();
     } else if (inst->IsSwitch() || inst->IsThrow()) {
-      GetInstructionFlags(dex_pc).SetCompileTimeInfoPoint();
+      GetModifiableInstructionFlags(dex_pc).SetCompileTimeInfoPoint();
     } else if (inst->IsReturn()) {
-      GetInstructionFlags(dex_pc).SetCompileTimeInfoPointAndReturn();
+      GetModifiableInstructionFlags(dex_pc).SetCompileTimeInfoPointAndReturn();
     }
   }
   return true;
@@ -1192,7 +1166,7 @@ bool MethodVerifier::CheckBranchTarget(uint32_t cur_offset) {
                                       << reinterpret_cast<void*>(cur_offset);
     return false;
   }
-  GetInstructionFlags(abs_offset).SetBranchTarget();
+  GetModifiableInstructionFlags(abs_offset).SetBranchTarget();
   return true;
 }
 
@@ -1335,7 +1309,7 @@ bool MethodVerifier::CheckSwitchTargets(uint32_t cur_offset) {
                                         << "[" << targ << "]";
       return false;
     }
-    GetInstructionFlags(abs_offset).SetBranchTarget();
+    GetModifiableInstructionFlags(abs_offset).SetBranchTarget();
   }
   return true;
 }
@@ -1623,7 +1597,7 @@ bool MethodVerifier::CodeFlowVerifyMethod() {
   const uint32_t insns_size = code_item_accessor_.InsnsSizeInCodeUnits();
 
   /* Begin by marking the first instruction as "changed". */
-  GetInstructionFlags(0).SetChanged();
+  GetModifiableInstructionFlags(0).SetChanged();
   uint32_t start_guess = 0;
 
   /* Continue until no instructions are marked "changed". */
@@ -1680,8 +1654,8 @@ bool MethodVerifier::CodeFlowVerifyMethod() {
       return false;
     }
     /* Clear "changed" and mark as visited. */
-    GetInstructionFlags(insn_idx).SetVisited();
-    GetInstructionFlags(insn_idx).ClearChanged();
+    GetModifiableInstructionFlags(insn_idx).SetVisited();
+    GetModifiableInstructionFlags(insn_idx).ClearChanged();
   }
 
   if (UNLIKELY(VLOG_IS_ON(verifier_debug))) {
@@ -1708,7 +1682,7 @@ bool MethodVerifier::CodeFlowVerifyMethod() {
            (insns[insn_idx + 1] == Instruction::kPackedSwitchSignature ||
             insns[insn_idx + 1] == Instruction::kSparseSwitchSignature ||
             insns[insn_idx + 1] == Instruction::kArrayDataSignature))) {
-        GetInstructionFlags(insn_idx).SetVisited();
+        GetModifiableInstructionFlags(insn_idx).SetVisited();
       }
 
       if (!GetInstructionFlags(insn_idx).IsVisited()) {
@@ -1758,7 +1732,11 @@ static void AdjustReturnLine(MethodVerifier* verifier,
   switch (opcode) {
     case Instruction::RETURN_VOID:
     case Instruction::RETURN_VOID_NO_BARRIER:
-      SafelyMarkAllRegistersAsConflicts(verifier, line);
+      if (verifier->IsInstanceConstructor()) {
+        // Before we mark all regs as conflicts, check that we don't have an uninitialized this.
+        line->CheckConstructorReturn(verifier);
+      }
+      line->MarkAllRegistersAsConflicts(verifier);
       break;
 
     case Instruction::RETURN:
@@ -2382,7 +2360,8 @@ bool MethodVerifier::CodeFlowVerifyInstruction(uint32_t* start_guess) {
           Fail(VERIFY_ERROR_BAD_CLASS_HARD) << "invalid fill-array-data for array of type "
                                             << array_type;
         } else {
-          const RegType& component_type = reg_types_.GetComponentType(array_type, GetClassLoader());
+          const RegType& component_type = reg_types_.GetComponentType(array_type,
+                                                                      class_loader_.Get());
           DCHECK(!component_type.IsConflict());
           if (component_type.IsNonZeroReferenceTypes()) {
             Fail(VERIFY_ERROR_BAD_CLASS_HARD) << "invalid fill-array-data with component type "
@@ -2749,7 +2728,7 @@ bool MethodVerifier::CodeFlowVerifyInstruction(uint32_t* start_guess) {
         dex::TypeIndex return_type_idx =
             dex_file_->GetProtoId(method_id.proto_idx_).return_type_idx_;
         const char* descriptor = dex_file_->StringByTypeIdx(return_type_idx);
-        return_type = &reg_types_.FromDescriptor(GetClassLoader(), descriptor, false);
+        return_type = &reg_types_.FromDescriptor(class_loader_.Get(), descriptor, false);
       }
       if (!return_type->IsLowHalf()) {
         work_line_->SetResultRegisterType(this, *return_type);
@@ -2829,7 +2808,9 @@ bool MethodVerifier::CodeFlowVerifyInstruction(uint32_t* start_guess) {
         work_line_->MarkRefsAsInitialized(this, this_type);
       }
       if (return_type == nullptr) {
-        return_type = &reg_types_.FromDescriptor(GetClassLoader(), return_type_descriptor, false);
+        return_type = &reg_types_.FromDescriptor(class_loader_.Get(),
+                                                 return_type_descriptor,
+                                                 false);
       }
       if (!return_type->IsLowHalf()) {
         work_line_->SetResultRegisterType(this, *return_type);
@@ -2853,7 +2834,9 @@ bool MethodVerifier::CodeFlowVerifyInstruction(uint32_t* start_guess) {
         } else {
           descriptor = called_method->GetReturnTypeDescriptor();
         }
-        const RegType& return_type = reg_types_.FromDescriptor(GetClassLoader(), descriptor, false);
+        const RegType& return_type = reg_types_.FromDescriptor(class_loader_.Get(),
+                                                               descriptor,
+                                                               false);
         if (!return_type.IsLowHalf()) {
           work_line_->SetResultRegisterType(this, return_type);
         } else {
@@ -2908,7 +2891,9 @@ bool MethodVerifier::CodeFlowVerifyInstruction(uint32_t* start_guess) {
       } else {
         descriptor = abs_method->GetReturnTypeDescriptor();
       }
-      const RegType& return_type = reg_types_.FromDescriptor(GetClassLoader(), descriptor, false);
+      const RegType& return_type = reg_types_.FromDescriptor(class_loader_.Get(),
+                                                             descriptor,
+                                                             false);
       if (!return_type.IsLowHalf()) {
         work_line_->SetResultRegisterType(this, return_type);
       } else {
@@ -2941,7 +2926,7 @@ bool MethodVerifier::CodeFlowVerifyInstruction(uint32_t* start_guess) {
       const char* return_descriptor =
           dex_file_->GetReturnTypeDescriptor(dex_file_->GetProtoId(proto_idx));
       const RegType& return_type =
-          reg_types_.FromDescriptor(GetClassLoader(), return_descriptor, false);
+          reg_types_.FromDescriptor(class_loader_.Get(), return_descriptor, false);
       if (!return_type.IsLowHalf()) {
         work_line_->SetResultRegisterType(this, return_type);
       } else {
@@ -2974,7 +2959,7 @@ bool MethodVerifier::CodeFlowVerifyInstruction(uint32_t* start_guess) {
 
       // Step 3. Propagate return type information
       const RegType& return_type =
-          reg_types_.FromDescriptor(GetClassLoader(), return_descriptor, false);
+          reg_types_.FromDescriptor(class_loader_.Get(), return_descriptor, false);
       if (!return_type.IsLowHalf()) {
         work_line_->SetResultRegisterType(this, return_type);
       } else {
@@ -3449,7 +3434,7 @@ bool MethodVerifier::CodeFlowVerifyInstruction(uint32_t* start_guess) {
        * We're not recording register data for the next instruction, so we don't know what the
        * prior state was. We have to assume that something has changed and re-evaluate it.
        */
-      GetInstructionFlags(next_insn_idx).SetChanged();
+      GetModifiableInstructionFlags(next_insn_idx).SetChanged();
     }
   }
 
@@ -3518,7 +3503,7 @@ const RegType& MethodVerifier::ResolveClass(dex::TypeIndex class_idx) {
     }
   } else {
     const char* descriptor = dex_file_->StringByTypeIdx(class_idx);
-    result = &reg_types_.FromDescriptor(GetClassLoader(), descriptor, false);
+    result = &reg_types_.FromDescriptor(class_loader_.Get(), descriptor, false);
   }
   DCHECK(result != nullptr);
   if (result->IsConflict()) {
@@ -3815,7 +3800,7 @@ ArtMethod* MethodVerifier::VerifyInvocationArgsFromIterator(
         const uint32_t method_idx = GetMethodIdxOfInvoke(inst);
         const dex::TypeIndex class_idx = dex_file_->GetMethodId(method_idx).class_idx_;
         res_method_class = &reg_types_.FromDescriptor(
-            GetClassLoader(),
+            class_loader_.Get(),
             dex_file_->StringByTypeIdx(class_idx),
             false);
       }
@@ -3854,7 +3839,9 @@ ArtMethod* MethodVerifier::VerifyInvocationArgsFromIterator(
       return nullptr;
     }
 
-    const RegType& reg_type = reg_types_.FromDescriptor(GetClassLoader(), param_descriptor, false);
+    const RegType& reg_type = reg_types_.FromDescriptor(class_loader_.Get(),
+                                                        param_descriptor,
+                                                        false);
     uint32_t get_reg = is_range ? inst->VRegC() + static_cast<uint32_t>(sig_registers) :
         arg[sig_registers];
     if (reg_type.IsIntegralTypes()) {
@@ -4008,7 +3995,7 @@ ArtMethod* MethodVerifier::VerifyInvocationArgs(
   if (method_type == METHOD_SUPER) {
     dex::TypeIndex class_idx = dex_file_->GetMethodId(method_idx).class_idx_;
     const RegType& reference_type = reg_types_.FromDescriptor(
-        GetClassLoader(),
+        class_loader_.Get(),
         dex_file_->StringByTypeIdx(class_idx),
         false);
     if (reference_type.IsUnresolvedTypes()) {
@@ -4211,7 +4198,7 @@ void MethodVerifier::VerifyNewArray(const Instruction* inst, bool is_filled, boo
       DCHECK(!res_type.IsUnresolvedMergedReference());
       // Verify each register. If "arg_count" is bad, VerifyRegisterType() will run off the end of
       // the list and fail. It's legal, if silly, for arg_count to be zero.
-      const RegType& expected_type = reg_types_.GetComponentType(res_type, GetClassLoader());
+      const RegType& expected_type = reg_types_.GetComponentType(res_type, class_loader_.Get());
       uint32_t arg_count = (is_range) ? inst->VRegA_3rc() : inst->VRegA_35c();
       uint32_t arg[5];
       if (!is_range) {
@@ -4275,7 +4262,7 @@ void MethodVerifier::VerifyAGet(const Instruction* inst,
       }
     } else {
       /* verify the class */
-      const RegType& component_type = reg_types_.GetComponentType(array_type, GetClassLoader());
+      const RegType& component_type = reg_types_.GetComponentType(array_type, class_loader_.Get());
       if (!component_type.IsReferenceTypes() && !is_primitive) {
         Fail(VERIFY_ERROR_BAD_CLASS_HARD) << "primitive array type " << array_type
             << " source for aget-object";
@@ -4393,7 +4380,7 @@ void MethodVerifier::VerifyAPut(const Instruction* inst,
                                     << " because of missing class";
       }
     } else {
-      const RegType& component_type = reg_types_.GetComponentType(array_type, GetClassLoader());
+      const RegType& component_type = reg_types_.GetComponentType(array_type, class_loader_.Get());
       const uint32_t vregA = inst->VRegA_23x();
       if (is_primitive) {
         VerifyPrimitivePut(component_type, insn_type, vregA);
@@ -4618,7 +4605,7 @@ void MethodVerifier::VerifyISFieldAccess(const Instruction* inst, const RegType&
     if (kAccType == FieldAccessType::kAccPut) {
       const dex::FieldId& field_id = dex_file_->GetFieldId(field_idx);
       const char* field_class_descriptor = dex_file_->GetFieldDeclaringClassDescriptor(field_id);
-      const RegType* field_class_type = &reg_types_.FromDescriptor(GetClassLoader(),
+      const RegType* field_class_type = &reg_types_.FromDescriptor(class_loader_.Get(),
                                                                    field_class_descriptor,
                                                                    false);
       if (!field_class_type->Equals(GetDeclaringClass())) {
@@ -4634,7 +4621,7 @@ void MethodVerifier::VerifyISFieldAccess(const Instruction* inst, const RegType&
   if (field_type == nullptr) {
     const dex::FieldId& field_id = dex_file_->GetFieldId(field_idx);
     const char* descriptor = dex_file_->GetFieldTypeDescriptor(field_id);
-    field_type = &reg_types_.FromDescriptor(GetClassLoader(), descriptor, false);
+    field_type = &reg_types_.FromDescriptor(class_loader_.Get(), descriptor, false);
   }
   DCHECK(field_type != nullptr);
   const uint32_t vregA = (is_static) ? inst->VRegA_21c() : inst->VRegA_22c();
@@ -4770,13 +4757,13 @@ bool MethodVerifier::UpdateRegisters(uint32_t next_insn, RegisterLine* merge_lin
     }
   }
   if (changed) {
-    GetInstructionFlags(next_insn).SetChanged();
+    GetModifiableInstructionFlags(next_insn).SetChanged();
   }
   return true;
 }
 
 InstructionFlags* MethodVerifier::CurrentInsnFlags() {
-  return &GetInstructionFlags(work_insn_idx_);
+  return &GetModifiableInstructionFlags(work_insn_idx_);
 }
 
 const RegType& MethodVerifier::GetMethodReturnType() {
@@ -4799,7 +4786,7 @@ const RegType& MethodVerifier::GetMethodReturnType() {
       const dex::ProtoId& proto_id = dex_file_->GetMethodPrototype(method_id);
       dex::TypeIndex return_type_idx = proto_id.return_type_idx_;
       const char* descriptor = dex_file_->GetTypeDescriptor(dex_file_->GetTypeId(return_type_idx));
-      return_type_ = &reg_types_.FromDescriptor(GetClassLoader(), descriptor, false);
+      return_type_ = &reg_types_.FromDescriptor(class_loader_.Get(), descriptor, false);
     }
   }
   return *return_type_;
@@ -4814,58 +4801,10 @@ const RegType& MethodVerifier::GetDeclaringClass() {
       ObjPtr<mirror::Class> klass = method_being_verified_->GetDeclaringClass();
       declaring_class_ = &FromClass(descriptor, klass, klass->CannotBeAssignedFromOtherTypes());
     } else {
-      declaring_class_ = &reg_types_.FromDescriptor(GetClassLoader(), descriptor, false);
+      declaring_class_ = &reg_types_.FromDescriptor(class_loader_.Get(), descriptor, false);
     }
   }
   return *declaring_class_;
-}
-
-std::vector<int32_t> MethodVerifier::DescribeVRegs(uint32_t dex_pc) {
-  RegisterLine* line = reg_table_.GetLine(dex_pc);
-  DCHECK(line != nullptr) << "No register line at DEX pc " << StringPrintf("0x%x", dex_pc);
-  std::vector<int32_t> result;
-  for (size_t i = 0; i < line->NumRegs(); ++i) {
-    const RegType& type = line->GetRegisterType(this, i);
-    if (type.IsConstant()) {
-      result.push_back(type.IsPreciseConstant() ? kConstant : kImpreciseConstant);
-      const ConstantType* const_val = down_cast<const ConstantType*>(&type);
-      result.push_back(const_val->ConstantValue());
-    } else if (type.IsConstantLo()) {
-      result.push_back(type.IsPreciseConstantLo() ? kConstant : kImpreciseConstant);
-      const ConstantType* const_val = down_cast<const ConstantType*>(&type);
-      result.push_back(const_val->ConstantValueLo());
-    } else if (type.IsConstantHi()) {
-      result.push_back(type.IsPreciseConstantHi() ? kConstant : kImpreciseConstant);
-      const ConstantType* const_val = down_cast<const ConstantType*>(&type);
-      result.push_back(const_val->ConstantValueHi());
-    } else if (type.IsIntegralTypes()) {
-      result.push_back(kIntVReg);
-      result.push_back(0);
-    } else if (type.IsFloat()) {
-      result.push_back(kFloatVReg);
-      result.push_back(0);
-    } else if (type.IsLong()) {
-      result.push_back(kLongLoVReg);
-      result.push_back(0);
-      result.push_back(kLongHiVReg);
-      result.push_back(0);
-      ++i;
-    } else if (type.IsDouble()) {
-      result.push_back(kDoubleLoVReg);
-      result.push_back(0);
-      result.push_back(kDoubleHiVReg);
-      result.push_back(0);
-      ++i;
-    } else if (type.IsUndefined() || type.IsConflict() || type.IsHighHalf()) {
-      result.push_back(kUndefined);
-      result.push_back(0);
-    } else {
-      CHECK(type.IsNonZeroReferenceTypes());
-      result.push_back(kReferenceVReg);
-      result.push_back(0);
-    }
-  }
-  return result;
 }
 
 const RegType& MethodVerifier::DetermineCat1Constant(int32_t value, bool precise) {
@@ -4922,6 +4861,10 @@ const RegType& MethodVerifier::FromClass(const char* descriptor,
     precise = false;
   }
   return reg_types_.FromClass(descriptor, klass, precise);
+}
+
+InstructionFlags& MethodVerifier::GetModifiableInstructionFlags(size_t index) {
+  return insn_flags_[index];
 }
 
 }  // namespace verifier

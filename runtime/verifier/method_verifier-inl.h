@@ -19,12 +19,6 @@
 
 #include "method_verifier.h"
 
-#include <android-base/logging.h>
-
-#include "handle_scope-inl.h"
-#include "mirror/class_loader.h"
-#include "mirror/dex_cache.h"
-
 namespace art {
 namespace verifier {
 
@@ -36,36 +30,12 @@ inline const InstructionFlags& MethodVerifier::GetInstructionFlags(size_t index)
   return insn_flags_[index];
 }
 
-inline InstructionFlags& MethodVerifier::GetInstructionFlags(size_t index) {
-  return insn_flags_[index];
-}
-
-inline mirror::ClassLoader* MethodVerifier::GetClassLoader() {
-  return class_loader_.Get();
-}
-
-inline mirror::DexCache* MethodVerifier::GetDexCache() {
-  return dex_cache_.Get();
-}
-
-inline ArtMethod* MethodVerifier::GetMethod() const {
-  return method_being_verified_;
-}
-
 inline MethodReference MethodVerifier::GetMethodReference() const {
   return MethodReference(dex_file_, dex_method_idx_);
 }
 
-inline uint32_t MethodVerifier::GetAccessFlags() const {
-  return method_access_flags_;
-}
-
 inline bool MethodVerifier::HasCheckCasts() const {
   return has_check_casts_;
-}
-
-inline bool MethodVerifier::HasVirtualOrInterfaceInvokes() const {
-  return has_virtual_or_interface_invokes_;
 }
 
 inline bool MethodVerifier::HasFailures() const {
