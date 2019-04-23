@@ -496,8 +496,10 @@ class ReleaseTargetChecker:
     self._checker.check_native_library('libpac')
     self._checker.check_native_library('libz')
 
-    # TODO(b/124293228): Cuttlefish puts ARM libs in a lib/arm subdirectory.
-    # Check that properly on that arch, but for now just ignore the directory.
+    # Guest architecture proxy libraries currently end up in these
+    # subdirectories in x86 builds with native bridge.
+    # TODO(b/131155689): These are unused - fix the build rules to avoid
+    # creating them.
     self._checker.ignore_path('lib/arm')
     self._checker.ignore_path('lib/arm64')
 
