@@ -38,6 +38,7 @@
 #include "art_method-inl.h"
 #include "base/enums.h"
 #include "base/mutex-inl.h"
+#include "deopt_manager.h"
 #include "dex/code_item_accessors-inl.h"
 #include "dex/dex_file_annotations.h"
 #include "dex/dex_file_types.h"
@@ -52,10 +53,12 @@
 #include "mirror/object_array-inl.h"
 #include "nativehelper/scoped_local_ref.h"
 #include "oat_file.h"
+#include "obj_ptr.h"
 #include "runtime_callbacks.h"
 #include "scoped_thread_state_change-inl.h"
 #include "stack.h"
 #include "thread-current-inl.h"
+#include "thread.h"
 #include "thread_list.h"
 #include "ti_stack.h"
 #include "ti_thread.h"
@@ -528,48 +531,51 @@ class CommonLocalVariableClosure : public art::Closure {
 
   void Run(art::Thread* self) override REQUIRES(art::Locks::mutator_lock_) {
     art::Locks::mutator_lock_->AssertSharedHeld(art::Thread::Current());
-    art::ScopedAssertNoThreadSuspension sants("CommonLocalVariableClosure::Run");
-    std::unique_ptr<art::Context> context(art::Context::Create());
-    FindFrameAtDepthVisitor visitor(self, context.get(), depth_);
-    visitor.WalkStack();
-    if (!visitor.FoundFrame()) {
-      // Must have been a bad depth.
-      result_ = ERR(NO_MORE_FRAMES);
-      return;
-    }
-    art::ArtMethod* method = visitor.GetMethod();
-    // Native and 'art' proxy methods don't have registers.
-    if (method->IsNative() || method->IsProxyMethod()) {
-      // TODO It might be useful to fake up support for get at least on proxy frames.
-      result_ = ERR(OPAQUE_FRAME);
-      return;
-    } else if (method->DexInstructionData().RegistersSize() <= slot_) {
-      result_ = ERR(INVALID_SLOT);
-      return;
-    }
-    bool needs_instrument = !visitor.IsShadowFrame();
-    uint32_t pc = visitor.GetDexPc(/*abort_on_failure=*/ false);
-    if (pc == art::dex::kDexNoIndex) {
-      // Cannot figure out current PC.
-      result_ = ERR(OPAQUE_FRAME);
-      return;
-    }
-    std::string descriptor;
-    art::Primitive::Type slot_type = art::Primitive::kPrimVoid;
-    jvmtiError err = GetSlotType(method, pc, &descriptor, &slot_type);
-    if (err != OK) {
-      result_ = err;
-      return;
-    }
+    bool needs_instrument;
+    {
+      art::ScopedAssertNoThreadSuspension sants("CommonLocalVariableClosure::Run");
+      std::unique_ptr<art::Context> context(art::Context::Create());
+      FindFrameAtDepthVisitor visitor(self, context.get(), depth_);
+      visitor.WalkStack();
+      if (!visitor.FoundFrame()) {
+        // Must have been a bad depth.
+        result_ = ERR(NO_MORE_FRAMES);
+        return;
+      }
+      art::ArtMethod* method = visitor.GetMethod();
+      // Native and 'art' proxy methods don't have registers.
+      if (method->IsNative() || method->IsProxyMethod()) {
+        // TODO It might be useful to fake up support for get at least on proxy frames.
+        result_ = ERR(OPAQUE_FRAME);
+        return;
+      } else if (method->DexInstructionData().RegistersSize() <= slot_) {
+        result_ = ERR(INVALID_SLOT);
+        return;
+      }
+      needs_instrument = !visitor.IsShadowFrame();
+      uint32_t pc = visitor.GetDexPc(/*abort_on_failure=*/false);
+      if (pc == art::dex::kDexNoIndex) {
+        // Cannot figure out current PC.
+        result_ = ERR(OPAQUE_FRAME);
+        return;
+      }
+      std::string descriptor;
+      art::Primitive::Type slot_type = art::Primitive::kPrimVoid;
+      jvmtiError err = GetSlotType(method, pc, &descriptor, &slot_type);
+      if (err != OK) {
+        result_ = err;
+        return;
+      }
 
-    err = GetTypeError(method, slot_type, descriptor);
-    if (err != OK) {
-      result_ = err;
-      return;
+      err = GetTypeError(method, slot_type, descriptor);
+      if (err != OK) {
+        result_ = err;
+        return;
+      }
+      result_ = Execute(method, visitor);
     }
-    result_ = Execute(method, visitor);
     if (needs_instrument) {
-      art::Runtime::Current()->GetInstrumentation()->InstrumentThreadStack(self);
+      DeoptManager::Get()->DeoptimizeThread(self);
     }
   }
 
@@ -637,9 +643,14 @@ class GetLocalVariableClosure : public CommonLocalVariableClosure {
 
   jvmtiError GetResult() override REQUIRES_SHARED(art::Locks::mutator_lock_) {
     if (result_ == OK && type_ == art::Primitive::kPrimNot) {
-      val_->l = obj_val_.IsNull()
-          ? nullptr
-          : art::Thread::Current()->GetJniEnv()->AddLocalReference<jobject>(obj_val_.Read());
+      if (obj_val_ == nullptr) {
+        val_->l = nullptr;
+      } else {
+        art::JNIEnvExt* jni = art::Thread::Current()->GetJniEnv();
+        val_->l = static_cast<JNIEnv*>(jni)->NewLocalRef(obj_val_);
+        jni->DeleteGlobalRef(obj_val_);
+        obj_val_ = nullptr;
+      }
     }
     return CommonLocalVariableClosure::GetResult();
   }
@@ -678,8 +689,10 @@ class GetLocalVariableClosure : public CommonLocalVariableClosure {
                              &ptr_val)) {
           return ERR(OPAQUE_FRAME);
         }
-        obj_val_ = art::GcRoot<art::mirror::Object>(
-            reinterpret_cast<art::mirror::Object*>(ptr_val));
+        art::JNIEnvExt* jni = art::Thread::Current()->GetJniEnv();
+        art::ObjPtr<art::mirror::Object> obj(reinterpret_cast<art::mirror::Object*>(ptr_val));
+        ScopedLocalRef<jobject> local(jni, jni->AddLocalReference<jobject>(obj));
+        obj_val_ = jni->NewGlobalRef(local.get());
         break;
       }
       case art::Primitive::kPrimInt:
@@ -716,7 +729,9 @@ class GetLocalVariableClosure : public CommonLocalVariableClosure {
  private:
   art::Primitive::Type type_;
   jvalue* val_;
-  art::GcRoot<art::mirror::Object> obj_val_;
+  // A global reference to the return value. We use the global reference to safely transfer the
+  // value between threads.
+  jobject obj_val_;
 };
 
 jvmtiError MethodUtil::GetLocalVariableGeneric(jvmtiEnv* env ATTRIBUTE_UNUSED,
@@ -737,12 +752,9 @@ jvmtiError MethodUtil::GetLocalVariableGeneric(jvmtiEnv* env ATTRIBUTE_UNUSED,
     art::Locks::thread_list_lock_->ExclusiveUnlock(self);
     return err;
   }
-  art::ScopedAssertNoThreadSuspension sants("Performing GetLocalVariable");
   GetLocalVariableClosure c(depth, slot, type, val);
-  // RequestSynchronousCheckpoint releases the thread_list_lock_ as a part of its execution.  We
-  // need to avoid suspending as we wait for the checkpoint to occur since we are (potentially)
-  // transfering a GcRoot across threads.
-  if (!target->RequestSynchronousCheckpoint(&c, art::ThreadState::kRunnable)) {
+  // RequestSynchronousCheckpoint releases the thread_list_lock_ as a part of its execution.
+  if (!target->RequestSynchronousCheckpoint(&c)) {
     return ERR(THREAD_NOT_ALIVE);
   } else {
     return c.GetResult();
