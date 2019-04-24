@@ -39,10 +39,13 @@ template <class Value> class Histogram {
     std::vector<double> perc_;
   };
 
+  // Minimum and initial number of allocated buckets in histogram.
+  static constexpr size_t kMinBuckets = 8;
   // Used by the cumulative timing logger to search the histogram set using for an existing split
   // with the same name using CumulativeLogger::HistogramComparator.
   explicit Histogram(const char* name);
-  // This is the expected constructor when creating new Histograms.
+  // This is the expected constructor when creating new Histograms. Max_buckets must be even.
+  // Max_buckets, if specified, must be at least kMinBuckets.
   Histogram(const char* name, Value initial_bucket_width, size_t max_buckets = 100);
   void AddValue(Value);
   void AdjustAndAddValue(Value);  // Add a value after dividing it by kAdjust.

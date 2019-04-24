@@ -58,10 +58,12 @@ template <class Value>
 inline Histogram<Value>::Histogram(const char* name, Value initial_bucket_width,
                                    size_t max_buckets)
     : kAdjust(1000),
-      kInitialBucketCount(8),
+      kInitialBucketCount(kMinBuckets),
       name_(name),
       max_buckets_(max_buckets),
       bucket_width_(initial_bucket_width) {
+  CHECK_GE(max_buckets, kInitialBucketCount);
+  CHECK_EQ(max_buckets_ % 2, 0u);
   Reset();
 }
 
@@ -69,8 +71,9 @@ template <class Value>
 inline void Histogram<Value>::GrowBuckets(Value new_max) {
   while (max_ < new_max) {
     // If we have reached the maximum number of buckets, merge buckets together.
-    if (frequency_.size() >= max_buckets_) {
-      CHECK_ALIGNED(frequency_.size(), 2);
+    DCHECK_LE(frequency_.size(), max_buckets_);
+    if (frequency_.size() == max_buckets_) {
+      DCHECK_EQ(frequency_.size() % 2, 0u);
       // We double the width of each bucket to reduce the number of buckets by a factor of 2.
       bucket_width_ *= 2;
       const size_t limit = frequency_.size() / 2;
