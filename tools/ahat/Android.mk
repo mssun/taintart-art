@@ -18,46 +18,30 @@ LOCAL_PATH := $(call my-dir)
 
 include art/build/Android.common_path.mk
 
-# --- ahat script ----------------
-include $(CLEAR_VARS)
-LOCAL_IS_HOST_MODULE := true
-LOCAL_MODULE_CLASS := EXECUTABLES
-LOCAL_MODULE := ahat
-LOCAL_SRC_FILES := ahat
-include $(BUILD_PREBUILT)
-
 # The ahat tests rely on running ART to generate a heap dump for test, but ART
 # doesn't run on darwin. Only build and run the tests for linux.
 # There are also issues with running under instrumentation.
 ifeq ($(HOST_OS),linux)
 ifneq ($(EMMA_INSTRUMENT),true)
-# --- ahat-test-dump.jar --------------
-include $(CLEAR_VARS)
-LOCAL_MODULE := ahat-test-dump
-LOCAL_MODULE_TAGS := tests
-LOCAL_SRC_FILES := $(call all-java-files-under, src/test-dump)
-LOCAL_PROGUARD_ENABLED := obfuscation
-LOCAL_PROGUARD_FLAG_FILES := etc/test-dump.pro
-include $(BUILD_JAVA_LIBRARY)
 
 # Determine the location of the test-dump.jar, test-dump.hprof, and proguard
-# map files. These use variables set implicitly by the include of
-# BUILD_JAVA_LIBRARY above.
-AHAT_TEST_DUMP_JAR := $(LOCAL_BUILT_MODULE)
-AHAT_TEST_DUMP_HPROF := $(intermediates.COMMON)/test-dump.hprof
-AHAT_TEST_DUMP_BASE_HPROF := $(intermediates.COMMON)/test-dump-base.hprof
-AHAT_TEST_DUMP_PROGUARD_MAP := $(intermediates.COMMON)/test-dump.map
+AHAT_TEST_DUMP_JAR := $(call intermediates-dir-for,JAVA_LIBRARIES,ahat-test-dump)/javalib.jar
+AHAT_TEST_DUMP_COMMON := $(call intermediates-dir-for,JAVA_LIBRARIES,ahat-test-dump,,COMMON)
+AHAT_TEST_DUMP_HPROF := $(AHAT_TEST_DUMP_COMMON)/test-dump.hprof
+AHAT_TEST_DUMP_BASE_HPROF := $(AHAT_TEST_DUMP_COMMON)/test-dump-base.hprof
+AHAT_TEST_DUMP_PROGUARD_MAP := $(AHAT_TEST_DUMP_COMMON)/test-dump.map
+AHAT_TEST_DUMP_PROGUARD_DICTIONARY := $(AHAT_TEST_DUMP_COMMON)/proguard_dictionary
 
 # Directories to use for ANDROID_DATA when generating the test dumps to
 # ensure we don't pollute the source tree with any artifacts from running
 # dalvikvm.
-AHAT_TEST_DUMP_ANDROID_DATA := $(intermediates.COMMON)/test-dump-android_data
-AHAT_TEST_DUMP_BASE_ANDROID_DATA := $(intermediates.COMMON)/test-dump-base-android_data
+AHAT_TEST_DUMP_ANDROID_DATA := $(AHAT_TEST_DUMP_COMMON)/test-dump-android_data
+AHAT_TEST_DUMP_BASE_ANDROID_DATA := $(AHAT_TEST_DUMP_COMMON)/test-dump-base-android_data
 
 # Generate the proguard map in the desired location by copying it from
 # wherever the build system generates it by default.
-$(AHAT_TEST_DUMP_PROGUARD_MAP): PRIVATE_AHAT_SOURCE_PROGUARD_MAP := $(proguard_dictionary)
-$(AHAT_TEST_DUMP_PROGUARD_MAP): $(proguard_dictionary)
+$(AHAT_TEST_DUMP_PROGUARD_MAP): PRIVATE_AHAT_SOURCE_PROGUARD_MAP := $(AHAT_TEST_DUMP_PROGUARD_DICTIONARY)
+$(AHAT_TEST_DUMP_PROGUARD_MAP): $(AHAT_TEST_DUMP_PROGUARD_DICTIONARY)
 	cp $(PRIVATE_AHAT_SOURCE_PROGUARD_MAP) $@
 
 ifeq (true,$(HOST_PREFER_32_BIT))
@@ -99,19 +83,11 @@ $(AHAT_TEST_DUMP_BASE_HPROF): $(AHAT_TEST_DUMP_JAR) $(AHAT_TEST_DUMP_DEPENDENCIE
 	  $(PRIVATE_AHAT_TEST_ART) --no-compile -d $(PRIVATE_AHAT_TEST_DALVIKVM_ARG) \
 	  -cp $(PRIVATE_AHAT_TEST_DUMP_JAR) Main $@ --base
 
-# --- ahat-ri-test-dump.jar -------
-include $(CLEAR_VARS)
-LOCAL_MODULE := ahat-ri-test-dump
-LOCAL_MODULE_TAGS := tests
-LOCAL_SRC_FILES := $(call all-java-files-under, src/ri-test-dump)
-LOCAL_IS_HOST_MODULE := true
-include $(BUILD_HOST_JAVA_LIBRARY)
 
 # Determine the location of the ri-test-dump.jar and ri-test-dump.hprof.
-# These use variables set implicitly by the include of BUILD_JAVA_LIBRARY
-# above.
-AHAT_RI_TEST_DUMP_JAR := $(LOCAL_BUILT_MODULE)
-AHAT_RI_TEST_DUMP_HPROF := $(intermediates.COMMON)/ri-test-dump.hprof
+AHAT_RI_TEST_DUMP_JAR := $(call intermediates-dir-for,JAVA_LIBRARIES,ahat-ri-test-dump,HOST)/javalib.jar
+AHAT_RI_TEST_DUMP_COMMON := $(call intermediates-dir-for,JAVA_LIBRARIES,ahat-ri-test-dump,HOST,COMMON)
+AHAT_RI_TEST_DUMP_HPROF := $(AHAT_RI_TEST_DUMP_COMMON)/ri-test-dump.hprof
 
 # Run ahat-ri-test-dump.jar to generate ri-test-dump.hprof
 $(AHAT_RI_TEST_DUMP_HPROF): PRIVATE_AHAT_RI_TEST_DUMP_JAR := $(AHAT_RI_TEST_DUMP_JAR)
@@ -147,6 +123,7 @@ endif # linux
 # Clean up local variables.
 AHAT_TEST_JAR :=
 AHAT_TEST_DUMP_JAR :=
+AHAT_TEST_DUMP_COMMON :=
 AHAT_TEST_DUMP_HPROF :=
 AHAT_TEST_DUMP_BASE_HPROF :=
 AHAT_TEST_DUMP_PROGUARD_MAP :=
@@ -154,3 +131,6 @@ AHAT_TEST_DUMP_DEPENDENCIES :=
 AHAT_TEST_DUMP_ANDROID_DATA :=
 AHAT_TEST_DUMP_BASE_ANDROID_DATA :=
 
+AHAT_RI_TEST_DUMP_JAR :=
+AHAT_RI_TEST_DUMP_COMMON :=
+AHAT_RI_TEST_DUMP_HPROF :=
