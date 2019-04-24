@@ -253,6 +253,19 @@ bool ImageWriter::PrepareImageAddressSpace(TimingLogger* timings) {
     CheckNonImageClassesRemoved();
   }
 
+  {
+    // Preload deterministic contents to the dex cache arrays we're going to write.
+    ScopedObjectAccess soa(self);
+    ObjPtr<mirror::ClassLoader> class_loader = GetAppClassLoader();
+    std::vector<ObjPtr<mirror::DexCache>> dex_caches = FindDexCaches(self);
+    for (ObjPtr<mirror::DexCache> dex_cache : dex_caches) {
+      if (!IsImageObject(dex_cache)) {
+        continue;  // Boot image DexCache is not written to the app image.
+      }
+      PreloadDexCache(dex_cache, class_loader);
+    }
+  }
+
   // Used to store information that will later be used to calculate image
   // offsets to string references in the AppImage.
   std::vector<HeapReferencePointerInfo> string_ref_info;
@@ -697,20 +710,7 @@ bool ImageWriter::Write(int image_fd,
   CHECK(!oat_filenames.empty());
   CHECK_EQ(image_filenames.size(), oat_filenames.size());
 
-  Thread* self = Thread::Current();
-  {
-    // Preload deterministic contents to the dex cache arrays we're going to write.
-    ScopedObjectAccess soa(self);
-    ObjPtr<mirror::ClassLoader> class_loader = GetAppClassLoader();
-    std::vector<ObjPtr<mirror::DexCache>> dex_caches = FindDexCaches(self);
-    for (ObjPtr<mirror::DexCache> dex_cache : dex_caches) {
-      if (!IsImageObject(dex_cache)) {
-        continue;  // Boot image DexCache is not written to the app image.
-      }
-      PreloadDexCache(dex_cache, class_loader);
-    }
-  }
-
+  Thread* const self = Thread::Current();
   {
     ScopedObjectAccess soa(self);
     for (size_t i = 0; i < oat_filenames.size(); ++i) {
