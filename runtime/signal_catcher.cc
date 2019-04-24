@@ -110,8 +110,7 @@ void SignalCatcher::Output(const std::string& s) {
     LOG(INFO) << "Wrote stack traces to tombstoned";
   } else {
     CHECK(status == PaletteStatus::kCheckErrno);
-    LOG(ERROR) << "Failed to write stack traces to tombstoned";
-    LOG(INFO) << s;
+    PLOG(ERROR) << "Failed to write stack traces to tombstoned";
   }
 #else
   LOG(INFO) << s;
