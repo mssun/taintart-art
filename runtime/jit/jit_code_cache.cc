@@ -2062,8 +2062,9 @@ bool JitCodeCache::NotifyCompilationOf(ArtMethod* method, Thread* self, bool osr
         }
       }
       if (collection_in_progress_) {
-        CHECK(!IsInZygoteExecSpace(data->GetCode()));
-        GetLiveBitmap()->AtomicTestAndSet(FromCodeToAllocation(data->GetCode()));
+        if (!IsInZygoteExecSpace(data->GetCode())) {
+          GetLiveBitmap()->AtomicTestAndSet(FromCodeToAllocation(data->GetCode()));
+        }
       }
     }
     return new_compilation;
