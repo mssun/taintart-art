@@ -229,6 +229,7 @@ art_cc_defaults {
         "ti-agent/monitors_helper.cc",
         "ti-agent/redefinition_helper.cc",
         "ti-agent/suspension_helper.cc",
+        "ti-agent/suspend_event_helper.cc",
         "ti-agent/stack_trace_helper.cc",
         "ti-agent/threads_helper.cc",
         "ti-agent/trace_helper.cc",
@@ -562,6 +563,7 @@ filegroup {
         "1927-exception-event/src/art/Exceptions.java",
         "1930-monitor-info/src/art/Monitors.java",
         "1934-jvmti-signal-thread/src/art/Threads.java",
+        "1953-pop-frame/src/art/SuspendEvents.java",
 
         // Actual test classes.
         "901-hello-ti-agent/src/art/Test901.java",
