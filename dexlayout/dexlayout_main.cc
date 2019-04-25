@@ -222,7 +222,7 @@ int DexlayoutDriver(int argc, char** argv) {
     fclose(out_file);
   }
 
-  return result != 0;
+  return result != 0 ? 1 : 0;
 }
 
 }  // namespace art

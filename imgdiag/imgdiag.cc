@@ -1737,7 +1737,7 @@ class ImgDiagDumper {
       }
     }
 
-    return page_frame_number != page_frame_number_clean;
+    return (page_frame_number != page_frame_number_clean) ? 1 : 0;
   }
 
   void PrintPidLine(const std::string& kind, pid_t pid) {

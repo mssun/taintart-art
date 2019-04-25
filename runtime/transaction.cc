@@ -460,11 +460,11 @@ void Transaction::ObjectLog::UndoFieldWrite(mirror::Object* obj,
       if (UNLIKELY(field_value.is_volatile)) {
         obj->SetFieldBooleanVolatile<false, kCheckTransaction>(
             field_offset,
-            static_cast<bool>(field_value.value));
+            field_value.value);
       } else {
         obj->SetFieldBoolean<false, kCheckTransaction>(
             field_offset,
-            static_cast<bool>(field_value.value));
+            field_value.value);
       }
       break;
     case kByte:

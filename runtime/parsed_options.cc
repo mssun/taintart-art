@@ -580,7 +580,7 @@ bool ParsedOptions::DoParse(const RuntimeOptions& options,
 
   MaybeOverrideVerbosity();
 
-  SetRuntimeDebugFlagsEnabled(args.Get(M::SlowDebug));
+  SetRuntimeDebugFlagsEnabled(args.GetOrDefault(M::SlowDebug));
 
   // -Xprofile:
   Trace::SetDefaultClockSource(args.GetOrDefault(M::ProfileClock));

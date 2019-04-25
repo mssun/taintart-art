@@ -197,7 +197,7 @@ class DexMember {
 
  private:
   inline uint32_t GetAccessFlags() const { return item_.GetAccessFlags(); }
-  inline uint32_t HasAccessFlags(uint32_t mask) const { return (GetAccessFlags() & mask) == mask; }
+  inline bool HasAccessFlags(uint32_t mask) const { return (GetAccessFlags() & mask) == mask; }
 
   inline std::string_view GetName() const {
     return IsMethod() ? item_.GetDexFile().GetMethodName(GetMethodId())

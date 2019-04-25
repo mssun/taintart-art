@@ -144,7 +144,7 @@ int dexdumpDriver(int argc, char** argv) {
   while (optind < argc) {
     result |= processFile(argv[optind++]);
   }  // while
-  return result != 0;
+  return result != 0 ? 1 : 0;
 }
 
 }  // namespace art

@@ -4433,16 +4433,16 @@ JDWP::JdwpState* Dbg::GetJdwpState() {
 int Dbg::DdmHandleHpifChunk(HpifWhen when) {
   if (when == HPIF_WHEN_NOW) {
     DdmSendHeapInfo(when);
-    return true;
+    return 1;
   }
 
   if (when != HPIF_WHEN_NEVER && when != HPIF_WHEN_NEXT_GC && when != HPIF_WHEN_EVERY_GC) {
     LOG(ERROR) << "invalid HpifWhen value: " << static_cast<int>(when);
-    return false;
+    return 0;
   }
 
   gDdmHpifWhen = when;
-  return true;
+  return 1;
 }
 
 bool Dbg::DdmHandleHpsgNhsgChunk(Dbg::HpsgWhen when, Dbg::HpsgWhat what, bool native) {
