@@ -21,33 +21,54 @@
      */
     .extern artFindNativeMethod
 
-    // TODO: Add CFI directives.
 ENTRY art_jni_dlsym_lookup_stub
   // spill regs.
   stp   x29, x30, [sp, #-16]!
+  .cfi_adjust_cfa_offset 16
+  .cfi_rel_offset x29, 0
+  .cfi_rel_offset x30, 8
   mov   x29, sp
   stp   d6, d7,   [sp, #-16]!
+  .cfi_adjust_cfa_offset 16
   stp   d4, d5,   [sp, #-16]!
+  .cfi_adjust_cfa_offset 16
   stp   d2, d3,   [sp, #-16]!
+  .cfi_adjust_cfa_offset 16
   stp   d0, d1,   [sp, #-16]!
+  .cfi_adjust_cfa_offset 16
   stp   x6, x7,   [sp, #-16]!
+  .cfi_adjust_cfa_offset 16
   stp   x4, x5,   [sp, #-16]!
+  .cfi_adjust_cfa_offset 16
   stp   x2, x3,   [sp, #-16]!
+  .cfi_adjust_cfa_offset 16
   stp   x0, x1,   [sp, #-16]!
+  .cfi_adjust_cfa_offset 16
 
   bl  artFindNativeMethod
   mov  x17, x0    // store result in scratch reg.
 
   // load spill regs.
   ldp   x0, x1,   [sp], #16
+  .cfi_adjust_cfa_offset -16
   ldp   x2, x3,   [sp], #16
+  .cfi_adjust_cfa_offset -16
   ldp   x4, x5,   [sp], #16
+  .cfi_adjust_cfa_offset -16
   ldp   x6, x7,   [sp], #16
+  .cfi_adjust_cfa_offset -16
   ldp   d0, d1,   [sp], #16
+  .cfi_adjust_cfa_offset -16
   ldp   d2, d3,   [sp], #16
+  .cfi_adjust_cfa_offset -16
   ldp   d4, d5,   [sp], #16
+  .cfi_adjust_cfa_offset -16
   ldp   d6, d7,   [sp], #16
+  .cfi_adjust_cfa_offset -16
   ldp   x29, x30, [sp], #16
+  .cfi_adjust_cfa_offset -16
+  .cfi_restore x29
+  .cfi_restore x30
 
   cbz   x17, 1f   // is method code null ?
   br    x17       // if non-null, tail call to method's code.
