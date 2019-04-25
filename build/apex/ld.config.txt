@@ -10,37 +10,70 @@ dir.runtime = /apex/com.android.runtime/bin/
 [runtime]
 additional.namespaces = platform,conscrypt,runtime
 
-# Keep in sync with the runtime namespace in /system/etc/ld.config.txt.
+# The default namespace here only links to other namespaces, in particular
+# "runtime" where the real library loading takes place. Any outgoing links from
+# "runtime" also need to be present here.
 namespace.default.isolated = true
-# Visible because some libraries are dlopen'ed, e.g. libopenjdk is dlopen'ed by
-# libart.
-namespace.default.visible = true
-namespace.default.search.paths = /apex/com.android.runtime/${LIB}
-namespace.default.asan.search.paths = /apex/com.android.runtime/${LIB}
+namespace.default.links = runtime,platform
+namespace.default.link.runtime.allow_all_shared_libs = true
+namespace.default.link.platform.allow_all_shared_libs = true
+
+###############################################################################
+# "runtime" APEX namespace
+#
+# This is the local namespace of this APEX, with the proper name "runtime" to
+# make links created e.g. through android_link_namespace work consistently with
+# the platform linker config.
+###############################################################################
+namespace.runtime.isolated = true
+# Visible to allow links to be created at runtime, e.g. through
+# android_link_namespaces in libnativeloader.
+namespace.runtime.visible = true
+
+# Keep in sync with the "runtime" namespace in system/core/rootdir/etc/ld.config*.txt.
+namespace.runtime.search.paths = /apex/com.android.runtime/${LIB}
+namespace.runtime.asan.search.paths = /apex/com.android.runtime/${LIB}
 # odex files are in /system/framework. dalvikvm has to be able to dlopen the
 # files for CTS.
-namespace.default.permitted.paths = /system/framework
-namespace.default.links = platform
+namespace.runtime.permitted.paths = /system/framework
+namespace.runtime.links = platform
 # Need allow_all_shared_libs because libart.so can dlopen oat files in
 # /system/framework and /data.
 # TODO(b/130340935): Use a dynamically created linker namespace similar to
 # classloader-namespace for oat files, and tighten this up.
-namespace.default.link.platform.allow_all_shared_libs = true
+namespace.runtime.link.platform.allow_all_shared_libs = true
 
-# Keep in sync with the default namespace in /system/etc/ld.config.txt.
+###############################################################################
+# "platform" namespace
+#
+# Corresponds to the default namespace in /system/etc/ld.config.txt. Please keep
+# in sync with linker config files in system/core/rootdir/etc.
+###############################################################################
 namespace.platform.isolated = true
+# Visible to allow links to be created at runtime, e.g. through
+# android_link_namespaces in libnativeloader.
+namespace.platform.visible = true
+
 namespace.platform.search.paths = /system/${LIB}
 namespace.platform.asan.search.paths = /data/asan/system/${LIB}
-namespace.platform.links = default
-namespace.platform.link.default.shared_libs  = libandroidicu.so
-namespace.platform.link.default.shared_libs += libdexfile_external.so
-namespace.platform.link.default.shared_libs += libdexfiled_external.so
-namespace.platform.link.default.shared_libs += libnativebridge.so
-namespace.platform.link.default.shared_libs += libnativehelper.so
-namespace.platform.link.default.shared_libs += libnativeloader.so
+
+# This is only a subset of platform default namespace permitted paths, and might
+# need extension.
+namespace.default.permitted.paths  = /data
+namespace.default.permitted.paths += /system/framework
+namespace.default.asan.permitted.paths  = /data
+namespace.default.asan.permitted.paths += /system/framework
+
+namespace.platform.links = runtime
+namespace.platform.link.runtime.shared_libs  = libandroidicu.so
+namespace.platform.link.runtime.shared_libs += libdexfile_external.so
+namespace.platform.link.runtime.shared_libs += libdexfiled_external.so
+namespace.platform.link.runtime.shared_libs += libnativebridge.so
+namespace.platform.link.runtime.shared_libs += libnativehelper.so
+namespace.platform.link.runtime.shared_libs += libnativeloader.so
 
 # TODO(b/122876336): Remove libpac.so once it's migrated to Webview
-namespace.platform.link.default.shared_libs += libpac.so
+namespace.platform.link.runtime.shared_libs += libpac.so
 
 # /system/lib/libc.so, etc are symlinks to
 # /apex/com.android.runtime/lib/bionic/libc.so, etc. Add the path to the
@@ -54,7 +87,7 @@ namespace.platform.link.default.shared_libs += libpac.so
 namespace.platform.permitted.paths = /apex/com.android.runtime/${LIB}/bionic
 namespace.platform.asan.permitted.paths = /apex/com.android.runtime/${LIB}/bionic
 
-# Note that we don't need to link the default namespace with conscrypt:
+# Note that we don't need to link the runtime namespace with conscrypt:
 # the runtime Java code and binaries do not explicitly load native libraries
 # from it.
 
@@ -64,7 +97,7 @@ namespace.platform.asan.permitted.paths = /apex/com.android.runtime/${LIB}/bioni
 # This namespace is for libraries within the conscrypt APEX.
 ###############################################################################
 
-# Keep in sync with conscrypt namespace in /system/etc/ld.config.txt.
+# Keep in sync with the "conscrypt" namespace in system/core/rootdir/etc/ld.config*.txt.
 namespace.conscrypt.isolated = true
 namespace.conscrypt.visible = true
 
@@ -76,16 +109,3 @@ namespace.conscrypt.link.platform.shared_libs  = libc.so
 namespace.conscrypt.link.platform.shared_libs += libm.so
 namespace.conscrypt.link.platform.shared_libs += libdl.so
 namespace.conscrypt.link.platform.shared_libs += liblog.so
-
-###############################################################################
-# "runtime" APEX namespace
-#
-# This namespace is an alias for the default namespace.
-###############################################################################
-namespace.runtime.isolated = true
-namespace.runtime.visible = true
-namespace.runtime.links = default
-namespace.runtime.link.default.allow_all_shared_libs = true
-namespace.runtime.links += platform
-# TODO(b/119867084): Restrict fallback to platform namespace to PALette library.
-namespace.runtime.link.platform.allow_all_shared_libs = true
