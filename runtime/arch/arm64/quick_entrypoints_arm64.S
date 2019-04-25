@@ -990,7 +990,7 @@ END art_quick_invoke_static_stub
  *                                    Thread *self)                x5
  */
 ENTRY art_quick_osr_stub
-SAVE_SIZE=14*8   // x3, x4, x19, x20, x21, x22, x23, x24, x25, x26, x27, x28, FP, LR saved.
+    SAVE_SIZE=22*8
     SAVE_TWO_REGS_INCREASE_FRAME x3, x4, SAVE_SIZE
     SAVE_TWO_REGS x19, x20, 16
     SAVE_TWO_REGS x21, x22, 32
@@ -998,6 +998,10 @@ SAVE_SIZE=14*8   // x3, x4, x19, x20, x21, x22, x23, x24, x25, x26, x27, x28, FP
     SAVE_TWO_REGS x25, x26, 64
     SAVE_TWO_REGS x27, x28, 80
     SAVE_TWO_REGS xFP, xLR, 96
+    stp d8, d9,   [sp, #112]
+    stp d10, d11, [sp, #128]
+    stp d12, d13, [sp, #144]
+    stp d14, d15, [sp, #160]
 
     mov xSELF, x5                         // Move thread pointer into SELF register.
     REFRESH_MARKING_REGISTER
@@ -1010,6 +1014,10 @@ SAVE_SIZE=14*8   // x3, x4, x19, x20, x21, x22, x23, x24, x25, x26, x27, x28, FP
     DECREASE_FRAME 16
 
     // Restore saved registers including value address and shorty address.
+    ldp d8, d9,   [sp, #112]
+    ldp d10, d11, [sp, #128]
+    ldp d12, d13, [sp, #144]
+    ldp d14, d15, [sp, #160]
     RESTORE_TWO_REGS x19, x20, 16
     RESTORE_TWO_REGS x21, x22, 32
     RESTORE_TWO_REGS x23, x24, 48
