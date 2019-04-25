@@ -19,6 +19,8 @@
 #include <errno.h>
 #include <sys/time.h>
 
+#include <sstream>
+
 #include "android-base/stringprintf.h"
 
 #include "base/atomic.h"
@@ -187,6 +189,7 @@ void BaseMutex::CheckSafeToWait(Thread* self) {
     CHECK(self->GetHeldMutex(level_) == this || level_ == kMonitorLock)
         << "Waiting on unacquired mutex: " << name_;
     bool bad_mutexes_held = false;
+    std::string error_msg;
     for (int i = kLockLevelCount - 1; i >= 0; --i) {
       if (i != level_) {
         BaseMutex* held_mutex = self->GetHeldMutex(static_cast<LockLevel>(i));
@@ -205,22 +208,28 @@ void BaseMutex::CheckSafeToWait(Thread* self) {
             return self->GetUserCodeSuspendCount() != 0;
           };
           if (is_suspending_for_user_code()) {
-            LOG(ERROR) << "Holding \"" << held_mutex->name_ << "\" "
-                      << "(level " << LockLevel(i) << ") while performing wait on "
-                      << "\"" << name_ << "\" (level " << level_ << ") "
-                      << "with SuspendReason::kForUserCode pending suspensions";
+            std::ostringstream oss;
+            oss << "Holding \"" << held_mutex->name_ << "\" "
+                << "(level " << LockLevel(i) << ") while performing wait on "
+                << "\"" << name_ << "\" (level " << level_ << ") "
+                << "with SuspendReason::kForUserCode pending suspensions";
+            error_msg = oss.str();
+            LOG(ERROR) << error_msg;
             bad_mutexes_held = true;
           }
         } else if (held_mutex != nullptr) {
-          LOG(ERROR) << "Holding \"" << held_mutex->name_ << "\" "
-                     << "(level " << LockLevel(i) << ") while performing wait on "
-                     << "\"" << name_ << "\" (level " << level_ << ")";
+          std::ostringstream oss;
+          oss << "Holding \"" << held_mutex->name_ << "\" "
+              << "(level " << LockLevel(i) << ") while performing wait on "
+              << "\"" << name_ << "\" (level " << level_ << ")";
+          error_msg = oss.str();
+          LOG(ERROR) << error_msg;
           bad_mutexes_held = true;
         }
       }
     }
     if (gAborting == 0) {  // Avoid recursive aborts.
-      CHECK(!bad_mutexes_held) << this;
+      CHECK(!bad_mutexes_held) << error_msg;
     }
   }
 }
