@@ -64,97 +64,11 @@ std::ostream& operator<<(std::ostream& os, const Address& addr) {
   }
 }
 
-uint8_t X86_64Assembler::EmitVexByteZero(bool is_two_byte) {
-  uint8_t vex_zero = 0xC0;
-  if (!is_two_byte) {
-    vex_zero |= 0xC4;
-  } else {
-    vex_zero |= 0xC5;
+bool X86_64Assembler::CpuHasAVXorAVX2FeatureFlag() {
+  if (has_AVX_ || has_AVX2_) {
+    return true;
   }
-  return vex_zero;
-}
-
-uint8_t X86_64Assembler::EmitVexByte1(bool r, bool x, bool b, int mmmmm) {
-  // VEX Byte 1
-  uint8_t vex_prefix = 0;
-  if (!r) {
-    vex_prefix |= 0x80;  // VEX.R
-  }
-  if (!x) {
-    vex_prefix |= 0x40;  // VEX.X
-  }
-  if (!b) {
-    vex_prefix |= 0x20;  // VEX.B
-  }
-
-  // VEX.mmmmm
-  switch (mmmmm) {
-  case 1:
-    // implied 0F leading opcode byte
-    vex_prefix |= 0x01;
-    break;
-  case 2:
-    // implied leading 0F 38 opcode byte
-    vex_prefix |= 0x02;
-    break;
-  case 3:
-    // implied leading OF 3A opcode byte
-    vex_prefix |= 0x03;
-    break;
-  default:
-    LOG(FATAL) << "unknown opcode bytes";
-  }
-
-  return vex_prefix;
-}
-
-uint8_t X86_64Assembler::EmitVexByte2(bool w, int l, X86_64ManagedRegister operand, int pp) {
-  // VEX Byte 2
-  uint8_t vex_prefix = 0;
-  if (w) {
-    vex_prefix |= 0x80;
-  }
-  // VEX.vvvv
-  if (operand.IsXmmRegister()) {
-    XmmRegister vvvv = operand.AsXmmRegister();
-    int inverted_reg = 15-static_cast<int>(vvvv.AsFloatRegister());
-    uint8_t reg = static_cast<uint8_t>(inverted_reg);
-    vex_prefix |= ((reg & 0x0F) << 3);
-  } else if (operand.IsCpuRegister()) {
-    CpuRegister vvvv = operand.AsCpuRegister();
-    int inverted_reg = 15 - static_cast<int>(vvvv.AsRegister());
-    uint8_t reg = static_cast<uint8_t>(inverted_reg);
-    vex_prefix |= ((reg & 0x0F) << 3);
-  }
-
-  // VEX.L
-  if (l == 256) {
-    vex_prefix |= 0x04;
-  }
-
-  // VEX.pp
-  switch (pp) {
-  case 0:
-    // SIMD Pefix - None
-    vex_prefix |= 0x00;
-    break;
-  case 1:
-    // SIMD Prefix - 66
-    vex_prefix |= 0x01;
-    break;
-  case 2:
-    // SIMD Prefix - F3
-    vex_prefix |= 0x02;
-    break;
-  case 3:
-    // SIMD Prefix - F2
-    vex_prefix |= 0x03;
-    break;
-  default:
-    LOG(FATAL) << "unknown SIMD Prefix";
-  }
-
-  return vex_prefix;
+  return false;
 }
 
 void X86_64Assembler::call(CpuRegister reg) {
@@ -499,6 +413,10 @@ void X86_64Assembler::leal(CpuRegister dst, const Address& src) {
 
 
 void X86_64Assembler::movaps(XmmRegister dst, XmmRegister src) {
+  if (CpuHasAVXorAVX2FeatureFlag()) {
+    vmovaps(dst, src);
+    return;
+  }
   AssemblerBuffer::EnsureCapacity ensured(&buffer_);
   EmitOptionalRex32(dst, src);
   EmitUint8(0x0F);
@@ -507,7 +425,60 @@ void X86_64Assembler::movaps(XmmRegister dst, XmmRegister src) {
 }
 
 
+/**VEX.128.0F.WIG 28 /r VMOVAPS xmm1, xmm2 */
+void X86_64Assembler::vmovaps(XmmRegister dst, XmmRegister src) {
+  DCHECK(CpuHasAVXorAVX2FeatureFlag());
+  uint8_t byte_zero, byte_one, byte_two;
+  bool is_twobyte_form = true;
+  bool load = dst.NeedsRex();
+  bool store = !load;
+
+  if (src.NeedsRex()&& dst.NeedsRex()) {
+    is_twobyte_form = false;
+  }
+  AssemblerBuffer::EnsureCapacity ensured(&buffer_);
+  // Instruction VEX Prefix
+  byte_zero = EmitVexPrefixByteZero(is_twobyte_form);
+  X86_64ManagedRegister vvvv_reg = ManagedRegister::NoRegister().AsX86_64();
+  if (is_twobyte_form) {
+    bool rex_bit = (load) ? dst.NeedsRex() : src.NeedsRex();
+    byte_one = EmitVexPrefixByteOne(rex_bit,
+                                    vvvv_reg,
+                                    SET_VEX_L_128,
+                                    SET_VEX_PP_NONE);
+  } else {
+    byte_one = EmitVexPrefixByteOne(dst.NeedsRex(),
+                                    /** X= */false,
+                                    src.NeedsRex(),
+                                    SET_VEX_M_0F);
+    byte_two = EmitVexPrefixByteTwo(/**W= */false,
+                                    SET_VEX_L_128,
+                                    SET_VEX_PP_NONE);
+  }
+  EmitUint8(byte_zero);
+  EmitUint8(byte_one);
+  if (!is_twobyte_form) {
+    EmitUint8(byte_two);
+  }
+  // Instruction Opcode
+  if (is_twobyte_form && store) {
+    EmitUint8(0x29);
+  } else {
+    EmitUint8(0x28);
+  }
+  // Instruction Operands
+  if (is_twobyte_form && store) {
+    EmitXmmRegisterOperand(src.LowBits(), dst);
+  } else {
+    EmitXmmRegisterOperand(dst.LowBits(), src);
+  }
+}
+
 void X86_64Assembler::movaps(XmmRegister dst, const Address& src) {
+  if (CpuHasAVXorAVX2FeatureFlag()) {
+    vmovaps(dst, src);
+    return;
+  }
   AssemblerBuffer::EnsureCapacity ensured(&buffer_);
   EmitOptionalRex32(dst, src);
   EmitUint8(0x0F);
@@ -515,8 +486,51 @@ void X86_64Assembler::movaps(XmmRegister dst, const Address& src) {
   EmitOperand(dst.LowBits(), src);
 }
 
+/**VEX.128.0F.WIG 28 /r VMOVAPS xmm1, m128 */
+void X86_64Assembler::vmovaps(XmmRegister dst, const Address& src) {
+  DCHECK(CpuHasAVXorAVX2FeatureFlag());
+  AssemblerBuffer::EnsureCapacity ensured(&buffer_);
+  uint8_t ByteZero, ByteOne, ByteTwo;
+  bool is_twobyte_form = false;
+  // Instruction VEX Prefix
+  uint8_t rex = src.rex();
+  bool Rex_x = rex & GET_REX_X;
+  bool Rex_b = rex & GET_REX_B;
+  if (!Rex_b && !Rex_x) {
+    is_twobyte_form = true;
+  }
+  ByteZero = EmitVexPrefixByteZero(is_twobyte_form);
+  if (is_twobyte_form) {
+    X86_64ManagedRegister vvvv_reg = ManagedRegister::NoRegister().AsX86_64();
+    ByteOne = EmitVexPrefixByteOne(dst.NeedsRex(),
+                                   vvvv_reg,
+                                   SET_VEX_L_128,
+                                   SET_VEX_PP_NONE);
+  } else {
+    ByteOne = EmitVexPrefixByteOne(dst.NeedsRex(),
+                                   Rex_x,
+                                   Rex_b,
+                                   SET_VEX_M_0F);
+    ByteTwo = EmitVexPrefixByteTwo(/**W= */false,
+                                   SET_VEX_L_128,
+                                   SET_VEX_PP_NONE);
+  }
+  EmitUint8(ByteZero);
+  EmitUint8(ByteOne);
+  if (!is_twobyte_form) {
+    EmitUint8(ByteTwo);
+  }
+  // Instruction Opcode
+  EmitUint8(0x28);
+  // Instruction Operands
+  EmitOperand(dst.LowBits(), src);
+}
 
 void X86_64Assembler::movups(XmmRegister dst, const Address& src) {
+  if (CpuHasAVXorAVX2FeatureFlag()) {
+    vmovups(dst, src);
+    return;
+  }
   AssemblerBuffer::EnsureCapacity ensured(&buffer_);
   EmitOptionalRex32(dst, src);
   EmitUint8(0x0F);
@@ -524,8 +538,52 @@ void X86_64Assembler::movups(XmmRegister dst, const Address& src) {
   EmitOperand(dst.LowBits(), src);
 }
 
+/** VEX.128.0F.WIG 10 /r VMOVUPS xmm1, m128 */
+void X86_64Assembler::vmovups(XmmRegister dst, const Address& src) {
+  DCHECK(CpuHasAVXorAVX2FeatureFlag());
+  AssemblerBuffer::EnsureCapacity ensured(&buffer_);
+  uint8_t ByteZero, ByteOne, ByteTwo;
+  bool is_twobyte_form = false;
+  // Instruction VEX Prefix
+  uint8_t rex = src.rex();
+  bool Rex_x = rex & GET_REX_X;
+  bool Rex_b = rex & GET_REX_B;
+  if (!Rex_x && !Rex_b) {
+    is_twobyte_form = true;
+  }
+  ByteZero = EmitVexPrefixByteZero(is_twobyte_form);
+  if (is_twobyte_form) {
+    X86_64ManagedRegister vvvv_reg = ManagedRegister::NoRegister().AsX86_64();
+    ByteOne = EmitVexPrefixByteOne(dst.NeedsRex(),
+                                   vvvv_reg,
+                                   SET_VEX_L_128,
+                                   SET_VEX_PP_NONE);
+  } else {
+    ByteOne = EmitVexPrefixByteOne(dst.NeedsRex(),
+                                   Rex_x,
+                                   Rex_b,
+                                   SET_VEX_M_0F);
+    ByteTwo = EmitVexPrefixByteTwo(/**W= */false,
+                                   SET_VEX_L_128,
+                                   SET_VEX_PP_NONE);
+  }
+  EmitUint8(ByteZero);
+  EmitUint8(ByteOne);
+  if (!is_twobyte_form) {
+    EmitUint8(ByteTwo);
+  }
+  // Instruction Opcode
+  EmitUint8(0x10);
+  // Instruction Operands
+  EmitOperand(dst.LowBits(), src);
+}
+
 
 void X86_64Assembler::movaps(const Address& dst, XmmRegister src) {
+  if (CpuHasAVXorAVX2FeatureFlag()) {
+    vmovaps(dst, src);
+    return;
+  }
   AssemblerBuffer::EnsureCapacity ensured(&buffer_);
   EmitOptionalRex32(src, dst);
   EmitUint8(0x0F);
@@ -533,12 +591,97 @@ void X86_64Assembler::movaps(const Address& dst, XmmRegister src) {
   EmitOperand(src.LowBits(), dst);
 }
 
+/** VEX.128.0F.WIG 29 /r VMOVAPS m128, xmm1 */
+void X86_64Assembler::vmovaps(const Address& dst, XmmRegister src) {
+  DCHECK(CpuHasAVXorAVX2FeatureFlag());
+  AssemblerBuffer::EnsureCapacity ensured(&buffer_);
+  uint8_t ByteZero, ByteOne, ByteTwo;
+  bool is_twobyte_form = false;
+
+  // Instruction VEX Prefix
+  uint8_t rex = dst.rex();
+  bool Rex_x = rex & GET_REX_X;
+  bool Rex_b = rex & GET_REX_B;
+  if (!Rex_b && !Rex_x) {
+    is_twobyte_form = true;
+  }
+  ByteZero = EmitVexPrefixByteZero(is_twobyte_form);
+  if (is_twobyte_form) {
+    X86_64ManagedRegister vvvv_reg = ManagedRegister::NoRegister().AsX86_64();
+    ByteOne = EmitVexPrefixByteOne(src.NeedsRex(),
+                                   vvvv_reg,
+                                   SET_VEX_L_128,
+                                   SET_VEX_PP_NONE);
+  } else {
+    ByteOne = EmitVexPrefixByteOne(src.NeedsRex(),
+                                   Rex_x ,
+                                   Rex_b ,
+                                   SET_VEX_M_0F);
+    ByteTwo = EmitVexPrefixByteTwo(/**W= */false,
+                                   SET_VEX_L_128,
+                                   SET_VEX_PP_NONE);
+  }
+  EmitUint8(ByteZero);
+  EmitUint8(ByteOne);
+  if (!is_twobyte_form) {
+    EmitUint8(ByteTwo);
+  }
+  // Instruction Opcode
+  EmitUint8(0x29);
+  // Instruction Operands
+  EmitOperand(src.LowBits(), dst);
+}
 
 void X86_64Assembler::movups(const Address& dst, XmmRegister src) {
+  if (CpuHasAVXorAVX2FeatureFlag()) {
+    vmovups(dst, src);
+    return;
+  }
   AssemblerBuffer::EnsureCapacity ensured(&buffer_);
   EmitOptionalRex32(src, dst);
   EmitUint8(0x0F);
   EmitUint8(0x11);
+  EmitOperand(src.LowBits(), dst);
+}
+
+/** VEX.128.0F.WIG 11 /r VMOVUPS m128, xmm1 */
+void X86_64Assembler::vmovups(const Address& dst, XmmRegister src) {
+  DCHECK(CpuHasAVXorAVX2FeatureFlag());
+  AssemblerBuffer::EnsureCapacity ensured(&buffer_);
+  uint8_t ByteZero, ByteOne, ByteTwo;
+  bool is_twobyte_form = false;
+
+  // Instruction VEX Prefix
+  uint8_t rex = dst.rex();
+  bool Rex_x = rex & GET_REX_X;
+  bool Rex_b = rex & GET_REX_B;
+  if (!Rex_b && !Rex_x) {
+    is_twobyte_form = true;
+  }
+  ByteZero = EmitVexPrefixByteZero(is_twobyte_form);
+  if (is_twobyte_form) {
+    X86_64ManagedRegister vvvv_reg = ManagedRegister::NoRegister().AsX86_64();
+    ByteOne = EmitVexPrefixByteOne(src.NeedsRex(),
+                                   vvvv_reg,
+                                   SET_VEX_L_128,
+                                   SET_VEX_PP_NONE);
+  } else {
+    ByteOne = EmitVexPrefixByteOne(src.NeedsRex(),
+                                   Rex_x,
+                                   Rex_b,
+                                   SET_VEX_M_0F);
+    ByteTwo = EmitVexPrefixByteTwo(/**W= */false,
+                                   SET_VEX_L_128,
+                                   SET_VEX_PP_NONE);
+  }
+  EmitUint8(ByteZero);
+  EmitUint8(ByteOne);
+  if (!is_twobyte_form) {
+    EmitUint8(ByteTwo);
+  }
+  // Instruction Opcode
+  EmitUint8(0x11);
+  // Instruction Operands
   EmitOperand(src.LowBits(), dst);
 }
 
@@ -754,6 +897,10 @@ void X86_64Assembler::fstps(const Address& dst) {
 
 
 void X86_64Assembler::movapd(XmmRegister dst, XmmRegister src) {
+  if (CpuHasAVXorAVX2FeatureFlag()) {
+    vmovapd(dst, src);
+    return;
+  }
   AssemblerBuffer::EnsureCapacity ensured(&buffer_);
   EmitUint8(0x66);
   EmitOptionalRex32(dst, src);
@@ -762,8 +909,59 @@ void X86_64Assembler::movapd(XmmRegister dst, XmmRegister src) {
   EmitXmmRegisterOperand(dst.LowBits(), src);
 }
 
+/** VEX.128.66.0F.WIG 28 /r VMOVAPD xmm1, xmm2 */
+void X86_64Assembler::vmovapd(XmmRegister dst, XmmRegister src) {
+  DCHECK(CpuHasAVXorAVX2FeatureFlag());
+  AssemblerBuffer::EnsureCapacity ensured(&buffer_);
+  uint8_t ByteZero, ByteOne, ByteTwo;
+  bool is_twobyte_form = true;
+
+  if (src.NeedsRex() && dst.NeedsRex()) {
+    is_twobyte_form = false;
+  }
+  // Instruction VEX Prefix
+  ByteZero = EmitVexPrefixByteZero(is_twobyte_form);
+  bool load = dst.NeedsRex();
+  if (is_twobyte_form) {
+    X86_64ManagedRegister vvvv_reg = ManagedRegister::NoRegister().AsX86_64();
+    bool rex_bit = load ? dst.NeedsRex() : src.NeedsRex();
+    ByteOne = EmitVexPrefixByteOne(rex_bit,
+                                   vvvv_reg,
+                                   SET_VEX_L_128,
+                                   SET_VEX_PP_66);
+  } else {
+    ByteOne = EmitVexPrefixByteOne(dst.NeedsRex(),
+                                   /**X = */false ,
+                                   src.NeedsRex(),
+                                   SET_VEX_M_0F);
+    ByteTwo = EmitVexPrefixByteTwo(/**W= */false,
+                                   SET_VEX_L_128,
+                                   SET_VEX_PP_66);
+  }
+  EmitUint8(ByteZero);
+  EmitUint8(ByteOne);
+  if (!is_twobyte_form) {
+    EmitUint8(ByteTwo);
+  }
+  // Instruction Opcode
+  if (is_twobyte_form && !load) {
+    EmitUint8(0x29);
+  } else {
+    EmitUint8(0x28);
+  }
+  // Instruction Operands
+  if (is_twobyte_form && !load) {
+    EmitXmmRegisterOperand(src.LowBits(), dst);
+  } else {
+    EmitXmmRegisterOperand(dst.LowBits(), src);
+  }
+}
 
 void X86_64Assembler::movapd(XmmRegister dst, const Address& src) {
+  if (CpuHasAVXorAVX2FeatureFlag()) {
+    vmovapd(dst, src);
+    return;
+  }
   AssemblerBuffer::EnsureCapacity ensured(&buffer_);
   EmitUint8(0x66);
   EmitOptionalRex32(dst, src);
@@ -772,8 +970,52 @@ void X86_64Assembler::movapd(XmmRegister dst, const Address& src) {
   EmitOperand(dst.LowBits(), src);
 }
 
+/** VEX.128.66.0F.WIG 28 /r VMOVAPD xmm1, m128 */
+void X86_64Assembler::vmovapd(XmmRegister dst, const Address& src) {
+  DCHECK(CpuHasAVXorAVX2FeatureFlag());
+  AssemblerBuffer::EnsureCapacity ensured(&buffer_);
+  uint8_t ByteZero, ByteOne, ByteTwo;
+  bool is_twobyte_form = false;
+
+  // Instruction VEX Prefix
+  uint8_t rex = src.rex();
+  bool Rex_x = rex & GET_REX_X;
+  bool Rex_b = rex & GET_REX_B;
+  if (!Rex_b && !Rex_x) {
+    is_twobyte_form = true;
+  }
+  ByteZero = EmitVexPrefixByteZero(is_twobyte_form);
+  if (is_twobyte_form) {
+    X86_64ManagedRegister vvvv_reg = ManagedRegister::NoRegister().AsX86_64();
+    ByteOne = EmitVexPrefixByteOne(dst.NeedsRex(),
+                                   vvvv_reg,
+                                   SET_VEX_L_128,
+                                   SET_VEX_PP_66);
+  } else {
+    ByteOne = EmitVexPrefixByteOne(dst.NeedsRex(),
+                                   Rex_x,
+                                   Rex_b,
+                                   SET_VEX_M_0F);
+    ByteTwo = EmitVexPrefixByteTwo(/**W= */false,
+                                   SET_VEX_L_128,
+                                   SET_VEX_PP_66);
+  }
+  EmitUint8(ByteZero);
+  EmitUint8(ByteOne);
+  if (!is_twobyte_form) {
+    EmitUint8(ByteTwo);
+  }
+  // Instruction Opcode
+  EmitUint8(0x28);
+  // Instruction Operands
+  EmitOperand(dst.LowBits(), src);
+}
 
 void X86_64Assembler::movupd(XmmRegister dst, const Address& src) {
+  if (CpuHasAVXorAVX2FeatureFlag()) {
+    vmovupd(dst, src);
+    return;
+  }
   AssemblerBuffer::EnsureCapacity ensured(&buffer_);
   EmitUint8(0x66);
   EmitOptionalRex32(dst, src);
@@ -782,8 +1024,51 @@ void X86_64Assembler::movupd(XmmRegister dst, const Address& src) {
   EmitOperand(dst.LowBits(), src);
 }
 
+/** VEX.128.66.0F.WIG 10 /r VMOVUPD xmm1, m128 */
+void X86_64Assembler::vmovupd(XmmRegister dst, const Address& src) {
+  DCHECK(CpuHasAVXorAVX2FeatureFlag());
+  AssemblerBuffer::EnsureCapacity ensured(&buffer_);
+  bool is_twobyte_form = false;
+  uint8_t ByteZero, ByteOne, ByteTwo;
+
+  // Instruction VEX Prefix
+  uint8_t rex = src.rex();
+  bool Rex_x = rex & GET_REX_X;
+  bool Rex_b = rex & GET_REX_B;
+  if (!Rex_b && !Rex_x) {
+    is_twobyte_form = true;
+  }
+  ByteZero = EmitVexPrefixByteZero(is_twobyte_form);
+  if (is_twobyte_form) {
+    X86_64ManagedRegister vvvv_reg = ManagedRegister::NoRegister().AsX86_64();
+    ByteOne = EmitVexPrefixByteOne(dst.NeedsRex(),
+                                   vvvv_reg,
+                                   SET_VEX_L_128,
+                                   SET_VEX_PP_66);
+  } else {
+    ByteOne = EmitVexPrefixByteOne(dst.NeedsRex(),
+                                   Rex_x,
+                                   Rex_b,
+                                   SET_VEX_M_0F);
+    ByteTwo = EmitVexPrefixByteTwo(/**W= */false,
+                                   SET_VEX_L_128,
+                                   SET_VEX_PP_66);
+  }
+  EmitUint8(ByteZero);
+  EmitUint8(ByteOne);
+  if (!is_twobyte_form)
+  EmitUint8(ByteTwo);
+  // Instruction Opcode
+  EmitUint8(0x10);
+  // Instruction Operands
+  EmitOperand(dst.LowBits(), src);
+}
 
 void X86_64Assembler::movapd(const Address& dst, XmmRegister src) {
+  if (CpuHasAVXorAVX2FeatureFlag()) {
+    vmovapd(dst, src);
+    return;
+  }
   AssemblerBuffer::EnsureCapacity ensured(&buffer_);
   EmitUint8(0x66);
   EmitOptionalRex32(src, dst);
@@ -792,13 +1077,97 @@ void X86_64Assembler::movapd(const Address& dst, XmmRegister src) {
   EmitOperand(src.LowBits(), dst);
 }
 
+/** VEX.128.66.0F.WIG 29 /r VMOVAPD m128, xmm1 */
+void X86_64Assembler::vmovapd(const Address& dst, XmmRegister src) {
+  DCHECK(CpuHasAVXorAVX2FeatureFlag());
+  AssemblerBuffer::EnsureCapacity ensured(&buffer_);
+  bool is_twobyte_form = false;
+  uint8_t ByteZero, ByteOne, ByteTwo;
+  // Instruction VEX Prefix
+  uint8_t rex = dst.rex();
+  bool Rex_x = rex & GET_REX_X;
+  bool Rex_b = rex & GET_REX_B;
+  if (!Rex_x && !Rex_b) {
+    is_twobyte_form = true;
+  }
+  ByteZero = EmitVexPrefixByteZero(is_twobyte_form);
+  if (is_twobyte_form) {
+    X86_64ManagedRegister vvvv_reg = ManagedRegister::NoRegister().AsX86_64();
+    ByteOne = EmitVexPrefixByteOne(src.NeedsRex(),
+                                   vvvv_reg,
+                                   SET_VEX_L_128,
+                                   SET_VEX_PP_66);
+  } else {
+    ByteOne = EmitVexPrefixByteOne(src.NeedsRex(),
+                                   Rex_x,
+                                   Rex_b,
+                                   SET_VEX_M_0F);
+    ByteTwo = EmitVexPrefixByteTwo(/**W= */false,
+                                   SET_VEX_L_128,
+                                   SET_VEX_PP_66);
+  }
+  EmitUint8(ByteZero);
+  EmitUint8(ByteOne);
+  if (!is_twobyte_form) {
+    EmitUint8(ByteTwo);
+  }
+  // Instruction Opcode
+  EmitUint8(0x29);
+  // Instruction Operands
+  EmitOperand(src.LowBits(), dst);
+}
 
 void X86_64Assembler::movupd(const Address& dst, XmmRegister src) {
+  if (CpuHasAVXorAVX2FeatureFlag()) {
+    vmovupd(dst, src);
+    return;
+  }
   AssemblerBuffer::EnsureCapacity ensured(&buffer_);
   EmitUint8(0x66);
   EmitOptionalRex32(src, dst);
   EmitUint8(0x0F);
   EmitUint8(0x11);
+  EmitOperand(src.LowBits(), dst);
+}
+
+/** VEX.128.66.0F.WIG 11 /r VMOVUPD m128, xmm1 */
+void X86_64Assembler::vmovupd(const Address& dst, XmmRegister src) {
+  DCHECK(CpuHasAVXorAVX2FeatureFlag());
+  AssemblerBuffer::EnsureCapacity ensured(&buffer_);
+  bool is_twobyte_form = false;
+  uint8_t ByteZero, ByteOne, ByteTwo;
+
+  // Instruction VEX Prefix
+  uint8_t rex = dst.rex();
+  bool Rex_x = rex & GET_REX_X;
+  bool Rex_b = rex & GET_REX_B;
+  if (!Rex_x && !Rex_b) {
+    is_twobyte_form = true;
+  }
+  ByteZero = EmitVexPrefixByteZero(is_twobyte_form);
+  if (is_twobyte_form) {
+    X86_64ManagedRegister vvvv_reg = ManagedRegister::NoRegister().AsX86_64();
+    ByteOne = EmitVexPrefixByteOne(src.NeedsRex(),
+                                   vvvv_reg,
+                                   SET_VEX_L_128,
+                                   SET_VEX_PP_66);
+  } else {
+    ByteOne = EmitVexPrefixByteOne(src.NeedsRex(),
+                                   Rex_x,
+                                   Rex_b,
+                                   SET_VEX_M_0F);
+    ByteTwo = EmitVexPrefixByteTwo(/**W= */false,
+                                   SET_VEX_L_128,
+                                   SET_VEX_PP_66);
+  }
+  EmitUint8(ByteZero);
+  EmitUint8(ByteOne);
+  if (!is_twobyte_form) {
+    EmitUint8(ByteTwo);
+  }
+  // Instruction Opcode
+  EmitUint8(0x11);
+  // Instruction Operands
   EmitOperand(src.LowBits(), dst);
 }
 
@@ -954,6 +1323,10 @@ void X86_64Assembler::divpd(XmmRegister dst, XmmRegister src) {
 
 
 void X86_64Assembler::movdqa(XmmRegister dst, XmmRegister src) {
+  if (CpuHasAVXorAVX2FeatureFlag()) {
+    vmovdqa(dst, src);
+    return;
+  }
   AssemblerBuffer::EnsureCapacity ensured(&buffer_);
   EmitUint8(0x66);
   EmitOptionalRex32(dst, src);
@@ -962,8 +1335,59 @@ void X86_64Assembler::movdqa(XmmRegister dst, XmmRegister src) {
   EmitXmmRegisterOperand(dst.LowBits(), src);
 }
 
+/** VEX.128.66.0F.WIG 6F /r VMOVDQA xmm1, xmm2 */
+void X86_64Assembler::vmovdqa(XmmRegister dst, XmmRegister src) {
+  DCHECK(CpuHasAVXorAVX2FeatureFlag());
+  AssemblerBuffer::EnsureCapacity ensured(&buffer_);
+  uint8_t ByteZero, ByteOne, ByteTwo;
+  bool is_twobyte_form = true;
+
+  // Instruction VEX Prefix
+  if (src.NeedsRex() && dst.NeedsRex()) {
+    is_twobyte_form = false;
+  }
+  bool load = dst.NeedsRex();
+  ByteZero = EmitVexPrefixByteZero(is_twobyte_form);
+  if (is_twobyte_form) {
+    X86_64ManagedRegister vvvv_reg = ManagedRegister::NoRegister().AsX86_64();
+    bool rex_bit = load ? dst.NeedsRex() : src.NeedsRex();
+    ByteOne = EmitVexPrefixByteOne(rex_bit,
+                                   vvvv_reg,
+                                   SET_VEX_L_128,
+                                   SET_VEX_PP_66);
+  } else {
+    ByteOne = EmitVexPrefixByteOne(dst.NeedsRex(),
+                                   /**X = */false,
+                                   src.NeedsRex(),
+                                   SET_VEX_M_0F);
+    ByteTwo = EmitVexPrefixByteTwo(/**W= */false,
+                                   SET_VEX_L_128,
+                                   SET_VEX_PP_66);
+  }
+  EmitUint8(ByteZero);
+  EmitUint8(ByteOne);
+  if (!is_twobyte_form) {
+    EmitUint8(ByteTwo);
+  }
+  // Instruction Opcode
+  if (is_twobyte_form && !load) {
+    EmitUint8(0x7F);
+  } else {
+    EmitUint8(0x6F);
+  }
+  // Instruction Operands
+  if (is_twobyte_form && !load) {
+    EmitXmmRegisterOperand(src.LowBits(), dst);
+  } else {
+    EmitXmmRegisterOperand(dst.LowBits(), src);
+  }
+}
 
 void X86_64Assembler::movdqa(XmmRegister dst, const Address& src) {
+  if (CpuHasAVXorAVX2FeatureFlag()) {
+    vmovdqa(dst, src);
+    return;
+  }
   AssemblerBuffer::EnsureCapacity ensured(&buffer_);
   EmitUint8(0x66);
   EmitOptionalRex32(dst, src);
@@ -972,8 +1396,52 @@ void X86_64Assembler::movdqa(XmmRegister dst, const Address& src) {
   EmitOperand(dst.LowBits(), src);
 }
 
+/** VEX.128.66.0F.WIG 6F /r VMOVDQA xmm1, m128 */
+void X86_64Assembler::vmovdqa(XmmRegister dst, const Address& src) {
+  DCHECK(CpuHasAVXorAVX2FeatureFlag());
+  AssemblerBuffer::EnsureCapacity ensured(&buffer_);
+  uint8_t  ByteZero, ByteOne, ByteTwo;
+  bool is_twobyte_form = false;
+
+  // Instruction VEX Prefix
+  uint8_t rex = src.rex();
+  bool Rex_x = rex & GET_REX_X;
+  bool Rex_b = rex & GET_REX_B;
+  if (!Rex_x && !Rex_b) {
+    is_twobyte_form = true;
+  }
+  ByteZero = EmitVexPrefixByteZero(is_twobyte_form);
+  if (is_twobyte_form) {
+    X86_64ManagedRegister vvvv_reg = ManagedRegister::NoRegister().AsX86_64();
+    ByteOne = EmitVexPrefixByteOne(dst.NeedsRex(),
+                                   vvvv_reg,
+                                   SET_VEX_L_128,
+                                   SET_VEX_PP_66);
+  } else {
+    ByteOne = EmitVexPrefixByteOne(dst.NeedsRex(),
+                                   Rex_x,
+                                   Rex_b,
+                                   SET_VEX_M_0F);
+    ByteTwo = EmitVexPrefixByteTwo(/**W= */false,
+                                   SET_VEX_L_128,
+                                   SET_VEX_PP_66);
+  }
+  EmitUint8(ByteZero);
+  EmitUint8(ByteOne);
+  if (!is_twobyte_form) {
+    EmitUint8(ByteTwo);
+  }
+  // Instruction Opcode
+  EmitUint8(0x6F);
+  // Instruction Operands
+  EmitOperand(dst.LowBits(), src);
+}
 
 void X86_64Assembler::movdqu(XmmRegister dst, const Address& src) {
+  if (CpuHasAVXorAVX2FeatureFlag()) {
+    vmovdqu(dst, src);
+    return;
+  }
   AssemblerBuffer::EnsureCapacity ensured(&buffer_);
   EmitUint8(0xF3);
   EmitOptionalRex32(dst, src);
@@ -982,8 +1450,53 @@ void X86_64Assembler::movdqu(XmmRegister dst, const Address& src) {
   EmitOperand(dst.LowBits(), src);
 }
 
+/** VEX.128.F3.0F.WIG 6F /r VMOVDQU xmm1, m128
+Load Unaligned */
+void X86_64Assembler::vmovdqu(XmmRegister dst, const Address& src) {
+  DCHECK(CpuHasAVXorAVX2FeatureFlag());
+  AssemblerBuffer::EnsureCapacity ensured(&buffer_);
+  uint8_t ByteZero, ByteOne, ByteTwo;
+  bool is_twobyte_form = false;
+
+  // Instruction VEX Prefix
+  uint8_t rex = src.rex();
+  bool Rex_x = rex & GET_REX_X;
+  bool Rex_b = rex & GET_REX_B;
+  if (!Rex_x && !Rex_b) {
+    is_twobyte_form = true;
+  }
+  ByteZero = EmitVexPrefixByteZero(is_twobyte_form);
+  if (is_twobyte_form) {
+    X86_64ManagedRegister vvvv_reg = ManagedRegister::NoRegister().AsX86_64();
+    ByteOne = EmitVexPrefixByteOne(dst.NeedsRex(),
+                                   vvvv_reg,
+                                   SET_VEX_L_128,
+                                   SET_VEX_PP_F3);
+  } else {
+    ByteOne = EmitVexPrefixByteOne(dst.NeedsRex(),
+                                   Rex_x,
+                                   Rex_b,
+                                   SET_VEX_M_0F);
+    ByteTwo = EmitVexPrefixByteTwo(/**W= */false,
+                                   SET_VEX_L_128,
+                                   SET_VEX_PP_F3);
+  }
+  EmitUint8(ByteZero);
+  EmitUint8(ByteOne);
+  if (!is_twobyte_form) {
+    EmitUint8(ByteTwo);
+  }
+  // Instruction Opcode
+  EmitUint8(0x6F);
+  // Instruction Operands
+  EmitOperand(dst.LowBits(), src);
+}
 
 void X86_64Assembler::movdqa(const Address& dst, XmmRegister src) {
+  if (CpuHasAVXorAVX2FeatureFlag()) {
+    vmovdqa(dst, src);
+    return;
+  }
   AssemblerBuffer::EnsureCapacity ensured(&buffer_);
   EmitUint8(0x66);
   EmitOptionalRex32(src, dst);
@@ -992,8 +1505,51 @@ void X86_64Assembler::movdqa(const Address& dst, XmmRegister src) {
   EmitOperand(src.LowBits(), dst);
 }
 
+/** VEX.128.66.0F.WIG 7F /r VMOVDQA m128, xmm1 */
+void X86_64Assembler::vmovdqa(const Address& dst, XmmRegister src) {
+  DCHECK(CpuHasAVXorAVX2FeatureFlag());
+  AssemblerBuffer::EnsureCapacity ensured(&buffer_);
+  bool is_twobyte_form = false;
+  uint8_t ByteZero, ByteOne, ByteTwo;
+  // Instruction VEX Prefix
+  uint8_t rex = dst.rex();
+  bool Rex_x = rex & GET_REX_X;
+  bool Rex_b = rex & GET_REX_B;
+  if (!Rex_x && !Rex_b) {
+    is_twobyte_form = true;
+  }
+  ByteZero = EmitVexPrefixByteZero(is_twobyte_form);
+  if (is_twobyte_form) {
+    X86_64ManagedRegister vvvv_reg = ManagedRegister::NoRegister().AsX86_64();
+    ByteOne = EmitVexPrefixByteOne(src.NeedsRex(),
+                                   vvvv_reg,
+                                   SET_VEX_L_128,
+                                   SET_VEX_PP_66);
+  } else {
+    ByteOne = EmitVexPrefixByteOne(src.NeedsRex(),
+                                   Rex_x,
+                                   Rex_b,
+                                   SET_VEX_M_0F);
+    ByteTwo = EmitVexPrefixByteTwo(/**W= */false,
+                                   SET_VEX_L_128,
+                                   SET_VEX_PP_66);
+  }
+  EmitUint8(ByteZero);
+  EmitUint8(ByteOne);
+  if (!is_twobyte_form) {
+    EmitUint8(ByteTwo);
+  }
+  // Instruction Opcode
+  EmitUint8(0x7F);
+  // Instruction Operands
+  EmitOperand(src.LowBits(), dst);
+}
 
 void X86_64Assembler::movdqu(const Address& dst, XmmRegister src) {
+  if (CpuHasAVXorAVX2FeatureFlag()) {
+    vmovdqu(dst, src);
+    return;
+  }
   AssemblerBuffer::EnsureCapacity ensured(&buffer_);
   EmitUint8(0xF3);
   EmitOptionalRex32(src, dst);
@@ -1002,6 +1558,46 @@ void X86_64Assembler::movdqu(const Address& dst, XmmRegister src) {
   EmitOperand(src.LowBits(), dst);
 }
 
+/** VEX.128.F3.0F.WIG 7F /r VMOVDQU m128, xmm1 */
+void X86_64Assembler::vmovdqu(const Address& dst, XmmRegister src) {
+  DCHECK(CpuHasAVXorAVX2FeatureFlag());
+  AssemblerBuffer::EnsureCapacity ensured(&buffer_);
+  uint8_t ByteZero, ByteOne, ByteTwo;
+  bool is_twobyte_form = false;
+
+  // Instruction VEX Prefix
+  uint8_t rex = dst.rex();
+  bool Rex_x = rex & GET_REX_X;
+  bool Rex_b = rex & GET_REX_B;
+  if (!Rex_b && !Rex_x) {
+    is_twobyte_form = true;
+  }
+  ByteZero = EmitVexPrefixByteZero(is_twobyte_form);
+  if (is_twobyte_form) {
+    X86_64ManagedRegister vvvv_reg = ManagedRegister::NoRegister().AsX86_64();
+    ByteOne = EmitVexPrefixByteOne(src.NeedsRex(),
+                                   vvvv_reg,
+                                   SET_VEX_L_128,
+                                   SET_VEX_PP_F3);
+  } else {
+    ByteOne = EmitVexPrefixByteOne(src.NeedsRex(),
+                                   Rex_x,
+                                   Rex_b,
+                                   SET_VEX_M_0F);
+    ByteTwo = EmitVexPrefixByteTwo(/**W= */false,
+                                   SET_VEX_L_128,
+                                   SET_VEX_PP_F3);
+  }
+  EmitUint8(ByteZero);
+  EmitUint8(ByteOne);
+  if (!is_twobyte_form) {
+    EmitUint8(ByteTwo);
+  }
+  // Instruction Opcode
+  EmitUint8(0x7F);
+  // Instruction Operands
+  EmitOperand(src.LowBits(), dst);
+}
 
 void X86_64Assembler::paddb(XmmRegister dst, XmmRegister src) {
   AssemblerBuffer::EnsureCapacity ensured(&buffer_);
@@ -1578,15 +2174,15 @@ void X86_64Assembler::pand(XmmRegister dst, XmmRegister src) {
 
 void X86_64Assembler::andn(CpuRegister dst, CpuRegister src1, CpuRegister src2) {
   AssemblerBuffer::EnsureCapacity ensured(&buffer_);
-  uint8_t byte_zero = EmitVexByteZero(/*is_two_byte=*/ false);
-  uint8_t byte_one = EmitVexByte1(dst.NeedsRex(),
-                                  /*x=*/ false,
-                                  src2.NeedsRex(),
-                                  /*mmmmm=*/ 2);
-  uint8_t byte_two = EmitVexByte2(/*w=*/ true,
-                                  /*l=*/ 128,
-                                  X86_64ManagedRegister::FromCpuRegister(src1.AsRegister()),
-                                  /*pp=*/ 0);
+  uint8_t byte_zero = EmitVexPrefixByteZero(/**is_two_byte= */false);
+  uint8_t byte_one = EmitVexPrefixByteOne(dst.NeedsRex(),
+                                          /**X = */false,
+                                          src2.NeedsRex(),
+                                          SET_VEX_M_0F_38);
+  uint8_t byte_two = EmitVexPrefixByteTwo(/**W= */true,
+                                          X86_64ManagedRegister::FromCpuRegister(src1.AsRegister()),
+                                          SET_VEX_L_128,
+                                          SET_VEX_PP_NONE);
   EmitUint8(byte_zero);
   EmitUint8(byte_one);
   EmitUint8(byte_two);
@@ -3374,15 +3970,15 @@ void X86_64Assembler::setcc(Condition condition, CpuRegister dst) {
 
 void X86_64Assembler::blsi(CpuRegister dst, CpuRegister src) {
   AssemblerBuffer::EnsureCapacity ensured(&buffer_);
-  uint8_t byte_zero = EmitVexByteZero(/*is_two_byte=*/ false);
-  uint8_t byte_one = EmitVexByte1(/*r=*/ false,
-                                  /*x=*/ false,
-                                  src.NeedsRex(),
-                                  /*mmmmm=*/ 2);
-  uint8_t byte_two = EmitVexByte2(/*w=*/ true,
-                                  /*l=*/ 128,
-                                  X86_64ManagedRegister::FromCpuRegister(dst.AsRegister()),
-                                  /*pp=*/ 0);
+  uint8_t byte_zero = EmitVexPrefixByteZero(/**is_two_byte= */false);
+  uint8_t byte_one = EmitVexPrefixByteOne(/**R = */false,
+                                          /**X = */false,
+                                          src.NeedsRex(),
+                                          SET_VEX_M_0F_38);
+  uint8_t byte_two = EmitVexPrefixByteTwo(/**W= */true,
+                                          X86_64ManagedRegister::FromCpuRegister(dst.AsRegister()),
+                                          SET_VEX_L_128,
+                                          SET_VEX_PP_NONE);
   EmitUint8(byte_zero);
   EmitUint8(byte_one);
   EmitUint8(byte_two);
@@ -3392,15 +3988,15 @@ void X86_64Assembler::blsi(CpuRegister dst, CpuRegister src) {
 
 void X86_64Assembler::blsmsk(CpuRegister dst, CpuRegister src) {
   AssemblerBuffer::EnsureCapacity ensured(&buffer_);
-  uint8_t byte_zero = EmitVexByteZero(/*is_two_byte=*/ false);
-  uint8_t byte_one = EmitVexByte1(/*r=*/ false,
-                                  /*x=*/ false,
-                                  src.NeedsRex(),
-                                  /*mmmmm=*/ 2);
-  uint8_t byte_two = EmitVexByte2(/*w=*/ true,
-                                  /*l=*/ 128,
-                                  X86_64ManagedRegister::FromCpuRegister(dst.AsRegister()),
-                                  /*pp=*/ 0);
+  uint8_t byte_zero = EmitVexPrefixByteZero(/**is_two_byte= */false);
+  uint8_t byte_one = EmitVexPrefixByteOne(/**R = */false,
+                                          /**X = */false,
+                                          src.NeedsRex(),
+                                          SET_VEX_M_0F_38);
+  uint8_t byte_two = EmitVexPrefixByteTwo(/**W= */true,
+                                          X86_64ManagedRegister::FromCpuRegister(dst.AsRegister()),
+                                          SET_VEX_L_128,
+                                          SET_VEX_PP_NONE);
   EmitUint8(byte_zero);
   EmitUint8(byte_one);
   EmitUint8(byte_two);
@@ -3410,15 +4006,15 @@ void X86_64Assembler::blsmsk(CpuRegister dst, CpuRegister src) {
 
 void X86_64Assembler::blsr(CpuRegister dst, CpuRegister src) {
   AssemblerBuffer::EnsureCapacity ensured(&buffer_);
-  uint8_t byte_zero = EmitVexByteZero(/*is_two_byte=*/ false);
-  uint8_t byte_one = EmitVexByte1(/*r=*/ false,
-                                  /*x=*/ false,
-                                  src.NeedsRex(),
-                                  /*mmmmm=*/ 2);
-  uint8_t byte_two = EmitVexByte2(/*w=*/ true,
-                                  /*l=*/ 128,
-                                  X86_64ManagedRegister::FromCpuRegister(dst.AsRegister()),
-                                  /*pp=*/ 0);
+  uint8_t byte_zero = EmitVexPrefixByteZero(/**is_two_byte= */false);
+  uint8_t byte_one = EmitVexPrefixByteOne(/**R = */false,
+                                          /**X = */false,
+                                          src.NeedsRex(),
+                                          SET_VEX_M_0F_38);
+  uint8_t byte_two = EmitVexPrefixByteTwo(/**W= */true,
+                                          X86_64ManagedRegister::FromCpuRegister(dst.AsRegister()),
+                                          SET_VEX_L_128,
+                                          SET_VEX_PP_NONE);
   EmitUint8(byte_zero);
   EmitUint8(byte_one);
   EmitUint8(byte_two);
@@ -3935,6 +4531,134 @@ size_t ConstantArea::AddDouble(double v) {
 size_t ConstantArea::AddFloat(float v) {
   // Treat the value as a 32-bit integer value.
   return AddInt32(bit_cast<int32_t, float>(v));
+}
+
+uint8_t X86_64Assembler::EmitVexPrefixByteZero(bool is_twobyte_form) {
+  // Vex Byte 0,
+  // Bits [7:0] must contain the value 11000101b (0xC5) for 2-byte Vex
+  // Bits [7:0] must contain the value 11000100b (0xC4) for 3-byte Vex
+  uint8_t vex_prefix = 0xC0;
+  if (is_twobyte_form) {
+    vex_prefix |= TWO_BYTE_VEX;  // 2-Byte Vex
+  } else {
+    vex_prefix |= THREE_BYTE_VEX;  // 3-Byte Vex
+  }
+  return vex_prefix;
+}
+
+uint8_t X86_64Assembler::EmitVexPrefixByteOne(bool R, bool X, bool B, int SET_VEX_M) {
+  // Vex Byte 1,
+  uint8_t vex_prefix = VEX_INIT;
+  /** Bit[7] This bit needs to be set to '1'
+  otherwise the instruction is LES or LDS */
+  if (!R) {
+    // R .
+    vex_prefix |= SET_VEX_R;
+  }
+  /** Bit[6] This bit needs to be set to '1'
+  otherwise the instruction is LES or LDS */
+  if (!X) {
+    // X .
+    vex_prefix |= SET_VEX_X;
+  }
+  /** Bit[5] This bit needs to be set to '1' */
+  if (!B) {
+    // B .
+    vex_prefix |= SET_VEX_B;
+  }
+  /** Bits[4:0], Based on the instruction documentaion */
+  vex_prefix |= SET_VEX_M;
+  return vex_prefix;
+}
+
+uint8_t X86_64Assembler::EmitVexPrefixByteOne(bool R,
+                                              X86_64ManagedRegister operand,
+                                              int SET_VEX_L,
+                                              int SET_VEX_PP) {
+  // Vex Byte 1,
+  uint8_t vex_prefix = VEX_INIT;
+  /** Bit[7] This bit needs to be set to '1'
+  otherwise the instruction is LES or LDS */
+  if (!R) {
+    // R .
+    vex_prefix |= SET_VEX_R;
+  }
+  /**Bits[6:3] - 'vvvv' the source or dest register specifier */
+  if (operand.IsNoRegister()) {
+    vex_prefix |= 0x78;
+  } else if (operand.IsXmmRegister()) {
+    XmmRegister vvvv = operand.AsXmmRegister();
+    int inverted_reg = 15 - static_cast<int>(vvvv.AsFloatRegister());
+    uint8_t reg = static_cast<uint8_t>(inverted_reg);
+    vex_prefix |= ((reg & 0x0F) << 3);
+  } else if (operand.IsCpuRegister()) {
+    CpuRegister vvvv = operand.AsCpuRegister();
+    int inverted_reg = 15 - static_cast<int>(vvvv.AsRegister());
+    uint8_t reg = static_cast<uint8_t>(inverted_reg);
+    vex_prefix |= ((reg & 0x0F) << 3);
+  }
+  /** Bit[2] - "L" If VEX.L = 1 indicates 256-bit vector operation ,
+  VEX.L = 0 indicates 128 bit vector operation */
+  vex_prefix |= SET_VEX_L;
+  // Bits[1:0] -  "pp"
+  vex_prefix |= SET_VEX_PP;
+  return vex_prefix;
+}
+
+uint8_t X86_64Assembler::EmitVexPrefixByteTwo(bool W,
+                                              X86_64ManagedRegister operand,
+                                              int SET_VEX_L,
+                                              int SET_VEX_PP) {
+  // Vex Byte 2,
+  uint8_t vex_prefix = VEX_INIT;
+
+  /** Bit[7] This bits needs to be set to '1' with default value.
+  When using C4H form of VEX prefix, REX.W value is ignored */
+  if (W) {
+    vex_prefix |= SET_VEX_W;
+  }
+  // Bits[6:3] - 'vvvv' the source or dest register specifier
+  if (operand.IsXmmRegister()) {
+    XmmRegister vvvv = operand.AsXmmRegister();
+    int inverted_reg = 15 - static_cast<int>(vvvv.AsFloatRegister());
+    uint8_t reg = static_cast<uint8_t>(inverted_reg);
+    vex_prefix |= ((reg & 0x0F) << 3);
+  } else if (operand.IsCpuRegister()) {
+    CpuRegister vvvv = operand.AsCpuRegister();
+    int inverted_reg = 15 - static_cast<int>(vvvv.AsRegister());
+    uint8_t reg = static_cast<uint8_t>(inverted_reg);
+    vex_prefix |= ((reg & 0x0F) << 3);
+  }
+  /** Bit[2] - "L" If VEX.L = 1 indicates 256-bit vector operation ,
+  VEX.L = 0 indicates 128 bit vector operation */
+  vex_prefix |= SET_VEX_L;
+  // Bits[1:0] -  "pp"
+  vex_prefix |= SET_VEX_PP;
+  return vex_prefix;
+}
+
+uint8_t X86_64Assembler::EmitVexPrefixByteTwo(bool W,
+                                              int SET_VEX_L,
+                                              int SET_VEX_PP) {
+  // Vex Byte 2,
+  uint8_t vex_prefix = VEX_INIT;
+
+  /** Bit[7] This bits needs to be set to '1' with default value.
+  When using C4H form of VEX prefix, REX.W value is ignored */
+  if (W) {
+    vex_prefix |= SET_VEX_W;
+  }
+  /** Bits[6:3] - 'vvvv' the source or dest register specifier */
+  vex_prefix |= (0x0F << 3);
+  /** Bit[2] - "L" If VEX.L = 1 indicates 256-bit vector operation ,
+  VEX.L = 0 indicates 128 bit vector operation */
+  vex_prefix |= SET_VEX_L;
+
+  // Bits[1:0] -  "pp"
+  if (SET_VEX_PP != SET_VEX_PP_NONE) {
+    vex_prefix |= SET_VEX_PP;
+  }
+  return vex_prefix;
 }
 
 }  // namespace x86_64

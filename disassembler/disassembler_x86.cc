@@ -24,6 +24,16 @@
 #include "android-base/logging.h"
 #include "android-base/stringprintf.h"
 
+#define TWO_BYTE_VEX    0xC5
+#define THREE_BYTE_VEX  0xC4
+#define VEX_M_0F        0x01
+#define VEX_M_0F_38     0x02
+#define VEX_M_0F_3A     0x03
+#define VEX_PP_NONE     0x00
+#define VEX_PP_66       0x01
+#define VEX_PP_F3       0x02
+#define VEX_PP_F2       0x03
+
 using android::base::StringPrintf;
 
 namespace art {
@@ -316,9 +326,11 @@ size_t DisassemblerX86::DumpInstruction(std::ostream& os, const uint8_t* instr) 
   if (rex != 0) {
     instr++;
   }
+
   const char** modrm_opcodes = nullptr;
   bool has_modrm = false;
   bool reg_is_opcode = false;
+
   size_t immediate_bytes = 0;
   size_t branch_bytes = 0;
   std::string opcode_tmp;    // Storage to keep StringPrintf result alive.
@@ -340,6 +352,8 @@ size_t DisassemblerX86::DumpInstruction(std::ostream& os, const uint8_t* instr) 
   bool no_ops = false;
   RegFile src_reg_file = GPR;
   RegFile dst_reg_file = GPR;
+
+
   switch (*instr) {
 #define DISASSEMBLER_ENTRY(opname, \
                      rm8_r8, rm32_r32, \
@@ -381,11 +395,12 @@ DISASSEMBLER_ENTRY(xor,
   0x32 /* Reg8/RegMem8 */,     0x33 /* Reg32/RegMem32 */,
   0x34 /* Rax8/imm8 opcode */, 0x35 /* Rax32/imm32 */)
 DISASSEMBLER_ENTRY(cmp,
-  0x38 /* RegMem8/Reg8 */,     0x39 /* RegMem32/Reg32 */,
+  0x38 /* RegMem8/Reg8 */,     0x39 /* RegMem/Reg32 */,
   0x3A /* Reg8/RegMem8 */,     0x3B /* Reg32/RegMem32 */,
   0x3C /* Rax8/imm8 opcode */, 0x3D /* Rax32/imm32 */)
 
 #undef DISASSEMBLER_ENTRY
+
   case 0x50: case 0x51: case 0x52: case 0x53: case 0x54: case 0x55: case 0x56: case 0x57:
     opcode1 = "push";
     reg_in_opcode = true;
@@ -1372,6 +1387,7 @@ DISASSEMBLER_ENTRY(cmp,
     byte_operand = (*instr == 0xC0);
     break;
   case 0xC3: opcode1 = "ret"; break;
+
   case 0xC6:
     static const char* c6_opcodes[] = {"mov",        "unknown-c6", "unknown-c6",
                                        "unknown-c6", "unknown-c6", "unknown-c6",
@@ -1521,6 +1537,7 @@ DISASSEMBLER_ENTRY(cmp,
         args << ", ";
       }
       DumpSegmentOverride(args, prefix[1]);
+
       args << address;
     } else {
       DCHECK(store);
@@ -1595,7 +1612,7 @@ DISASSEMBLER_ENTRY(cmp,
      << StringPrintf(": %22s    \t%-7s%s%s%s%s%s ", DumpCodeHex(begin_instr, instr).c_str(),
                      prefix_str, opcode0, opcode1, opcode2, opcode3, opcode4)
      << args.str() << '\n';
-  return instr - begin_instr;
+    return instr - begin_instr;
 }  // NOLINT(readability/fn_size)
 
 }  // namespace x86

@@ -8236,6 +8236,7 @@ class JumpTableRIPFixup : public RIPFixup {
 void CodeGeneratorX86::Finalize(CodeAllocator* allocator) {
   // Generate the constant area if needed.
   X86Assembler* assembler = GetAssembler();
+
   if (!assembler->IsConstantAreaEmpty() || !fixups_to_jump_tables_.empty()) {
     // Align to 4 byte boundary to reduce cache misses, as the data is 4 and 8
     // byte values.
