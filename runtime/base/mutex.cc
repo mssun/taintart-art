@@ -321,8 +321,7 @@ void BaseMutex::DumpContention(std::ostream& os) const {
 Mutex::Mutex(const char* name, LockLevel level, bool recursive)
     : BaseMutex(name, level), exclusive_owner_(0), recursion_count_(0), recursive_(recursive) {
 #if ART_USE_FUTEXES
-  DCHECK_EQ(0, state_.load(std::memory_order_relaxed));
-  DCHECK_EQ(0, num_contenders_.load(std::memory_order_relaxed));
+  DCHECK_EQ(0, state_and_contenders_.load(std::memory_order_relaxed));
 #else
   CHECK_MUTEX_CALL(pthread_mutex_init, (&mutex_, nullptr));
 #endif
@@ -337,17 +336,13 @@ static bool IsSafeToCallAbortSafe() {
 Mutex::~Mutex() {
   bool safe_to_call_abort = Locks::IsSafeToCallAbortRacy();
 #if ART_USE_FUTEXES
-  if (state_.load(std::memory_order_relaxed) != 0) {
+  if (state_and_contenders_.load(std::memory_order_relaxed) != 0) {
     LOG(safe_to_call_abort ? FATAL : WARNING)
-        << "destroying mutex with owner: " << GetExclusiveOwnerTid();
+        << "destroying mutex with owner or contenders. Owner:" << GetExclusiveOwnerTid();
   } else {
     if (GetExclusiveOwnerTid() != 0) {
       LOG(safe_to_call_abort ? FATAL : WARNING)
           << "unexpectedly found an owner on unlocked mutex " << name_;
-    }
-    if (num_contenders_.load(std::memory_order_seq_cst) != 0) {
-      LOG(safe_to_call_abort ? FATAL : WARNING)
-          << "unexpectedly found a contender on mutex " << name_;
     }
   }
 #else
@@ -371,28 +366,34 @@ void Mutex::ExclusiveLock(Thread* self) {
 #if ART_USE_FUTEXES
     bool done = false;
     do {
-      int32_t cur_state = state_.load(std::memory_order_relaxed);
-      if (LIKELY(cur_state == 0)) {
-        // Change state from 0 to 1 and impose load/store ordering appropriate for lock acquisition.
-        done = state_.CompareAndSetWeakAcquire(0 /* cur_state */, 1 /* new state */);
+      int32_t cur_state = state_and_contenders_.load(std::memory_order_relaxed);
+      if (LIKELY((cur_state & kHeldMask) == 0) /* lock not held */) {
+        done = state_and_contenders_.CompareAndSetWeakAcquire(cur_state, cur_state | kHeldMask);
       } else {
         // Failed to acquire, hang up.
         ScopedContentionRecorder scr(this, SafeGetTid(self), GetExclusiveOwnerTid());
-        num_contenders_++;
+        // Increment contender count. We can't create enough threads for this to overflow.
+        increment_contenders();
+        // Make cur_state again reflect the expected value of state_and_contenders.
+        cur_state += kContenderIncrement;
         if (UNLIKELY(should_respond_to_empty_checkpoint_request_)) {
           self->CheckEmptyCheckpointFromMutex();
         }
-        if (futex(state_.Address(), FUTEX_WAIT_PRIVATE, 1, nullptr, nullptr, 0) != 0) {
+        if (futex(state_and_contenders_.Address(), FUTEX_WAIT_PRIVATE, cur_state,
+                  nullptr, nullptr, 0) != 0) {
+          // We only went to sleep after incrementing and contenders and checking that the lock
+          // is still held by someone else.
           // EAGAIN and EINTR both indicate a spurious failure, try again from the beginning.
           // We don't use TEMP_FAILURE_RETRY so we can intentionally retry to acquire the lock.
           if ((errno != EAGAIN) && (errno != EINTR)) {
             PLOG(FATAL) << "futex wait failed for " << name_;
           }
         }
-        num_contenders_--;
+        decrement_contenders();
       }
     } while (!done);
-    DCHECK_EQ(state_.load(std::memory_order_relaxed), 1);
+    // Confirm that lock is now held.
+    DCHECK_NE(state_and_contenders_.load(std::memory_order_relaxed) & kHeldMask, 0);
 #else
     CHECK_MUTEX_CALL(pthread_mutex_lock, (&mutex_));
 #endif
@@ -417,15 +418,15 @@ bool Mutex::ExclusiveTryLock(Thread* self) {
 #if ART_USE_FUTEXES
     bool done = false;
     do {
-      int32_t cur_state = state_.load(std::memory_order_relaxed);
-      if (cur_state == 0) {
-        // Change state from 0 to 1 and impose load/store ordering appropriate for lock acquisition.
-        done = state_.CompareAndSetWeakAcquire(0 /* cur_state */, 1 /* new state */);
+      int32_t cur_state = state_and_contenders_.load(std::memory_order_relaxed);
+      if ((cur_state & kHeldMask) == 0) {
+        // Change state to held and impose load/store ordering appropriate for lock acquisition.
+        done = state_and_contenders_.CompareAndSetWeakAcquire(cur_state, cur_state | kHeldMask);
       } else {
         return false;
       }
     } while (!done);
-    DCHECK_EQ(state_.load(std::memory_order_relaxed), 1);
+    DCHECK_NE(state_and_contenders_.load(std::memory_order_relaxed) & kHeldMask, 0);
 #else
     int result = pthread_mutex_trylock(&mutex_);
     if (result == EBUSY) {
@@ -474,20 +475,22 @@ void Mutex::ExclusiveUnlock(Thread* self) {
 #if ART_USE_FUTEXES
     bool done = false;
     do {
-      int32_t cur_state = state_.load(std::memory_order_relaxed);
-      if (LIKELY(cur_state == 1)) {
+      int32_t cur_state = state_and_contenders_.load(std::memory_order_relaxed);
+      if (LIKELY((cur_state & kHeldMask) != 0)) {
         // We're no longer the owner.
         exclusive_owner_.store(0 /* pid */, std::memory_order_relaxed);
-        // Change state to 0 and impose load/store ordering appropriate for lock release.
-        // Note, the relaxed loads below mustn't reorder before the CompareAndSet.
-        // TODO: the ordering here is non-trivial as state is split across 3 fields, fix by placing
-        // a status bit into the state on contention.
-        done = state_.CompareAndSetWeakSequentiallyConsistent(cur_state, 0 /* new state */);
-        if (LIKELY(done)) {  // Spurious fail?
-          // Wake a contender.
-          if (UNLIKELY(num_contenders_.load(std::memory_order_seq_cst) > 0)) {
-            futex(state_.Address(), FUTEX_WAKE_PRIVATE, 1, nullptr, nullptr, 0);
+        // Change state to not held and impose load/store ordering appropriate for lock release.
+        uint32_t new_state = cur_state & ~kHeldMask;  // Same number of contenders.
+        done = state_and_contenders_.CompareAndSetWeakRelease(cur_state, new_state);
+        if (LIKELY(done)) {  // Spurious fail or waiters changed ?
+          if (UNLIKELY(new_state != 0) /* have contenders */) {
+            futex(state_and_contenders_.Address(), FUTEX_WAKE_PRIVATE, kWakeOne,
+                  nullptr, nullptr, 0);
           }
+          // We only do a futex wait after incrementing contenders and verifying the lock was
+          // still held. If we didn't see waiters, then there couldn't have been any futexes
+          // waiting on this lock when we did the CAS. New arrivals after that cannot wait for us,
+          // since the futex wait call would see the lock available and immediately return.
         }
       } else {
         // Logging acquires the logging lock, avoid infinite recursion in that case.
@@ -528,8 +531,8 @@ void Mutex::WakeupToRespondToEmptyCheckpoint() {
 #if ART_USE_FUTEXES
   // Wake up all the waiters so they will respond to the emtpy checkpoint.
   DCHECK(should_respond_to_empty_checkpoint_request_);
-  if (UNLIKELY(num_contenders_.load(std::memory_order_relaxed) > 0)) {
-    futex(state_.Address(), FUTEX_WAKE_PRIVATE, -1, nullptr, nullptr, 0);
+  if (UNLIKELY(get_contenders() != 0)) {
+    futex(state_and_contenders_.Address(), FUTEX_WAKE_PRIVATE, kWakeAll, nullptr, nullptr, 0);
   }
 #else
   LOG(FATAL) << "Non futex case isn't supported.";
@@ -619,7 +622,7 @@ void ReaderWriterMutex::ExclusiveUnlock(Thread* self) {
       if (LIKELY(done)) {  // Weak CAS may fail spuriously.
         // Wake any waiters.
         if (UNLIKELY(num_contenders_.load(std::memory_order_seq_cst) > 0)) {
-          futex(state_.Address(), FUTEX_WAKE_PRIVATE, -1, nullptr, nullptr, 0);
+          futex(state_.Address(), FUTEX_WAKE_PRIVATE, kWakeAll, nullptr, nullptr, 0);
         }
       }
     } else {
@@ -774,7 +777,7 @@ void ReaderWriterMutex::WakeupToRespondToEmptyCheckpoint() {
   // Wake up all the waiters so they will respond to the emtpy checkpoint.
   DCHECK(should_respond_to_empty_checkpoint_request_);
   if (UNLIKELY(num_contenders_.load(std::memory_order_relaxed) > 0)) {
-    futex(state_.Address(), FUTEX_WAKE_PRIVATE, -1, nullptr, nullptr, 0);
+    futex(state_.Address(), FUTEX_WAKE_PRIVATE, kWakeAll, nullptr, nullptr, 0);
   }
 #else
   LOG(FATAL) << "Non futex case isn't supported.";
@@ -839,7 +842,7 @@ void ConditionVariable::RequeueWaiters(int32_t count) {
                       FUTEX_REQUEUE_PRIVATE,
                       /* Threads to wake */ 0,
                       /* Threads to requeue*/ reinterpret_cast<const timespec*>(count),
-                      guard_.state_.Address(),
+                      guard_.state_and_contenders_.Address(),
                       0) != -1;
     if (!done && errno != EAGAIN && errno != EINTR) {
       PLOG(FATAL) << "futex requeue failed for " << name_;
@@ -871,7 +874,7 @@ void ConditionVariable::WaitHoldingLocks(Thread* self) {
 #if ART_USE_FUTEXES
   num_waiters_++;
   // Ensure the Mutex is contended so that requeued threads are awoken.
-  guard_.num_contenders_++;
+  guard_.increment_contenders();
   guard_.recursion_count_ = 1;
   int32_t cur_sequence = sequence_.load(std::memory_order_relaxed);
   guard_.ExclusiveUnlock(self);
@@ -896,11 +899,11 @@ void ConditionVariable::WaitHoldingLocks(Thread* self) {
     }
   }
   guard_.ExclusiveLock(self);
-  CHECK_GE(num_waiters_, 0);
+  CHECK_GT(num_waiters_, 0);
   num_waiters_--;
   // We awoke and so no longer require awakes from the guard_'s unlock.
-  CHECK_GE(guard_.num_contenders_.load(std::memory_order_relaxed), 0);
-  guard_.num_contenders_--;
+  CHECK_GT(guard_.get_contenders(), 0);
+  guard_.decrement_contenders();
 #else
   pid_t old_owner = guard_.GetExclusiveOwnerTid();
   guard_.exclusive_owner_.store(0 /* pid */, std::memory_order_relaxed);
@@ -922,7 +925,7 @@ bool ConditionVariable::TimedWait(Thread* self, int64_t ms, int32_t ns) {
   InitTimeSpec(false, CLOCK_REALTIME, ms, ns, &rel_ts);
   num_waiters_++;
   // Ensure the Mutex is contended so that requeued threads are awoken.
-  guard_.num_contenders_++;
+  guard_.increment_contenders();
   guard_.recursion_count_ = 1;
   int32_t cur_sequence = sequence_.load(std::memory_order_relaxed);
   guard_.ExclusiveUnlock(self);
@@ -937,11 +940,11 @@ bool ConditionVariable::TimedWait(Thread* self, int64_t ms, int32_t ns) {
     }
   }
   guard_.ExclusiveLock(self);
-  CHECK_GE(num_waiters_, 0);
+  CHECK_GT(num_waiters_, 0);
   num_waiters_--;
   // We awoke and so no longer require awakes from the guard_'s unlock.
-  CHECK_GE(guard_.num_contenders_.load(std::memory_order_relaxed), 0);
-  guard_.num_contenders_--;
+  CHECK_GT(guard_.get_contenders(), 0);
+  guard_.decrement_contenders();
 #else
 #if !defined(__APPLE__)
   int clock = CLOCK_MONOTONIC;

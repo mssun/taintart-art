@@ -209,7 +209,7 @@ inline void ReaderWriterMutex::SharedUnlock(Thread* self) {
       if (done && (cur_state - 1) == 0) {  // Weak CAS may fail spuriously.
         if (num_contenders_.load(std::memory_order_seq_cst) > 0) {
           // Wake any exclusive waiters as there are now no readers.
-          futex(state_.Address(), FUTEX_WAKE_PRIVATE, -1, nullptr, nullptr, 0);
+          futex(state_.Address(), FUTEX_WAKE_PRIVATE, kWakeAll, nullptr, nullptr, 0);
         }
       }
     } else {
