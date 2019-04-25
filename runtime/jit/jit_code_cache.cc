@@ -1670,7 +1670,9 @@ void JitCodeCache::DoCollection(Thread* self, bool collect_profiling_info) {
     } else if (kIsDebugBuild) {
       // Sanity check that the profiling infos do not have a dangling entry point.
       for (ProfilingInfo* info : profiling_infos_) {
-        DCHECK(info->GetSavedEntryPoint() == nullptr);
+        DCHECK(!Runtime::Current()->IsZygote());
+        const void* entry_point = info->GetSavedEntryPoint();
+        DCHECK(entry_point == nullptr || IsInZygoteExecSpace(entry_point));
       }
     }
 

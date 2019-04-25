@@ -35,6 +35,7 @@
 #include "index_bss_mapping.h"
 #include "mirror/object.h"
 #include "oat.h"
+#include "runtime.h"
 
 namespace art {
 
@@ -469,11 +470,13 @@ class OatDexFile final {
   std::unique_ptr<const DexFile> OpenDexFile(std::string* error_msg) const;
 
   // May return null if the OatDexFile only contains a type lookup table. This case only happens
-  // for the compiler to speed up compilation.
+  // for the compiler to speed up compilation, or in jitzygote.
   const OatFile* GetOatFile() const {
     // Avoid pulling in runtime.h in the header file.
     if (kIsDebugBuild && oat_file_ == nullptr) {
-      AssertAotCompiler();
+      if (!Runtime::Current()->IsUsingApexBootImageLocation()) {
+        AssertAotCompiler();
+      }
     }
     return oat_file_;
   }
