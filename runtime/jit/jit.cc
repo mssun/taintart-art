@@ -815,6 +815,13 @@ bool Jit::MaybeCompileMethod(Thread* self,
     }
   }
   if (UseJitCompilation()) {
+    if (old_count == 0 &&
+        method->IsNative() &&
+        Runtime::Current()->IsUsingApexBootImageLocation()) {
+      // jitzygote: Compile JNI stub on first use to avoid the expensive generic stub.
+      CompileMethod(method, self, /* baseline= */ false, /* osr= */ false);
+      return true;
+    }
     if (old_count < HotMethodThreshold() && new_count >= HotMethodThreshold()) {
       if (!code_cache_->ContainsPc(method->GetEntryPointFromQuickCompiledCode())) {
         DCHECK(thread_pool_ != nullptr);
