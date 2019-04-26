@@ -1,0 +1,3 @@
+Regression test for the DCE pass of the compiler which used
+to trip on this code: the DCE pass would re-build the dominator
+tree and that code used to not anticipate seeing phis in the graph.
