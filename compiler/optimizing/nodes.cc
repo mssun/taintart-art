@@ -147,7 +147,9 @@ void HGraph::RemoveInstructionsAsUsersFromDeadBlocks(const ArenaBitVector& visit
     if (!visited.IsBitSet(i)) {
       HBasicBlock* block = blocks_[i];
       if (block == nullptr) continue;
-      DCHECK(block->GetPhis().IsEmpty()) << "Phis are not inserted at this stage";
+      for (HInstructionIterator it(block->GetPhis()); !it.Done(); it.Advance()) {
+        RemoveAsUser(it.Current());
+      }
       for (HInstructionIterator it(block->GetInstructions()); !it.Done(); it.Advance()) {
         RemoveAsUser(it.Current());
       }
