@@ -1482,7 +1482,7 @@ void OptimizingCompiler::GenerateJitDebugInfo(ArtMethod* method ATTRIBUTE_UNUSED
     AddNativeDebugInfoForJit(Thread::Current(),
                              reinterpret_cast<const void*>(info.code_address),
                              elf_file,
-                             debug::PackElfFileForJIT,
+                             mini_debug_info ? debug::PackElfFileForJIT : nullptr,
                              compiler_options.GetInstructionSet(),
                              compiler_options.GetInstructionSetFeatures());
   }

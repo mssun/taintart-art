@@ -48,6 +48,8 @@ void RemoveNativeDebugInfoForDex(Thread* self, const DexFile* dexfile);
 
 // Notify native tools (e.g. libunwind) that JIT has compiled a new method.
 // The method will make copy of the passed ELF file (to shrink it to the minimum size).
+// If packing function is provided, ELF files can be merged to save space
+// (however, the merging drops advanced gdb debug-info as it is too complex).
 void AddNativeDebugInfoForJit(Thread* self,
                               const void* code_ptr,
                               const std::vector<uint8_t>& symfile,
