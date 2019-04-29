@@ -602,12 +602,14 @@ END art_quick_invoke_stub_internal
      */
 ENTRY art_quick_osr_stub
     SPILL_ALL_CALLEE_SAVE_GPRS             @ Spill regs (9)
-    SAVE_SIZE=9*4
+    vpush  {s16-s31}                       @ Spill fp-regs (16)
+    .cfi_adjust_cfa_offset 64
+    SAVE_SIZE=(9*4+16*4)
     mov    r11, sp                         @ Save the stack pointer
     .cfi_def_cfa r11, SAVE_SIZE            @ CFA = r11 + SAVE_SIZE
     .cfi_remember_state
     mov    r10, r1                         @ Save size of stack
-    ldr    r9, [r11, #40]                  @ Move managed thread pointer into r9
+    ldr    r9, [r11, #(SAVE_SIZE+4)]       @ Move managed thread pointer into r9
     REFRESH_MARKING_REGISTER
     mov    r6, r2                          @ Save the pc to call
     sub    r7, sp, #12                     @ Reserve space for stack pointer,
@@ -630,7 +632,7 @@ ENTRY art_quick_osr_stub
     ldr    r10, [sp, #8]                   @ Restore JValue* result
     ldr    sp, [sp, #4]                    @ Restore saved stack pointer
     .cfi_def_cfa sp, SAVE_SIZE             @ CFA = sp + SAVE_SIZE
-    ldr    r4, [sp, #36]                   @ load shorty
+    ldr    r4, [sp, #SAVE_SIZE]            @ load shorty
     ldrb   r4, [r4, #0]                    @ load return type
     cmp    r4, #68                         @ Test if result type char == 'D'.
     beq    .Losr_fp_result
@@ -641,6 +643,8 @@ ENTRY art_quick_osr_stub
 .Losr_fp_result:
     vstr d0, [r10]                         @ Store s0-s1/d0 into result pointer
 .Losr_exit:
+    vpop   {s16-s31}
+    .cfi_adjust_cfa_offset -64
     pop    {r4, r5, r6, r7, r8, r9, r10, r11, pc}
 .Losr_entry:
     .cfi_restore_state
