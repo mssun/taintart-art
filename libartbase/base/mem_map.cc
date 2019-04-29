@@ -516,6 +516,7 @@ MemMap MemMap::MapFileAtAddress(uint8_t* expected_ptr,
   }
 
   if (byte_count == 0) {
+    *error_msg = "Empty MemMap requested";
     return Invalid();
   }
   // Adjust 'offset' to be page-aligned as required by mmap.

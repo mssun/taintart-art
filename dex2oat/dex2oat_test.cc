@@ -1662,6 +1662,22 @@ TEST_F(Dex2oatTest, EmptyUncompressedDexTest) {
   ASSERT_EQ(WEXITSTATUS(status), 1) << error_msg;
 }
 
+TEST_F(Dex2oatTest, EmptyUncompressedAlignedDexTest) {
+  std::string out_dir = GetScratchDir();
+  const std::string base_oat_name = out_dir + "/base.oat";
+  std::string error_msg;
+  int status = GenerateOdexForTestWithStatus(
+      { GetTestDexFileName("MainEmptyUncompressedAligned") },
+      base_oat_name,
+      CompilerFilter::Filter::kQuicken,
+      &error_msg,
+      { },
+      /*use_fd*/ false);
+  // Expect to fail with code 1 and not SIGSEGV or SIGABRT.
+  ASSERT_TRUE(WIFEXITED(status));
+  ASSERT_EQ(WEXITSTATUS(status), 1) << error_msg;
+}
+
 // Dex file that has duplicate methods have different code items and debug info.
 static const char kDuplicateMethodInputDex[] =
     "ZGV4CjAzOQDEy8VPdj4qHpgPYFWtLCtOykfFP4kB8tGYDAAAcAAAAHhWNBIAAAAAAAAAANALAABI"
