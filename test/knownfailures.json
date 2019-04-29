@@ -227,12 +227,16 @@
         "variant": "trace | stream"
     },
     {
-        "tests": ["802-deoptimization",
-                 "570-checker-osr"],
+        "tests": ["802-deoptimization"],
         "description": ["This test dynamically enables tracing to force a",
                         "deoptimization. This makes the test meaningless",
                         "when already tracing, and writes an error message",
                         "that we do not want to check for."],
+        "variant": "trace | stream"
+    },
+    {
+        "tests": ["570-checker-osr", "570-checker-osr-locals"],
+        "description": ["These tests wait for OSR, which never happens when tracing."],
         "variant": "trace | stream"
     },
     {
