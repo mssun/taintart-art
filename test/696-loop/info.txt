@@ -1,0 +1,2 @@
+Regression test for the loop pass of the compiler, which used
+to run loop unrolling without updating the induction variable analysis.

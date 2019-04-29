@@ -162,7 +162,8 @@ TEST_F(SuperblockClonerTest, CloneBasicBlocks) {
   SuperblockCloner cloner(graph_,
                           &orig_bb_set,
                           &bb_map,
-                          &hir_map);
+                          &hir_map,
+                          /* induction_range= */ nullptr);
   EXPECT_TRUE(cloner.IsSubgraphClonable());
 
   cloner.CloneBasicBlocks();
@@ -239,8 +240,9 @@ TEST_F(SuperblockClonerTest, AdjustControlFlowInfo) {
 
   SuperblockCloner cloner(graph_,
                           &orig_bb_set,
-                          nullptr,
-                          nullptr);
+                          /* bb_map= */ nullptr,
+                          /* hir_map= */ nullptr,
+                          /* induction_range= */ nullptr);
   EXPECT_TRUE(cloner.IsSubgraphClonable());
 
   cloner.FindAndSetLocalAreaForAdjustments();
@@ -321,7 +323,7 @@ TEST_F(SuperblockClonerTest, LoopPeeling) {
       std::less<HInstruction*>(), graph_->GetAllocator()->Adapter(kArenaAllocSuperblockCloner));
 
   HLoopInformation* loop_info = header->GetLoopInformation();
-  PeelUnrollHelper helper(loop_info, &bb_map, &hir_map);
+  PeelUnrollHelper helper(loop_info, &bb_map, &hir_map, /* induction_range= */ nullptr);
   EXPECT_TRUE(helper.IsLoopClonable());
   HBasicBlock* new_header = helper.DoPeeling();
   HLoopInformation* new_loop_info = new_header->GetLoopInformation();
@@ -380,7 +382,7 @@ TEST_F(SuperblockClonerTest, LoopUnrolling) {
       std::less<HInstruction*>(), graph_->GetAllocator()->Adapter(kArenaAllocSuperblockCloner));
 
   HLoopInformation* loop_info = header->GetLoopInformation();
-  PeelUnrollHelper helper(loop_info, &bb_map, &hir_map);
+  PeelUnrollHelper helper(loop_info, &bb_map, &hir_map, /* induction_range= */ nullptr);
   EXPECT_TRUE(helper.IsLoopClonable());
   HBasicBlock* new_header = helper.DoUnrolling();
 
@@ -435,7 +437,7 @@ TEST_F(SuperblockClonerTest, LoopPeelingMultipleBackEdges) {
   EXPECT_TRUE(CheckGraph());
 
   HLoopInformation* loop_info = header->GetLoopInformation();
-  PeelUnrollSimpleHelper helper(loop_info);
+  PeelUnrollSimpleHelper helper(loop_info, /* induction_range= */ nullptr);
   HBasicBlock* new_header = helper.DoPeeling();
   EXPECT_EQ(header, new_header);
 
@@ -484,7 +486,7 @@ TEST_F(SuperblockClonerTest, LoopPeelingNested) {
 
   // Check nested loops structure.
   CheckLoopStructureForLoopPeelingNested(loop1_header, loop2_header, loop3_header);
-  PeelUnrollSimpleHelper helper(loop1_header->GetLoopInformation());
+  PeelUnrollSimpleHelper helper(loop1_header->GetLoopInformation(), /* induction_range= */ nullptr);
   helper.DoPeeling();
   // Check that nested loops structure has not changed after the transformation.
   CheckLoopStructureForLoopPeelingNested(loop1_header, loop2_header, loop3_header);
@@ -530,7 +532,7 @@ TEST_F(SuperblockClonerTest, OuterLoopPopulationAfterInnerPeeled) {
   graph_->BuildDominatorTree();
   EXPECT_TRUE(CheckGraph());
 
-  PeelUnrollSimpleHelper helper(loop3_header->GetLoopInformation());
+  PeelUnrollSimpleHelper helper(loop3_header->GetLoopInformation(), /* induction_range= */ nullptr);
   helper.DoPeeling();
   HLoopInformation* loop1 = loop1_header->GetLoopInformation();
   HLoopInformation* loop2 = loop2_header->GetLoopInformation();
@@ -596,7 +598,7 @@ TEST_F(SuperblockClonerTest, NestedCaseExitToOutermost) {
   HBasicBlock* loop3_long_exit = loop3_extra_if_block->GetSuccessors()[0];
   EXPECT_TRUE(loop1_header->GetLoopInformation()->Contains(*loop3_long_exit));
 
-  PeelUnrollSimpleHelper helper(loop3_header->GetLoopInformation());
+  PeelUnrollSimpleHelper helper(loop3_header->GetLoopInformation(), /* induction_range= */ nullptr);
   helper.DoPeeling();
 
   HLoopInformation* loop1 = loop1_header->GetLoopInformation();
@@ -653,7 +655,8 @@ TEST_F(SuperblockClonerTest, FastCaseCheck) {
   SuperblockCloner cloner(graph_,
                           &orig_bb_set,
                           &bb_map,
-                          &hir_map);
+                          &hir_map,
+                          /* induction_range= */ nullptr);
   cloner.SetSuccessorRemappingInfo(&remap_orig_internal, &remap_copy_internal, &remap_incoming);
 
   EXPECT_FALSE(cloner.IsFastCase());

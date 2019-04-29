@@ -24,6 +24,8 @@
 
 namespace art {
 
+class InductionVarRange;
+
 static const bool kSuperblockClonerLogging = false;
 
 // Represents an edge between two HBasicBlocks.
@@ -140,7 +142,8 @@ class SuperblockCloner : public ValueObject {
   SuperblockCloner(HGraph* graph,
                    const HBasicBlockSet* orig_bb_set,
                    HBasicBlockMap* bb_map,
-                   HInstructionMap* hir_map);
+                   HInstructionMap* hir_map,
+                   InductionVarRange* induction_range);
 
   // Sets edge successor remapping info specified by corresponding edge sets.
   void SetSuccessorRemappingInfo(const HEdgeSet* remap_orig_internal,
@@ -309,6 +312,10 @@ class SuperblockCloner : public ValueObject {
   // Resolves the inputs of the phi.
   void ResolvePhi(HPhi* phi);
 
+  // Update induction range after when fixing SSA.
+  void UpdateInductionRangeInfoOf(
+      HInstruction* user, HInstruction* old_instruction, HInstruction* replacement);
+
   //
   // Debug and logging methods.
   //
@@ -339,6 +346,9 @@ class SuperblockCloner : public ValueObject {
   HBasicBlockMap* bb_map_;
   // Correspondence map for instructions: (original HInstruction, copy HInstruction).
   HInstructionMap* hir_map_;
+  // As a result of cloning, the induction range analysis information can be invalidated
+  // and must be updated. If not null, the cloner updates it for changed instructions.
+  InductionVarRange* induction_range_;
   // Area in the graph for which control flow (back edges, loops, dominators) needs to be adjusted.
   HLoopInformation* outer_loop_;
   HBasicBlockSet outer_loop_bb_set_;
@@ -357,11 +367,12 @@ class SuperblockCloner : public ValueObject {
 // basic blocks/instructions are demanded.
 class PeelUnrollHelper : public ValueObject {
  public:
-  explicit PeelUnrollHelper(HLoopInformation* info,
-                            SuperblockCloner::HBasicBlockMap* bb_map,
-                            SuperblockCloner::HInstructionMap* hir_map) :
+  PeelUnrollHelper(HLoopInformation* info,
+                   SuperblockCloner::HBasicBlockMap* bb_map,
+                   SuperblockCloner::HInstructionMap* hir_map,
+                   InductionVarRange* induction_range) :
       loop_info_(info),
-      cloner_(info->GetHeader()->GetGraph(), &info->GetBlocks(), bb_map, hir_map) {
+      cloner_(info->GetHeader()->GetGraph(), &info->GetBlocks(), bb_map, hir_map, induction_range) {
     // For now do peeling/unrolling only for natural loops.
     DCHECK(!info->IsIrreducible());
   }
@@ -395,7 +406,7 @@ class PeelUnrollHelper : public ValueObject {
 // original and copied basic blocks/instructions.
 class PeelUnrollSimpleHelper : public ValueObject {
  public:
-  explicit PeelUnrollSimpleHelper(HLoopInformation* info);
+  PeelUnrollSimpleHelper(HLoopInformation* info, InductionVarRange* induction_range);
   bool IsLoopClonable() const { return helper_.IsLoopClonable(); }
   HBasicBlock* DoPeeling() { return helper_.DoPeeling(); }
   HBasicBlock* DoUnrolling() { return helper_.DoUnrolling(); }
