@@ -299,6 +299,7 @@ static void RepackEntries(PackElfFileForJITFunction pack,
   // The number of methods per entry is variable (depending on how many fit in that range).
   constexpr uint32_t kGroupSize = 64 * KB;
 
+  CHECK(pack != nullptr);
   JITCodeEntries packed_entries;
   std::vector<ArrayRef<const uint8_t>> added;
   std::vector<const void*> removed;
@@ -367,7 +368,21 @@ void AddNativeDebugInfoForJit(Thread* self,
   // Must be done before addition in case the added code_ptr is in the removed set.
   if (!g_jit_removed_entries.empty()) {
     g_compressed_jit_debug_entries.merge(g_uncompressed_jit_debug_entries);
-    RepackEntries(pack, isa, features, /*compress=*/ true, &g_compressed_jit_debug_entries);
+    if (pack != nullptr) {
+      RepackEntries(pack, isa, features, /*compress=*/ true, &g_compressed_jit_debug_entries);
+    } else {
+      // If repacking function is not provided, just remove the individual entries.
+      for (const void* removed_code_ptr : g_jit_removed_entries) {
+        auto it = g_compressed_jit_debug_entries.find(removed_code_ptr);
+        if (it != g_compressed_jit_debug_entries.end()) {
+          DeleteJITCodeEntryInternal(__jit_debug_descriptor,
+                                     __jit_debug_register_code_ptr,
+                                     /*entry=*/ it->second,
+                                     /*free_symfile=*/ true);
+          g_compressed_jit_debug_entries.erase(it);
+        }
+      }
+    }
     g_jit_removed_entries.clear();
     g_jit_num_unpacked_entries = 0;
   }
@@ -397,7 +412,7 @@ void AddNativeDebugInfoForJit(Thread* self,
 
   // Pack (but don't compress) recent entries - this is cheap and reduces memory use by ~4x.
   // We delay compression until after GC since it is more expensive (and saves further ~4x).
-  if (g_jit_num_unpacked_entries >= kJitMaxUnpackedEntries) {
+  if (g_jit_num_unpacked_entries >= kJitMaxUnpackedEntries && pack != nullptr) {
     RepackEntries(pack, isa, features, /*compress=*/ false, &g_uncompressed_jit_debug_entries);
     g_jit_num_unpacked_entries = 0;
   }

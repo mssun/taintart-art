@@ -150,7 +150,7 @@ extern "C" void jit_types_loaded(void* handle, mirror::Class** types, size_t cou
     AddNativeDebugInfoForJit(Thread::Current(),
                              /*code_ptr=*/ nullptr,
                              elf_file,
-                             debug::PackElfFileForJIT,
+                             /*pack*/ nullptr,
                              compiler_options.GetInstructionSet(),
                              compiler_options.GetInstructionSetFeatures());
   }
