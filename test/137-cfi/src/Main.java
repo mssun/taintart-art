@@ -31,6 +31,8 @@ public class Main extends Base implements Comparator<Main> {
   private static boolean secondary;
 
   public static void main(String[] args) throws Exception {
+      System.out.println("args: " + String.join(" ", Arrays.copyOfRange(args, 1, args.length)));
+
       System.loadLibrary(args[0]);
       for (int i = 1; i < args.length; i++) {
           if (args[i].equals("--test-local")) {
@@ -69,16 +71,14 @@ public class Main extends Base implements Comparator<Main> {
       }
 
       if (testLocal) {
-          String result = unwindInProcess() ? "PASS" : "FAIL";
-          System.out.println("Unwind in process: " + result);
+          System.out.println(unwindInProcess() ? "PASS" : "FAIL");
       }
 
       if (testRemote) {
           // Start a secondary helper process. It will stop itself when it is ready.
           int pid = startSecondaryProcess();
           // Wait for the secondary process to stop and then unwind it remotely.
-          String result = unwindOtherProcess(pid) ? "PASS" : "FAIL";
-          System.out.println("Unwind other process: " + result);
+          System.out.println(unwindOtherProcess(pid) ? "PASS" : "FAIL");
       }
   }
 
