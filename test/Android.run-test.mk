@@ -42,7 +42,7 @@ ART_TEST_TARGET_RUN_TEST_DEPENDENCIES += libtistress-target libtistressd-target
 ART_TEST_TARGET_RUN_TEST_DEPENDENCIES += libarttest-target libarttestd-target
 
 # Also need libnativebridgetest.
-ART_TEST_TARGET_RUN_TEST_DEPENDENCIES += libnativebridgetest-target
+ART_TEST_TARGET_RUN_TEST_DEPENDENCIES += libnativebridgetest-target libnativebridgetestd-target
 
 # Also need libopenjdkjvmti.
 ART_TEST_TARGET_RUN_TEST_DEPENDENCIES += libopenjdkjvmti-target libopenjdkjvmtid-target
@@ -65,6 +65,7 @@ ART_TEST_HOST_RUN_TEST_DEPENDENCIES := \
   $(OUT_DIR)/$(ART_TEST_LIST_host_$(ART_HOST_ARCH)_libarttest) \
   $(OUT_DIR)/$(ART_TEST_LIST_host_$(ART_HOST_ARCH)_libarttestd) \
   $(OUT_DIR)/$(ART_TEST_LIST_host_$(ART_HOST_ARCH)_libnativebridgetest) \
+  $(OUT_DIR)/$(ART_TEST_LIST_host_$(ART_HOST_ARCH)_libnativebridgetestd) \
   $(ART_HOST_OUT_SHARED_LIBRARIES)/libjavacore$(ART_HOST_SHLIB_EXTENSION) \
   $(ART_HOST_OUT_SHARED_LIBRARIES)/libopenjdk$(ART_HOST_SHLIB_EXTENSION) \
   $(ART_HOST_OUT_SHARED_LIBRARIES)/libopenjdkd$(ART_HOST_SHLIB_EXTENSION) \
@@ -83,6 +84,7 @@ ART_TEST_HOST_RUN_TEST_DEPENDENCIES += \
   $(OUT_DIR)/$(ART_TEST_LIST_host_$(2ND_ART_HOST_ARCH)_libarttest) \
   $(OUT_DIR)/$(ART_TEST_LIST_host_$(2ND_ART_HOST_ARCH)_libarttestd) \
   $(OUT_DIR)/$(ART_TEST_LIST_host_$(2ND_ART_HOST_ARCH)_libnativebridgetest) \
+  $(OUT_DIR)/$(ART_TEST_LIST_host_$(2ND_ART_HOST_ARCH)_libnativebridgetestd) \
   $(2ND_ART_HOST_OUT_SHARED_LIBRARIES)/libjavacore$(ART_HOST_SHLIB_EXTENSION) \
   $(2ND_ART_HOST_OUT_SHARED_LIBRARIES)/libopenjdk$(ART_HOST_SHLIB_EXTENSION) \
   $(2ND_ART_HOST_OUT_SHARED_LIBRARIES)/libopenjdkd$(ART_HOST_SHLIB_EXTENSION) \
