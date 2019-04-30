@@ -391,9 +391,13 @@ else
 runtime_apex_manifest_file := $(PRODUCT_OUT)/apex/$(TARGET_RUNTIME_APEX)/apex_manifest.json
 endif
 
-$(runtime_apex_manifest_file): $(TARGET_OUT_UNSTRIPPED)/apex/com.android.runtime
-$(TARGET_OUT_UNSTRIPPED)/apex/com.android.runtime :
-	$(hide) ln -sf $(TARGET_RUNTIME_APEX) $@
+runtime_apex_symlink_timestamp := $(call intermediates-dir-for,FAKE,com.android.runtime)/symlink.timestamp
+$(runtime_apex_manifest_file): $(runtime_apex_symlink_timestamp)
+$(runtime_apex_manifest_file): PRIVATE_LINK_NAME := $(TARGET_OUT_UNSTRIPPED)/apex/com.android.runtime
+$(runtime_apex_symlink_timestamp):
+	$(hide) mkdir -p $(dir $(PRIVATE_LINK_NAME))
+	$(hide) ln -sf $(TARGET_RUNTIME_APEX) $(PRIVATE_LINK_NAME)
+	$(hide) touch $@
 
 runtime_apex_manifest_file :=
 
