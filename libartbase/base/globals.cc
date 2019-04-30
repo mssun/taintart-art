@@ -26,6 +26,11 @@ namespace art {
 
 #if !defined(_WIN32)
 // Check that we have not loaded both debug and release version of libartbase at the same time.
+//
+// This can be a cascade problem originating from a call to
+// LoadLibdexfileExternal in libdexfile_support: If it was called before any ART
+// libraries were loaded it will default to the non-debug version, which can
+// then clash with a later load of the debug version.
 static struct CheckLoadedBuild {
   CheckLoadedBuild() {
     bool debug_build_loaded = (dlopen("libartbased.so", RTLD_NOW | RTLD_NOLOAD) != nullptr);

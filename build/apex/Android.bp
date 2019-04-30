@@ -76,6 +76,7 @@ art_runtime_debug_native_shared_libs = [
     "libadbconnectiond",
     "libartd",
     "libartd-compiler",
+    "libdexfiled_external",
     "libopenjdkjvmd",
     "libopenjdkjvmtid",
 ]

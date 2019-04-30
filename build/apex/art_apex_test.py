@@ -570,6 +570,7 @@ class DebugTargetChecker:
     self._checker.check_executable('oatdumpd')
 
     # Check ART internal libraries.
+    self._checker.check_native_library('libdexfiled_external')
     self._checker.check_prefer64_library('libartd-disassembler')
 
     # Check internal native library dependencies.
