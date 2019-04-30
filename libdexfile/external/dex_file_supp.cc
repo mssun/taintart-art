@@ -53,11 +53,15 @@ void LoadLibdexfileExternal() {
 #else
   static std::once_flag dlopen_once;
   std::call_once(dlopen_once, []() {
-    constexpr char kLibdexfileExternalLib[] = "libdexfile_external.so";
-    void* handle =
-        dlopen(kLibdexfileExternalLib, RTLD_NOW | RTLD_GLOBAL | RTLD_NODELETE);
-    LOG_ALWAYS_FATAL_IF(handle == nullptr, "Failed to load %s: %s",
-                        kLibdexfileExternalLib, dlerror());
+    // Check which version is already loaded to avoid loading both debug and release builds.
+    // We might also be backtracing from separate process, in which case neither is loaded.
+    const char* so_name = "libdexfiled_external.so";
+    void* handle = dlopen(so_name, RTLD_NOLOAD | RTLD_NOW | RTLD_NODELETE);
+    if (handle == nullptr) {
+      so_name = "libdexfile_external.so";
+      handle = dlopen(so_name, RTLD_NOW | RTLD_GLOBAL | RTLD_NODELETE);
+    }
+    LOG_ALWAYS_FATAL_IF(handle == nullptr, "Failed to load %s: %s", so_name, dlerror());
 
 #define SET_DLFUNC_PTR(CLASS, DLFUNC) \
   do { \
@@ -65,7 +69,7 @@ void LoadLibdexfileExternal() {
     LOG_ALWAYS_FATAL_IF(CLASS::g_##DLFUNC == nullptr, \
                         "Failed to find %s in %s: %s", \
                         #DLFUNC, \
-                        kLibdexfileExternalLib, \
+                        so_name, \
                         dlerror()); \
   } while (0)
 

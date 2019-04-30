@@ -1,14 +1,6 @@
-libart.so
-libartd.so
-libartbase.so
-libartbased.so
-libdexfile.so
-libdexfiled.so
 libbacktrace.so
 libc.so
 libc++.so
 libdl.so
 libm.so
 libnativehelper.so
-libprofile.so
-libprofiled.so

@@ -518,6 +518,8 @@ art_cc_library {
     shared_libs: [
         "libartbase",
         "libdexfile",
+        // We need to eagerly load it so libdexfile_support used from libunwindstack can find it.
+        "libdexfile_external",
         "libprofile",
     ],
     export_shared_lib_headers: [
@@ -546,6 +548,9 @@ art_cc_library {
     shared_libs: [
         "libartbased",
         "libdexfiled",
+        // We need to eagerly preload it, so that libunwindstack can find it.
+        // Otherwise, it would try to load the non-debug version with dlopen.
+        "libdexfiled_external",
         "libprofiled",
     ],
     export_shared_lib_headers: [

@@ -24,9 +24,7 @@ cc_defaults {
     target: {
         android: {
             shared_libs: [
-                "libartbase",
                 "libartpalette",
-                "libdexfile",
                 "libbase",
             ],
             static_libs: [
@@ -38,9 +36,7 @@ cc_defaults {
         },
         not_windows: {
             shared_libs: [
-                "libartbase",
                 "libartpalette",
-                "libdexfile",
                 "libziparchive",
                 "libz",
                 "libbase",
@@ -48,11 +44,9 @@ cc_defaults {
             export_shared_lib_headers: ["libbase"],
         },
         windows: {
-	    cflags: ["-Wno-thread-safety"],
+            cflags: ["-Wno-thread-safety"],
             static_libs: [
-                "libartbase",
                 "libartpalette",
-                "libdexfile",
                 "libziparchive",
                 "libz",
                 "libbase",
@@ -114,13 +108,29 @@ art_cc_library {
     ],
     export_shared_lib_headers: ["libbase"],
     target: {
+        android: {
+            shared_libs: [
+                "libartbase",
+                "libdexfile",
+            ],
+        },
+        not_windows: {
+            shared_libs: [
+                "libartbase",
+                "libdexfile",
+            ],
+        },
         windows: {
-	    enabled: true,
-	    shared: {
-	        enabled: false,
-	    },
-	},
-    }
+            enabled: true,
+            shared: {
+                enabled: false,
+            },
+            static_libs: [
+                "libartbase",
+                "libdexfile",
+            ],
+        },
+    },
 }
 
 art_cc_library {
@@ -133,6 +143,26 @@ art_cc_library {
         "libbase",
         "libziparchive",
     ],
+    target: {
+        android: {
+            shared_libs: [
+                "libartbased",
+                "libdexfiled",
+            ],
+        },
+        not_windows: {
+            shared_libs: [
+                "libartbased",
+                "libdexfiled",
+            ],
+        },
+        windows: {
+            static_libs: [
+                "libartbased",
+                "libdexfiled",
+            ],
+        },
+    },
     export_shared_lib_headers: ["libbase"],
 }
 
