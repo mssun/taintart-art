@@ -300,6 +300,7 @@ package com.android.ahat.heapdump {
     method public abstract boolean equals(java.lang.Object);
     method public static com.android.ahat.heapdump.Value getBaseline(com.android.ahat.heapdump.Value);
     method public static com.android.ahat.heapdump.Type getType(com.android.ahat.heapdump.Value);
+    method public abstract int hashCode();
     method public boolean isAhatInstance();
     method public boolean isInteger();
     method public boolean isLong();
