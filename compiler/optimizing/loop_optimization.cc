@@ -426,10 +426,12 @@ static void TryToEvaluateIfCondition(HIf* instruction, HGraph* graph) {
 }
 
 // Peel the first 'count' iterations of the loop.
-static void PeelByCount(HLoopInformation* loop_info, int count) {
+static void PeelByCount(HLoopInformation* loop_info,
+                        int count,
+                        InductionVarRange* induction_range) {
   for (int i = 0; i < count; i++) {
     // Perform peeling.
-    PeelUnrollSimpleHelper helper(loop_info);
+    PeelUnrollSimpleHelper helper(loop_info, induction_range);
     helper.DoPeeling();
   }
 }
@@ -799,7 +801,7 @@ bool HLoopOptimization::TryUnrollingForBranchPenaltyReduction(LoopAnalysisInfo* 
 
     // Perform unrolling.
     HLoopInformation* loop_info = analysis_info->GetLoopInfo();
-    PeelUnrollSimpleHelper helper(loop_info);
+    PeelUnrollSimpleHelper helper(loop_info, &induction_range_);
     helper.DoUnrolling();
 
     // Remove the redundant loop check after unrolling.
@@ -824,7 +826,7 @@ bool HLoopOptimization::TryPeelingForLoopInvariantExitsElimination(LoopAnalysisI
 
   if (generate_code) {
     // Perform peeling.
-    PeelUnrollSimpleHelper helper(loop_info);
+    PeelUnrollSimpleHelper helper(loop_info, &induction_range_);
     helper.DoPeeling();
 
     // Statically evaluate loop check after peeling for loop invariant condition.
@@ -870,7 +872,7 @@ bool HLoopOptimization::TryFullUnrolling(LoopAnalysisInfo* analysis_info, bool g
     //     loop_body  _/                         loop_body  _/
     //
     HLoopInformation* loop_info = analysis_info->GetLoopInfo();
-    PeelByCount(loop_info, trip_count);
+    PeelByCount(loop_info, trip_count, &induction_range_);
     HIf* loop_hif = loop_info->GetHeader()->GetLastInstruction()->AsIf();
     int32_t constant = loop_info->Contains(*loop_hif->IfTrueSuccessor()) ? 0 : 1;
     loop_hif->ReplaceInput(graph_->GetIntConstant(constant), 0u);
