@@ -930,6 +930,14 @@ void CompilerDriver::PreCompile(jobject class_loader,
 }
 
 bool CompilerDriver::ShouldCompileBasedOnProfile(const MethodReference& method_ref) const {
+  // If compiling the apex image, filter out methods not in an apex file (the profile used
+  // for boot classpath is the same between the apex image and the boot image, so it includes
+  /// framewkro methods).
+  if (compiler_options_->IsApexBootImage() &&
+      !android::base::StartsWith(method_ref.dex_file->GetLocation(), "/apex")) {
+    return false;
+  }
+
   // Profile compilation info may be null if no profile is passed.
   if (!CompilerFilter::DependsOnProfile(compiler_options_->GetCompilerFilter())) {
     // Use the compiler filter instead of the presence of profile_compilation_info_ since
@@ -950,6 +958,7 @@ bool CompilerDriver::ShouldCompileBasedOnProfile(const MethodReference& method_r
     LOG(INFO) << "[ProfileGuidedCompilation] "
         << (result ? "Compiled" : "Skipped") << " method:" << method_ref.PrettyMethod(true);
   }
+
   return result;
 }
 

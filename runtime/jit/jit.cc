@@ -691,11 +691,12 @@ void Jit::AddNonAotBootMethodsToQueue(Thread* self) {
     }
     // To speed up class lookups, generate a type lookup table for
     // the dex file.
-    DCHECK(dex_file->GetOatDexFile() == nullptr);
-    TypeLookupTable type_lookup_table = TypeLookupTable::Create(*dex_file);
-    type_lookup_tables_.push_back(
-          std::make_unique<art::OatDexFile>(std::move(type_lookup_table)));
-    dex_file->SetOatDexFile(type_lookup_tables_.back().get());
+    if (dex_file->GetOatDexFile() == nullptr) {
+      TypeLookupTable type_lookup_table = TypeLookupTable::Create(*dex_file);
+      type_lookup_tables_.push_back(
+            std::make_unique<art::OatDexFile>(std::move(type_lookup_table)));
+      dex_file->SetOatDexFile(type_lookup_tables_.back().get());
+    }
 
     std::set<dex::TypeIndex> class_types;
     std::set<uint16_t> all_methods;
