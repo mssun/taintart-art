@@ -765,7 +765,11 @@ class Dex2Oat final {
     compiler_options_->compile_pic_ = true;  // All AOT compilation is PIC.
     DCHECK(compiler_options_->image_type_ == CompilerOptions::ImageType::kNone);
     if (!image_filenames_.empty()) {
-      compiler_options_->image_type_ = CompilerOptions::ImageType::kBootImage;
+      if (android::base::EndsWith(image_filenames_[0], "apex.art")) {
+        compiler_options_->image_type_ = CompilerOptions::ImageType::kApexBootImage;
+      } else {
+        compiler_options_->image_type_ = CompilerOptions::ImageType::kBootImage;
+      }
     }
     if (app_image_fd_ != -1 || !app_image_file_name_.empty()) {
       if (compiler_options_->IsBootImage()) {
