@@ -89,11 +89,12 @@ class ApiList {
     // e.g. GreylistMaxO is accessible to targetSdkVersion <= 27 (O_MR1).
     kGreylistMaxO = 3,
     kGreylistMaxP = 4,
+    kGreylistMaxQ = 5,
 
     // Special values
     kInvalid =      (static_cast<uint32_t>(-1) & kValueBitMask),
     kMin =          kWhitelist,
-    kMax =          kGreylistMaxP,
+    kMax =          kGreylistMaxQ,
   };
 
   // Additional bit flags after the first kValueBitSize bits in dex flags.
@@ -127,6 +128,7 @@ class ApiList {
     "blacklist",
     "greylist-max-o",
     "greylist-max-p",
+    "greylist-max-q",
   };
 
   // Names corresponding to DomainApis.
@@ -141,6 +143,7 @@ class ApiList {
     /* blacklist */ SdkVersion::kMin,
     /* greylist-max-o */ SdkVersion::kO_MR1,
     /* greylist-max-p */ SdkVersion::kP,
+    /* greylist-max-q */ SdkVersion::kQ,
   };
 
   explicit ApiList(Value val, uint32_t domain_apis = 0u)
