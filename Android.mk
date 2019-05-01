@@ -551,8 +551,8 @@ PRIVATE_RUNTIME_DEPENDENCY_LIBS := \
 #   directory under the build tree containing the (Debug) Runtime APEX
 #   artifacts, which is not sync'd to the target).
 #
-# TODO(b/121117762): Remove this when the ART Buildbot and Golem have
-# full support for the Runtime APEX.
+# TODO(b/121117762, b/129332183): Remove this when the ART Buildbot
+# and Golem have full support for the Runtime APEX.
 .PHONY: standalone-apex-files
 standalone-apex-files: libc.bootstrap libdl.bootstrap libm.bootstrap linker com.android.runtime.debug
 	for f in $(PRIVATE_BIONIC_FILES); do \
@@ -575,22 +575,28 @@ standalone-apex-files: libc.bootstrap libdl.bootstrap libm.bootstrap linker com.
 .PHONY: build-art-target-golem
 # Also include libartbenchmark, we always include it when running golem.
 # libstdc++ is needed when building for ART_TARGET_LINUX.
-#
+
 # Also include the bootstrap Bionic libraries (libc, libdl, libm).
 # These are required as the "main" libc, libdl, and libm have moved to
 # the Runtime APEX. This is a temporary change needed until Golem
 # fully supports the Runtime APEX.
-# TODO(b/121117762): Remove this when the ART Buildbot and Golem have
-# full support for the Runtime APEX.
 #
-# Also include a copy of the ICU .dat prebuilt files in
-# /system/etc/icu on target (see module `icu-data-art-test`), so that
-# it can found even if the Runtime APEX is not available, by setting
-# the environment variable `ART_TEST_ANDROID_RUNTIME_ROOT` to
-# "/system" on device. This is a temporary change needed until Golem
-# fully supports the Runtime APEX.
-# TODO(b/121117762): Remove this when the ART Buildbot and Golem have
-# full support for the Runtime APEX.
+# TODO(b/121117762, b/129332183): Remove this when the ART Buildbot
+# and Golem have full support for the Runtime APEX.
+
+# Also include:
+# - a copy of the ICU .dat prebuilt files in /system/etc/icu on target
+#   (see module `icu-data-art-test`); and
+# - a copy of the timezones prebuilt files in /system/etc/tz on
+#   target, (see modules `tzdata-art-test`, `tzlookup.xml-art-test`,
+#   and `tz_version-art-test`)
+# so that they can be found even if the Runtime APEX is not available,
+# by setting the environment variable `ART_TEST_ANDROID_RUNTIME_ROOT`
+# to "/system" on device. This is a temporary change needed until
+# Golem fully supports the Runtime APEX.
+#
+# TODO(b/121117762, b/129332183): Remove this when the ART Buildbot
+# and Golem have full support for the Runtime APEX.
 ART_TARGET_SHARED_LIBRARY_BENCHMARK := $(TARGET_OUT_SHARED_LIBRARIES)/libartbenchmark.so
 build-art-target-golem: dex2oat dalvikvm linker libstdc++ \
                         $(TARGET_OUT_EXECUTABLES)/art \
@@ -602,6 +608,7 @@ build-art-target-golem: dex2oat dalvikvm linker libstdc++ \
                         $(TARGET_CORE_IMG_OUT_BASE)-interpreter.art \
                         libc.bootstrap libdl.bootstrap libm.bootstrap \
                         icu-data-art-test \
+                        tzdata-art-test tzlookup.xml-art-test tz_version-art-test \
                         standalone-apex-files
 	# remove debug libraries from public.libraries.txt because golem builds
 	# won't have it.
