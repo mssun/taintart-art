@@ -32,11 +32,12 @@ namespace.platform.isolated = true
 namespace.platform.search.paths = /system/${LIB}
 namespace.platform.asan.search.paths = /data/asan/system/${LIB}
 namespace.platform.links = default
-namespace.platform.link.default.shared_libs  = libdexfile_external.so
+namespace.platform.link.default.shared_libs  = libandroidicu.so
+namespace.platform.link.default.shared_libs += libdexfile_external.so
+namespace.platform.link.default.shared_libs += libdexfiled_external.so
 namespace.platform.link.default.shared_libs += libnativebridge.so
 namespace.platform.link.default.shared_libs += libnativehelper.so
 namespace.platform.link.default.shared_libs += libnativeloader.so
-namespace.platform.link.default.shared_libs += libandroidicu.so
 
 # TODO(b/122876336): Remove libpac.so once it's migrated to Webview
 namespace.platform.link.default.shared_libs += libpac.so
