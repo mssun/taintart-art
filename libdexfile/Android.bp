@@ -266,7 +266,11 @@ cc_defaults {
     shared_libs: [
         "libbase",
     ],
-
+    target: {
+        darwin: {
+            enabled: true,
+        },
+    },
     stubs: {
         symbol_file: "external/libdexfile_external.map.txt",
         versions: ["1"],
