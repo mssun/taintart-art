@@ -17,6 +17,8 @@
 #ifndef ART_LIBDEXFILE_DEX_MODIFIERS_H_
 #define ART_LIBDEXFILE_DEX_MODIFIERS_H_
 
+#include <string>
+
 #include <stdint.h>
 
 namespace art {
