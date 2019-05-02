@@ -100,6 +100,7 @@ TEST_F(ParsedOptionsTest, ParsedOptions) {
   EXPECT_FALSE(VLOG_IS_ON(compiler));
   EXPECT_FALSE(VLOG_IS_ON(heap));
   EXPECT_TRUE(VLOG_IS_ON(gc));
+  EXPECT_FALSE(VLOG_IS_ON(interpreter));
   EXPECT_FALSE(VLOG_IS_ON(jdwp));
   EXPECT_TRUE(VLOG_IS_ON(jni));
   EXPECT_FALSE(VLOG_IS_ON(monitor));

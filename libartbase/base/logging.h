@@ -38,6 +38,7 @@ struct LogVerbosity {
   bool deopt;
   bool gc;
   bool heap;
+  bool interpreter;  // Enabled with "-verbose:interpreter".
   bool jdwp;
   bool jit;
   bool jni;

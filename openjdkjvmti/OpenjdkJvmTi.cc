@@ -1414,6 +1414,7 @@ class JvmtiFunctions {
       art::gLogVerbosity.compiler = val;
       art::gLogVerbosity.deopt = val;
       art::gLogVerbosity.heap = val;
+      art::gLogVerbosity.interpreter = val;
       art::gLogVerbosity.jdwp = val;
       art::gLogVerbosity.jit = val;
       art::gLogVerbosity.monitor = val;

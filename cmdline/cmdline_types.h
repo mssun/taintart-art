@@ -565,6 +565,8 @@ struct CmdlineType<LogVerbosity> : CmdlineTypeParser<LogVerbosity> {
         log_verbosity.gc = true;
       } else if (verbose_options[j] == "heap") {
         log_verbosity.heap = true;
+      } else if (verbose_options[j] == "interpreter") {
+        log_verbosity.interpreter = true;
       } else if (verbose_options[j] == "jdwp") {
         log_verbosity.jdwp = true;
       } else if (verbose_options[j] == "jit") {
