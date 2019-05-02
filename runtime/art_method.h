@@ -28,9 +28,7 @@
 #include "base/enums.h"
 #include "base/macros.h"
 #include "base/runtime_debug.h"
-#include "dex/code_item_accessors.h"
 #include "dex/dex_file_structs.h"
-#include "dex/dex_instruction_iterator.h"
 #include "dex/modifiers.h"
 #include "dex/primitive.h"
 #include "dex/signature.h"
@@ -41,6 +39,9 @@
 
 namespace art {
 
+class CodeItemDataAccessor;
+class CodeItemDebugInfoAccessor;
+class CodeItemInstructionAccessor;
 class DexFile;
 template<class T> class Handle;
 class ImtConflictTable;
