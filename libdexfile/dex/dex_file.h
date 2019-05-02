@@ -25,7 +25,6 @@
 #include <android-base/logging.h>
 
 #include "base/globals.h"
-#include "base/hiddenapi_domain.h"
 #include "base/macros.h"
 #include "base/value_object.h"
 #include "class_iterator.h"
@@ -46,6 +45,10 @@ class MemMap;
 class OatDexFile;
 class StandardDexFile;
 class ZipArchive;
+
+namespace hiddenapi {
+enum class Domain : char;
+}  // namespace hiddenapi
 
 // Some instances of DexFile own the storage referred to by DexFile.  Clients who create
 // such management do so by subclassing Container.

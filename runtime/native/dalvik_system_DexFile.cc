@@ -22,6 +22,7 @@
 
 #include "base/casts.h"
 #include "base/file_utils.h"
+#include "base/hiddenapi_domain.h"
 #include "base/logging.h"
 #include "base/os.h"
 #include "base/stl_util.h"

@@ -30,6 +30,7 @@
 #include "android-base/stringprintf.h"
 
 #include "base/enums.h"
+#include "base/hiddenapi_domain.h"
 #include "base/leb128.h"
 #include "base/stl_util.h"
 #include "class_accessor-inl.h"

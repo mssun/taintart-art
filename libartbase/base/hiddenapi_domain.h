@@ -24,14 +24,14 @@ namespace hiddenapi {
 // ordinal is considered more "trusted", i.e. always allowed to access members of
 // domains with a greater ordinal. Access checks are performed when code tries to
 // access a method/field from a more trusted domain than itself.
-enum class Domain {
+enum class Domain : char {
   kCorePlatform = 0,
   kPlatform,
   kApplication,
 };
 
 inline bool IsDomainMoreTrustedThan(Domain domainA, Domain domainB) {
-  return static_cast<uint32_t>(domainA) <= static_cast<uint32_t>(domainB);
+  return static_cast<char>(domainA) <= static_cast<char>(domainB);
 }
 
 }  // namespace hiddenapi

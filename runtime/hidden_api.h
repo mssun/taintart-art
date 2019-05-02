@@ -19,6 +19,7 @@
 
 #include "art_field.h"
 #include "art_method.h"
+#include "base/hiddenapi_domain.h"
 #include "base/hiddenapi_flags.h"
 #include "base/locks.h"
 #include "intrinsics_enum.h"
