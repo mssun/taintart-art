@@ -19,6 +19,7 @@
 #include <map>
 #include <mutex>
 
+#include <android-base/logging.h>
 #include <android-base/macros.h>  // For ATTRIBUTE_UNUSED
 
 #include "palette_system.h"
@@ -52,8 +53,8 @@ enum PaletteStatus PaletteSchedGetPriority(int32_t tid,
   return PaletteStatus::kOkay;
 }
 
-enum PaletteStatus PaletteTombstonedMessage(/*in*/ const char* msg ATTRIBUTE_UNUSED,
-                                            size_t msg_len ATTRIBUTE_UNUSED) {
+enum PaletteStatus PaletteWriteCrashThreadStacks(/*in*/ const char* stacks, size_t stacks_len) {
+  LOG(INFO) << std::string_view(stacks, stacks_len);
   return PaletteStatus::kOkay;
 }
 

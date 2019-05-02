@@ -29,6 +29,7 @@ enum PaletteStatus {
   kCheckErrno = 1,
   kInvalidArgument = 2,
   kNotSupported = 3,
+  kFailedCheckLog = 4,
 };
 
 #ifdef __cplusplus

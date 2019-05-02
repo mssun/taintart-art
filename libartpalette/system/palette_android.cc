@@ -106,44 +106,50 @@ enum PaletteStatus PaletteSchedGetPriority(int32_t tid, /*out*/int32_t* managed_
   return PaletteStatus::kOkay;
 }
 
-enum PaletteStatus PaletteTombstonedMessage(/*in*/const char* msg, size_t msg_len) {
+enum PaletteStatus PaletteWriteCrashThreadStacks(/*in*/const char* stacks, size_t stacks_len) {
   android::base::unique_fd tombstone_fd;
   android::base::unique_fd output_fd;
+
   if (!tombstoned_connect(getpid(), &tombstone_fd, &output_fd, kDebuggerdJavaBacktrace)) {
-    return PaletteStatus::kCheckErrno;
+    // Failure here could be due to file descriptor resource exhaustion
+    // so write the stack trace message to the log in case it helps
+    // debug that.
+    LOG(INFO) << std::string_view(stacks, stacks_len);
+    // tombstoned_connect() logs failure reason.
+    return PaletteStatus::kFailedCheckLog;
   }
 
-  bool success = true;
-  if (!android::base::WriteFully(output_fd, msg, msg_len)) {
+  PaletteStatus status = PaletteStatus::kOkay;
+  if (!android::base::WriteFully(output_fd, stacks, stacks_len)) {
     PLOG(ERROR) << "Failed to write tombstoned output";
-    success = false;
-  } else if (TEMP_FAILURE_RETRY(fsync(output_fd)) == -1 && errno != EINVAL) {
+    TEMP_FAILURE_RETRY(ftruncate(output_fd, 0));
+    status = PaletteStatus::kFailedCheckLog;
+  }
+
+  if (TEMP_FAILURE_RETRY(fdatasync(output_fd)) == -1 && errno != EINVAL) {
     // Ignore EINVAL so we don't report failure if we just tried to flush a pipe
     // or socket.
-    PLOG(ERROR) << "Failed to fsync tombstoned output";
-    success = false;
-  } else if (close(output_fd.release()) == -1) {
-    // Shouldn't retry close after EINTR because the fd has been closed anyway,
-    // but don't count it as a failure either.
-    if (errno != EINTR) {
+    if (status == PaletteStatus::kOkay) {
+      PLOG(ERROR) << "Failed to fsync tombstoned output";
+      status = PaletteStatus::kFailedCheckLog;
+    }
+    TEMP_FAILURE_RETRY(ftruncate(output_fd, 0));
+    TEMP_FAILURE_RETRY(fdatasync(output_fd));
+  }
+
+  if (close(output_fd.release()) == -1 && errno != EINTR) {
+    if (status == PaletteStatus::kOkay) {
       PLOG(ERROR) << "Failed to close tombstoned output";
-      success = false;
+      status = PaletteStatus::kFailedCheckLog;
     }
   }
 
-  if (!success) {
-    int saved_errno = errno;
-    TEMP_FAILURE_RETRY(ftruncate(output_fd, 0));
-    TEMP_FAILURE_RETRY(fsync(output_fd));
-    close(output_fd.release());
-    errno = saved_errno;
-  }
-
   if (!tombstoned_notify_completion(tombstone_fd)) {
-    success = false;
+    // tombstoned_notify_completion() logs failure.
+    status = PaletteStatus::kFailedCheckLog;
   }
 
-  return success ? PaletteStatus::kOkay : PaletteStatus::kCheckErrno;
+  return status;
 }
 
 enum PaletteStatus PaletteTraceEnabled(/*out*/int32_t* enabled) {

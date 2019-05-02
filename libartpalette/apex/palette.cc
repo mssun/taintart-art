@@ -125,9 +125,10 @@ enum PaletteStatus PaletteSchedGetPriority(int32_t tid, /*out*/int32_t* java_pri
   return m(tid, java_priority);
 }
 
-enum PaletteStatus PaletteTombstonedMessage(/*in*/const char* msg, size_t msg_len) {
-  PaletteTombstonedMessageMethod m = PaletteLoader::Instance().GetPaletteTombstonedMessageMethod();
-  return m(msg, msg_len);
+enum PaletteStatus PaletteWriteCrashThreadStacks(/*in*/const char* stack, size_t stack_len) {
+  PaletteWriteCrashThreadStacksMethod m =
+      PaletteLoader::Instance().GetPaletteWriteCrashThreadStacksMethod();
+  return m(stack, stack_len);
 }
 
 enum PaletteStatus PaletteTraceEnabled(/*out*/int32_t* enabled) {
