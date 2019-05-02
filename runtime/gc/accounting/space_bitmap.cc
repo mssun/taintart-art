@@ -169,23 +169,28 @@ void SpaceBitmap<kAlignment>::SweepWalk(const SpaceBitmap<kAlignment>& live_bitm
     return;
   }
 
-  // TODO: rewrite the callbacks to accept a std::vector<mirror::Object*> rather than a mirror::Object**?
-  constexpr size_t buffer_size = sizeof(intptr_t) * kBitsPerIntPtrT;
-#ifdef __LP64__
-  // Heap-allocate for smaller stack frame.
-  std::unique_ptr<mirror::Object*[]> pointer_buf_ptr(new mirror::Object*[buffer_size]);
-  mirror::Object** pointer_buf = pointer_buf_ptr.get();
-#else
-  // Stack-allocate buffer as it's small enough.
-  mirror::Object* pointer_buf[buffer_size];
-#endif
-  mirror::Object** pb = &pointer_buf[0];
-
-  size_t start = OffsetToIndex(sweep_begin - live_bitmap.heap_begin_);
-  size_t end = OffsetToIndex(sweep_end - live_bitmap.heap_begin_ - 1);
-  CHECK_LT(end, live_bitmap.Size() / sizeof(intptr_t));
+  size_t buffer_size = sizeof(intptr_t) * kBitsPerIntPtrT;
   Atomic<uintptr_t>* live = live_bitmap.bitmap_begin_;
   Atomic<uintptr_t>* mark = mark_bitmap.bitmap_begin_;
+  const size_t start = OffsetToIndex(sweep_begin - live_bitmap.heap_begin_);
+  const size_t end = OffsetToIndex(sweep_end - live_bitmap.heap_begin_ - 1);
+  CHECK_LT(end, live_bitmap.Size() / sizeof(intptr_t));
+
+  if (Runtime::Current()->IsRunningOnMemoryTool()) {
+    // For memory tool, make the buffer large enough to hold all allocations. This is done since
+    // we get the size of objects (and hence read the class) inside of the freeing logic. This can
+    // cause crashes for unloaded classes since the class may get zeroed out before it is read.
+    // See b/131542326
+    for (size_t i = start; i <= end; i++) {
+      uintptr_t garbage =
+          live[i].load(std::memory_order_relaxed) & ~mark[i].load(std::memory_order_relaxed);
+      buffer_size += POPCOUNT(garbage);
+    }
+  }
+  std::vector<mirror::Object*> pointer_buf(buffer_size);
+  mirror::Object** cur_pointer = &pointer_buf[0];
+  mirror::Object** pointer_end = cur_pointer + (buffer_size - kBitsPerIntPtrT);
+
   for (size_t i = start; i <= end; i++) {
     uintptr_t garbage =
         live[i].load(std::memory_order_relaxed) & ~mark[i].load(std::memory_order_relaxed);
@@ -194,18 +199,18 @@ void SpaceBitmap<kAlignment>::SweepWalk(const SpaceBitmap<kAlignment>& live_bitm
       do {
         const size_t shift = CTZ(garbage);
         garbage ^= (static_cast<uintptr_t>(1)) << shift;
-        *pb++ = reinterpret_cast<mirror::Object*>(ptr_base + shift * kAlignment);
+        *cur_pointer++ = reinterpret_cast<mirror::Object*>(ptr_base + shift * kAlignment);
       } while (garbage != 0);
       // Make sure that there are always enough slots available for an
       // entire word of one bits.
-      if (pb >= &pointer_buf[buffer_size - kBitsPerIntPtrT]) {
-        (*callback)(pb - &pointer_buf[0], &pointer_buf[0], arg);
-        pb = &pointer_buf[0];
+      if (cur_pointer >= pointer_end) {
+        (*callback)(cur_pointer - &pointer_buf[0], &pointer_buf[0], arg);
+        cur_pointer  = &pointer_buf[0];
       }
     }
   }
-  if (pb > &pointer_buf[0]) {
-    (*callback)(pb - &pointer_buf[0], &pointer_buf[0], arg);
+  if (cur_pointer > &pointer_buf[0]) {
+    (*callback)(cur_pointer - &pointer_buf[0], &pointer_buf[0], arg);
   }
 }
 

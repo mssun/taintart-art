@@ -251,6 +251,12 @@ size_t MemoryToolMallocSpace<S,
                              kUseObjSizeForUsable>::FreeList(
                                  Thread* self, size_t num_ptrs, mirror::Object** ptrs) {
   size_t freed = 0;
+  // Sort the pointers to free non class objects first. See b/131542326 for why this is necessary to
+  // avoid crashes.
+  std::sort(ptrs, ptrs + num_ptrs, [](mirror::Object* a, mirror::Object* b)
+      REQUIRES_SHARED(Locks::mutator_lock_) {
+    return a->IsClass() < b->IsClass();
+  });
   for (size_t i = 0; i < num_ptrs; i++) {
     freed += Free(self, ptrs[i]);
     ptrs[i] = nullptr;
