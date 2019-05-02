@@ -531,6 +531,8 @@ PRIVATE_RUNTIME_DEPENDENCY_LIBS := \
   lib64/libnativehelper.so \
   lib/libdexfile_external.so \
   lib64/libdexfile_external.so \
+  lib/libdexfiled_external.so \
+  lib64/libdexfiled_external.so \
   lib/libnativeloader.so \
   lib64/libnativeloader.so \
   lib/libandroidio.so \
