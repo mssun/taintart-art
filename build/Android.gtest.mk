@@ -124,34 +124,34 @@ endif
 
 ifdef ART_TEST_HOST_GTEST_Main_DEX
 $(ART_TEST_HOST_GTEST_EmptyUncompressed_DEX):
-	touch $(dir $@)classes.dex
-	zip -j -qD -X -0 $@ $(dir $@)classes.dex
-	rm $(dir $@)classes.dex
+	touch $@_classes.dex
+	zip -j -qD -X -0 $@ $@_classes.dex
+	rm $@_classes.dex
 endif
 
 ifdef ART_TEST_TARGET_GTEST_Main_DEX
 $(ART_TEST_TARGET_GTEST_EmptyUncompressed_DEX):
-	touch $(dir $@)classes.dex
-	zip -j -qD -X -0 $@ $(dir $@)classes.dex
-	rm $(dir $@)classes.dex
+	touch $@_classes.dex
+	zip -j -qD -X -0 $@ $@_classes.dex
+	rm $@_classes.dex
 endif
 
 ifdef ART_TEST_HOST_GTEST_Main_DEX
 $(ART_TEST_HOST_GTEST_EmptyUncompressedAligned_DEX): $(ZIPALIGN)
-	touch $(dir $@)classes.dex
-	zip -j -0 $(dir $@)temp.zip $(dir $@)classes.dex
-	$(ZIPALIGN) -f -v 4 $(dir $@)temp.zip $@
-	rm $(dir $@)classes.dex
-	rm $(dir $@)temp.zip
+	touch $@_classes.dex
+	zip -j -0 $@_temp.zip $@_classes.dex
+	$(ZIPALIGN) -f 4 $@_temp.zip $@
+	rm $@_classes.dex
+	rm $@_temp.zip
 endif
 
 ifdef ART_TEST_TARGET_GTEST_Main_DEX
 $(ART_TEST_TARGET_GTEST_EmptyUncompressedAligned_DEX): $(ZIPALIGN)
-	touch $(dir $@)classes.dex
-	zip -j -0 $(dir $@)temp.zip $(dir $@)classes.dex
-	$(ZIPALIGN) -f -v 4 $(dir $@)temp.zip $@
-	rm $(dir $@)classes.dex
-	rm $(dir $@)temp.zip
+	touch $@_classes.dex
+	zip -j -0 $@_temp.zip $@_classes.dex
+	$(ZIPALIGN) -f 4 $@_temp.zip $@
+	rm $@_classes.dex
+	rm $@_temp.zip
 endif
 
 ifdef ART_TEST_HOST_GTEST_MultiDex_DEX
