@@ -945,9 +945,10 @@ class ClassLinker {
                                         ObjPtr<mirror::DexCache> dex_cache)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
-  // Implementation of ResolveType() called when the type was not found in the dex cache.
-  template <typename T>
-  ObjPtr<mirror::Class> DoResolveType(dex::TypeIndex type_idx, T referrer)
+  // Implementation of ResolveType() called when the type was not found in the dex cache. May be
+  // used with ArtField*, ArtMethod* or ObjPtr<Class>.
+  template <typename RefType>
+  ObjPtr<mirror::Class> DoResolveType(dex::TypeIndex type_idx, RefType referrer)
       REQUIRES_SHARED(Locks::mutator_lock_)
       REQUIRES(!Locks::dex_lock_, !Roles::uninterruptible_);
   ObjPtr<mirror::Class> DoResolveType(dex::TypeIndex type_idx,
