@@ -691,7 +691,8 @@ class GetLocalVariableClosure : public CommonLocalVariableClosure {
         }
         art::JNIEnvExt* jni = art::Thread::Current()->GetJniEnv();
         art::ObjPtr<art::mirror::Object> obj(reinterpret_cast<art::mirror::Object*>(ptr_val));
-        ScopedLocalRef<jobject> local(jni, jni->AddLocalReference<jobject>(obj));
+        ScopedLocalRef<jobject> local(
+            jni, obj.IsNull() ? nullptr : jni->AddLocalReference<jobject>(obj));
         obj_val_ = jni->NewGlobalRef(local.get());
         break;
       }
