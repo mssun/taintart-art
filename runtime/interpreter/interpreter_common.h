@@ -33,6 +33,7 @@
 #include "art_method-inl.h"
 #include "base/enums.h"
 #include "base/locks.h"
+#include "base/logging.h"
 #include "base/macros.h"
 #include "class_linker-inl.h"
 #include "class_root.h"
@@ -277,6 +278,8 @@ static ALWAYS_INLINE bool DoInvoke(Thread* self,
     }
     self->PushShadowFrame(new_shadow_frame);
     self->EndAssertNoThreadSuspension(old_cause);
+
+    VLOG(interpreter) << "Interpreting " << called_method->PrettyMethod();
 
     DCheckStaticState(self, called_method);
     while (true) {

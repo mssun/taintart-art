@@ -321,6 +321,7 @@ static inline JValue Execute(
   DCHECK(!method->SkipAccessChecks() || !method->MustCountLocks());
 
   bool transaction_active = Runtime::Current()->IsActiveTransaction();
+  VLOG(interpreter) << "Interpreting " << method->PrettyMethod();
   if (LIKELY(method->SkipAccessChecks())) {
     // Enter the "without access check" interpreter.
     if (kInterpreterImplKind == kMterpImplKind) {

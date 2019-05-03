@@ -257,7 +257,7 @@ TEST_F(CmdlineParserTest, TestSimpleFailures) {
 TEST_F(CmdlineParserTest, TestLogVerbosity) {
   {
     const char* log_args = "-verbose:"
-        "class,compiler,gc,heap,jdwp,jni,monitor,profiler,signals,simulator,startup,"
+        "class,compiler,gc,heap,interpreter,jdwp,jni,monitor,profiler,signals,simulator,startup,"
         "third-party-jni,threads,verifier,verifier-debug";
 
     LogVerbosity log_verbosity = LogVerbosity();
@@ -265,6 +265,7 @@ TEST_F(CmdlineParserTest, TestLogVerbosity) {
     log_verbosity.compiler = true;
     log_verbosity.gc = true;
     log_verbosity.heap = true;
+    log_verbosity.interpreter = true;
     log_verbosity.jdwp = true;
     log_verbosity.jni = true;
     log_verbosity.monitor = true;
