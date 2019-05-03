@@ -21,7 +21,12 @@
 
 namespace art {
 
+// State stored in our C++ class Thread.
+// When we refer to "a suspended state", or when function names mention "ToSuspended" or
+// "FromSuspended", we mean any state other than kRunnable, i.e. any state in which the thread is
+// guaranteed not to access the Java heap. The kSuspended state is merely one of these.
 enum ThreadState {
+  //                                   Java
   //                                   Thread.State   JDWP state
   kTerminated = 66,                 // TERMINATED     TS_ZOMBIE    Thread.run has returned, but Thread* still around
   kRunnable,                        // RUNNABLE       TS_RUNNING   runnable
