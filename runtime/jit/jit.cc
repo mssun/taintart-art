@@ -937,7 +937,7 @@ ScopedJitSuspend::~ScopedJitSuspend() {
   }
 }
 
-void Jit::PostForkChildAction(bool is_zygote) {
+void Jit::PostForkChildAction(bool is_system_server, bool is_zygote) {
   if (is_zygote) {
     // Remove potential tasks that have been inherited from the zygote. Child zygotes
     // currently don't need the whole boot image compiled (ie webview_zygote).
@@ -959,8 +959,12 @@ void Jit::PostForkChildAction(bool is_zygote) {
       !Runtime::Current()->GetInstrumentation()->AreExitStubsInstalled());
 
   if (thread_pool_ != nullptr) {
-    // Remove potential tasks that have been inherited from the zygote.
-    thread_pool_->RemoveAllTasks(Thread::Current());
+    if (!is_system_server) {
+      // Remove potential tasks that have been inherited from the zygote.
+      // We keep the queue for system server, as not having those methods compiled
+      // impacts app startup.
+      thread_pool_->RemoveAllTasks(Thread::Current());
+    }
 
     // Resume JIT compilation.
     thread_pool_->CreateThreads();
