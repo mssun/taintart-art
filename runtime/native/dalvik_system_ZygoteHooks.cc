@@ -324,7 +324,7 @@ static void ZygoteHooks_nativePostForkChild(JNIEnv* env,
           /* is_system_server= */ false, is_zygote);
     }
     // This must be called after EnableDebugFeatures.
-    runtime->GetJit()->PostForkChildAction(is_zygote);
+    runtime->GetJit()->PostForkChildAction(is_system_server, is_zygote);
   }
 
   // Update tracing.

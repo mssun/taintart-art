@@ -373,7 +373,7 @@ extern "C" JNIEXPORT void JNICALL Java_Main_transitionJitFromZygote(JNIEnv*, jcl
   // Mimic the transition behavior a zygote fork would have.
   jit->PreZygoteFork();
   jit->GetCodeCache()->PostForkChildAction(/*is_system_server=*/ false, /*is_zygote=*/ false);
-  jit->PostForkChildAction(/*is_zygote=*/ false);
+  jit->PostForkChildAction(/*is_system_server=*/ false, /*is_zygote=*/ false);
 }
 
 extern "C" JNIEXPORT void JNICALL Java_Main_deoptimizeBootImage(JNIEnv*, jclass) {

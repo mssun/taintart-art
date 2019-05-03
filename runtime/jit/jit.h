@@ -296,7 +296,7 @@ class Jit {
   void Start();
 
   // Transition to a child state.
-  void PostForkChildAction(bool is_zygote);
+  void PostForkChildAction(bool is_system_server, bool is_zygote);
 
   // Prepare for forking.
   void PreZygoteFork();
