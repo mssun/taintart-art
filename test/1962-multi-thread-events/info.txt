@@ -1,0 +1,5 @@
+Tests b/131865028
+
+Due to a mistake in the single-thread deopt CL we would incorrectly only update a threads
+deoptimization count if it was the first thread of a particular event type to be activated. This
+could cause events to be missed.
