@@ -123,7 +123,7 @@ class DexZipArchive {
     DCHECK(name != nullptr);
     // Resist the urge to delete the space. <: is a bigraph sequence.
     std::unique_ptr< ::ZipEntry> zip_entry(new ::ZipEntry);
-    const int32_t error = FindEntry(handle_, ZipString(name), zip_entry.get());
+    const int32_t error = FindEntry(handle_, name, zip_entry.get());
     if (error) {
       *error_msg = std::string(ErrorCodeString(error));
       return nullptr;
