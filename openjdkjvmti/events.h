@@ -247,10 +247,13 @@ class EventHandler {
       REQUIRES(!envs_lock_);
 
  private:
-  void SetupTraceListener(JvmtiMethodTraceListener* listener, ArtJvmtiEvent event, bool enable);
+  jvmtiError SetupTraceListener(JvmtiMethodTraceListener* listener,
+                                ArtJvmtiEvent event,
+                                jthread thread,
+                                bool enable);
 
   // Specifically handle the FramePop event which it might not always be possible to turn off.
-  void SetupFramePopTraceListener(bool enable);
+  jvmtiError SetupFramePopTraceListener(jthread thread, bool enable);
 
   template <ArtJvmtiEvent kEvent, typename ...Args>
   ALWAYS_INLINE
@@ -290,11 +293,6 @@ class EventHandler {
   ALWAYS_INLINE
   inline void RecalculateGlobalEventMaskLocked(ArtJvmtiEvent event) REQUIRES_SHARED(envs_lock_);
 
-  // Returns whether there are any active requests for the given event on the given thread. This
-  // should only be used while modifying the events for a thread.
-  bool GetThreadEventState(ArtJvmtiEvent event, art::Thread* thread)
-      REQUIRES(envs_lock_, art::Locks::thread_list_lock_);
-
   template <ArtJvmtiEvent kEvent>
   ALWAYS_INLINE inline void DispatchClassFileLoadHookEvent(art::Thread* thread,
                                                            JNIEnv* jnienv,
@@ -315,11 +313,7 @@ class EventHandler {
                                                             jclass klass) const
       REQUIRES(!envs_lock_);
 
-  // Sets up the global state needed for the first/last enable of an event across all threads
-  void HandleEventType(ArtJvmtiEvent event, bool enable);
-  // Perform deopts required for enabling the event on the given thread. Null thread indicates
-  // global event enabled.
-  jvmtiError HandleEventDeopt(ArtJvmtiEvent event, jthread thread, bool enable);
+  jvmtiError HandleEventType(ArtJvmtiEvent event, jthread thread, bool enable);
   void HandleLocalAccessCapabilityAdded();
   void HandleBreakpointEventsChanged(bool enable);
 
