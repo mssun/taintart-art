@@ -974,6 +974,8 @@ static uint32_t GetInstrumentationEventsFor(ArtJvmtiEvent event) {
 }
 
 enum class DeoptRequirement {
+  // No deoptimization work required.
+  kNone,
   // Limited/no deopt required.
   kLimited,
   // A single thread must be put into interpret only.
@@ -998,19 +1000,38 @@ static DeoptRequirement GetDeoptRequirement(ArtJvmtiEvent event, jthread thread)
     case ArtJvmtiEvent::kSingleStep:
     case ArtJvmtiEvent::kFramePop:
       return thread == nullptr ? DeoptRequirement::kFull : DeoptRequirement::kThread;
-    default:
-      LOG(FATAL) << "Unexpected event type!";
-      UNREACHABLE();
+    case ArtJvmtiEvent::kVmInit:
+    case ArtJvmtiEvent::kVmDeath:
+    case ArtJvmtiEvent::kThreadStart:
+    case ArtJvmtiEvent::kThreadEnd:
+    case ArtJvmtiEvent::kClassFileLoadHookNonRetransformable:
+    case ArtJvmtiEvent::kClassLoad:
+    case ArtJvmtiEvent::kClassPrepare:
+    case ArtJvmtiEvent::kVmStart:
+    case ArtJvmtiEvent::kNativeMethodBind:
+    case ArtJvmtiEvent::kCompiledMethodLoad:
+    case ArtJvmtiEvent::kCompiledMethodUnload:
+    case ArtJvmtiEvent::kDynamicCodeGenerated:
+    case ArtJvmtiEvent::kDataDumpRequest:
+    case ArtJvmtiEvent::kMonitorWait:
+    case ArtJvmtiEvent::kMonitorWaited:
+    case ArtJvmtiEvent::kMonitorContendedEnter:
+    case ArtJvmtiEvent::kMonitorContendedEntered:
+    case ArtJvmtiEvent::kResourceExhausted:
+    case ArtJvmtiEvent::kGarbageCollectionStart:
+    case ArtJvmtiEvent::kGarbageCollectionFinish:
+    case ArtJvmtiEvent::kObjectFree:
+    case ArtJvmtiEvent::kVmObjectAlloc:
+    case ArtJvmtiEvent::kClassFileLoadHookRetransformable:
+    case ArtJvmtiEvent::kDdmPublishChunk:
+      return DeoptRequirement::kNone;
   }
 }
 
-jvmtiError EventHandler::SetupTraceListener(JvmtiMethodTraceListener* listener,
-                                            ArtJvmtiEvent event,
-                                            jthread thread,
-                                            bool enable) {
+jvmtiError EventHandler::HandleEventDeopt(ArtJvmtiEvent event, jthread thread, bool enable) {
   DeoptRequirement deopt_req = GetDeoptRequirement(event, thread);
   // Make sure we can deopt.
-  {
+  if (deopt_req != DeoptRequirement::kNone) {
     art::ScopedObjectAccess soa(art::Thread::Current());
     DeoptManager* deopt_manager = DeoptManager::Get();
     jvmtiError err = OK;
@@ -1047,7 +1068,12 @@ jvmtiError EventHandler::SetupTraceListener(JvmtiMethodTraceListener* listener,
       }
     }
   }
+  return OK;
+}
 
+void EventHandler::SetupTraceListener(JvmtiMethodTraceListener* listener,
+                                      ArtJvmtiEvent event,
+                                      bool enable) {
   // Add the actual listeners.
   uint32_t new_events = GetInstrumentationEventsFor(event);
   if (new_events == art::instrumentation::Instrumentation::kDexPcMoved) {
@@ -1060,7 +1086,7 @@ jvmtiError EventHandler::SetupTraceListener(JvmtiMethodTraceListener* listener,
     if (IsEventEnabledAnywhere(other)) {
       // The event needs to be kept around/is already enabled by the other jvmti event that uses the
       // same instrumentation event.
-      return OK;
+      return;
     }
   }
   art::ScopedThreadStateChange stsc(art::Thread::Current(), art::ThreadState::kNative);
@@ -1071,7 +1097,7 @@ jvmtiError EventHandler::SetupTraceListener(JvmtiMethodTraceListener* listener,
   } else {
     instr->RemoveListener(listener, new_events);
   }
-  return OK;
+  return;
 }
 
 // Makes sure that all compiled methods are AsyncDeoptimizable so we can deoptimize (and force to
@@ -1127,11 +1153,10 @@ bool EventHandler::OtherMonitorEventsEnabledAnywhere(ArtJvmtiEvent event) {
   return false;
 }
 
-jvmtiError EventHandler::SetupFramePopTraceListener(jthread thread, bool enable) {
+void EventHandler::SetupFramePopTraceListener(bool enable) {
   if (enable) {
     frame_pop_enabled = true;
-    return SetupTraceListener(
-        method_trace_listener_.get(), ArtJvmtiEvent::kFramePop, thread, enable);
+    SetupTraceListener(method_trace_listener_.get(), ArtJvmtiEvent::kFramePop, enable);
   } else {
     // remove the listener if we have no outstanding frames.
     {
@@ -1140,38 +1165,37 @@ jvmtiError EventHandler::SetupFramePopTraceListener(jthread thread, bool enable)
         art::ReaderMutexLock event_mu(art::Thread::Current(), env->event_info_mutex_);
         if (!env->notify_frames.empty()) {
           // Leaving FramePop listener since there are unsent FramePop events.
-          return OK;
+          return;
         }
       }
       frame_pop_enabled = false;
     }
-    return SetupTraceListener(
-        method_trace_listener_.get(), ArtJvmtiEvent::kFramePop, thread, enable);
+    SetupTraceListener(method_trace_listener_.get(), ArtJvmtiEvent::kFramePop, enable);
   }
 }
 
 // Handle special work for the given event type, if necessary.
-jvmtiError EventHandler::HandleEventType(ArtJvmtiEvent event, jthread thread, bool enable) {
+void EventHandler::HandleEventType(ArtJvmtiEvent event, bool enable) {
   switch (event) {
     case ArtJvmtiEvent::kDdmPublishChunk:
       SetupDdmTracking(ddm_listener_.get(), enable);
-      return OK;
+      return;
     case ArtJvmtiEvent::kVmObjectAlloc:
       SetupObjectAllocationTracking(alloc_listener_.get(), enable);
-      return OK;
+      return;
     case ArtJvmtiEvent::kGarbageCollectionStart:
     case ArtJvmtiEvent::kGarbageCollectionFinish:
       SetupGcPauseTracking(gc_pause_listener_.get(), event, enable);
-      return OK;
+      return;
     // FramePop can never be disabled once it's been turned on if it was turned off with outstanding
     // pop-events since we would either need to deal with dangling pointers or have missed events.
     case ArtJvmtiEvent::kFramePop:
       if (enable && frame_pop_enabled) {
         // The frame-pop event was held on by pending events so we don't need to do anything.
-        break;
       } else {
-        return SetupFramePopTraceListener(thread, enable);
+        SetupFramePopTraceListener(enable);
       }
+      return;
     case ArtJvmtiEvent::kMethodEntry:
     case ArtJvmtiEvent::kMethodExit:
     case ArtJvmtiEvent::kFieldAccess:
@@ -1180,7 +1204,8 @@ jvmtiError EventHandler::HandleEventType(ArtJvmtiEvent event, jthread thread, bo
     case ArtJvmtiEvent::kExceptionCatch:
     case ArtJvmtiEvent::kBreakpoint:
     case ArtJvmtiEvent::kSingleStep:
-      return SetupTraceListener(method_trace_listener_.get(), event, thread, enable);
+      SetupTraceListener(method_trace_listener_.get(), event, enable);
+      return;
     case ArtJvmtiEvent::kMonitorContendedEnter:
     case ArtJvmtiEvent::kMonitorContendedEntered:
     case ArtJvmtiEvent::kMonitorWait:
@@ -1188,11 +1213,11 @@ jvmtiError EventHandler::HandleEventType(ArtJvmtiEvent event, jthread thread, bo
       if (!OtherMonitorEventsEnabledAnywhere(event)) {
         SetupMonitorListener(monitor_listener_.get(), park_listener_.get(), enable);
       }
-      return OK;
+      return;
     default:
       break;
   }
-  return OK;
+  return;
 }
 
 // Checks to see if the env has the capabilities associated with the given event.
@@ -1276,8 +1301,15 @@ jvmtiError EventHandler::SetEvent(ArtJvmTiEnv* env,
   art::Thread* self = art::Thread::Current();
   art::Thread* target = nullptr;
   ScopedNoUserCodeSuspension snucs(self);
+  // The overall state across all threads and jvmtiEnvs. This is used to control the state of the
+  // instrumentation handlers since we only want each added once.
   bool old_state;
   bool new_state;
+  // The state for just the current 'thread' (including null) across all jvmtiEnvs. This is used to
+  // control the deoptimization state since we do refcounting for that and need to perform different
+  // actions depending on if the event is limited to a single thread or global.
+  bool old_thread_state;
+  bool new_thread_state;
   {
     // From now on we know we cannot get suspended by user-code.
     // NB This does a SuspendCheck (during thread state change) so we need to
@@ -1296,26 +1328,53 @@ jvmtiError EventHandler::SetEvent(ArtJvmTiEnv* env,
       }
     }
 
+
     art::WriterMutexLock ei_mu(self, env->event_info_mutex_);
+    old_thread_state = GetThreadEventState(event, target);
     old_state = global_mask.Test(event);
     if (mode == JVMTI_ENABLE) {
       env->event_masks.EnableEvent(env, target, event);
       global_mask.Set(event);
       new_state = true;
+      new_thread_state = true;
+      DCHECK(GetThreadEventState(event, target));
     } else {
       DCHECK_EQ(mode, JVMTI_DISABLE);
 
       env->event_masks.DisableEvent(env, target, event);
       RecalculateGlobalEventMaskLocked(event);
       new_state = global_mask.Test(event);
+      new_thread_state = GetThreadEventState(event, target);
+      DCHECK(new_state || !new_thread_state);
     }
   }
   // Handle any special work required for the event type. We still have the
   // user_code_suspend_count_lock_ so there won't be any interleaving here.
   if (new_state != old_state) {
-    return HandleEventType(event, thread, mode == JVMTI_ENABLE);
+    HandleEventType(event, mode == JVMTI_ENABLE);
+  }
+  if (old_thread_state != new_thread_state) {
+    return HandleEventDeopt(event, thread, new_thread_state);
   }
   return OK;
+}
+
+bool EventHandler::GetThreadEventState(ArtJvmtiEvent event, art::Thread* thread) {
+  for (ArtJvmTiEnv* stored_env : envs) {
+    if (stored_env == nullptr) {
+      continue;
+    }
+    auto& masks = stored_env->event_masks;
+    if (thread == nullptr && masks.global_event_mask.Test(event)) {
+      return true;
+    } else if (thread != nullptr) {
+      EventMask* mask =  masks.GetEventMaskOrNull(thread);
+      if (mask != nullptr && mask->Test(event)) {
+        return true;
+      }
+    }
+  }
+  return false;
 }
 
 void EventHandler::HandleBreakpointEventsChanged(bool added) {

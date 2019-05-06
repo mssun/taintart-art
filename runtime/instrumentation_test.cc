@@ -840,7 +840,8 @@ TEST_F(InstrumentationTest, ConfigureStubs_InterpreterToInstrumentationStubs) {
   // Configure stubs with instrumentation stubs.
   CheckConfigureStubs(kClientOneKey,
                       Instrumentation::InstrumentationLevel::kInstrumentWithInstrumentationStubs);
-  CHECK_INSTRUMENTATION(Instrumentation::InstrumentationLevel::kInstrumentWithInstrumentationStubs,
+  // Make sure we are still interpreter since going from interpreter->instrumentation is dangerous.
+  CHECK_INSTRUMENTATION(Instrumentation::InstrumentationLevel::kInstrumentWithInterpreter,
                         1U);
 
   // Check we can disable instrumentation.
@@ -866,7 +867,7 @@ TEST_F(InstrumentationTest,
   // Configure stubs with instrumentation stubs again.
   CheckConfigureStubs(kClientOneKey,
                       Instrumentation::InstrumentationLevel::kInstrumentWithInstrumentationStubs);
-  CHECK_INSTRUMENTATION(Instrumentation::InstrumentationLevel::kInstrumentWithInstrumentationStubs,
+  CHECK_INSTRUMENTATION(Instrumentation::InstrumentationLevel::kInstrumentWithInterpreter,
                         1U);
 
   // Check we can disable instrumentation.
@@ -970,9 +971,9 @@ TEST_F(InstrumentationTest, MultiConfigureStubs_InterpreterThenInstrumentationSt
   CHECK_INSTRUMENTATION(Instrumentation::InstrumentationLevel::kInstrumentWithInterpreter, 2U);
 
   // 1st client requests instrumentation deactivation but 2nd client still needs
-  // instrumentation stubs.
+  // instrumentation stubs. Since we already got interpreter stubs we need to stay there.
   CheckConfigureStubs(kClientOneKey, Instrumentation::InstrumentationLevel::kInstrumentNothing);
-  CHECK_INSTRUMENTATION(Instrumentation::InstrumentationLevel::kInstrumentWithInstrumentationStubs,
+  CHECK_INSTRUMENTATION(Instrumentation::InstrumentationLevel::kInstrumentWithInterpreter,
                         1U);
 
   // 2nd client requests instrumentation deactivation

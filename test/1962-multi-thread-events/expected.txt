@@ -1,0 +1,4 @@
+Events on thread 1:
+	Hit event on T1 Thread
+Events on thread 2:
+	Hit event on T2 Thread
