@@ -4692,6 +4692,12 @@ ArtField* MethodVerifier<kVerifierDebug>::GetStaticField(int field_idx) {
 
 template <bool kVerifierDebug>
 ArtField* MethodVerifier<kVerifierDebug>::GetInstanceField(const RegType& obj_type, int field_idx) {
+  if (!obj_type.IsZeroOrNull() && !obj_type.IsReferenceTypes()) {
+    // Trying to read a field from something that isn't a reference.
+    Fail(VERIFY_ERROR_BAD_CLASS_HARD) << "instance field access on object that has "
+        << "non-reference type " << obj_type;
+    return nullptr;
+  }
   const dex::FieldId& field_id = dex_file_->GetFieldId(field_idx);
   // Check access to class.
   const RegType& klass_type = ResolveClass<CheckAccess::kYes>(field_id.class_idx_);
@@ -4725,11 +4731,6 @@ ArtField* MethodVerifier<kVerifierDebug>::GetInstanceField(const RegType& obj_ty
   } else if (obj_type.IsZeroOrNull()) {
     // Cannot infer and check type, however, access will cause null pointer exception.
     // Fall through into a few last soft failure checks below.
-  } else if (!obj_type.IsReferenceTypes()) {
-    // Trying to read a field from something that isn't a reference.
-    Fail(VERIFY_ERROR_BAD_CLASS_HARD) << "instance field access on object that has "
-                                      << "non-reference type " << obj_type;
-    return nullptr;
   } else {
     std::string temp;
     ObjPtr<mirror::Class> klass = field->GetDeclaringClass();

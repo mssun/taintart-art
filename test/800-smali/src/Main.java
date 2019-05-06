@@ -195,6 +195,8 @@ public class Main {
                 null, true));
         testCases.add(new TestCase("b/121191566", "B121191566", "run", new Object[] { "a" }, null,
                 true, false));
+        testCases.add(new TestCase("b/122501785", "B122501785", "run", null, new VerifyError(),
+                0));
     }
 
     public void runTests() {
