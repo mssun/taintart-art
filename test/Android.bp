@@ -293,7 +293,6 @@ art_cc_defaults {
         "1951-monitor-enter-no-suspend/raw_monitor.cc",
         "1953-pop-frame/pop_frame.cc",
         "1957-error-ext/lasterror.cc",
-        "1962-multi-thread-events/multi_thread_events.cc",
     ],
     // Use NDK-compatible headers for ctstiagent.
     header_libs: [
@@ -683,7 +682,6 @@ filegroup {
         "1943-suspend-raw-monitor-wait/src/art/Test1943.java",
         "1953-pop-frame/src/art/Test1953.java",
         "1958-transform-try-jit/src/art/Test1958.java",
-        "1962-multi-thread-events/src/art/Test1962.java",
     ],
 }
 
