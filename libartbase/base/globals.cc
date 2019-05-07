@@ -24,7 +24,7 @@
 
 namespace art {
 
-#if !defined(_WIN32)
+#if !defined(_WIN32) && !defined(__APPLE__)
 // Check that we have not loaded both debug and release version of libartbase at the same time.
 //
 // This can be a cascade problem originating from a call to
