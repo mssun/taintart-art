@@ -242,5 +242,13 @@
   names: [
     "libcore.libcore.io.OsTest#testCrossFamilyBindConnectSendto"
   ]
+},
+{
+  description: "Unexpected failure",
+  result: EXEC_FAILED,
+  bug: 132100102,
+  names: [
+    "libcore.java.lang.reflect.annotations.AnnotationsTest#testRetentionPolicy_targetSdkVersion_23"
+  ]
 }
 ]
