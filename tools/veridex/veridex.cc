@@ -17,6 +17,7 @@
 #include "veridex.h"
 
 #include <android-base/file.h>
+#include <android-base/strings.h>
 
 #include "dex/dex_file.h"
 #include "dex/dex_file_loader.h"
@@ -71,6 +72,7 @@ static const char* kFlagsOption = "--api-flags=";
 static const char* kImprecise = "--imprecise";
 static const char* kTargetSdkVersion = "--target-sdk-version=";
 static const char* kOnlyReportSdkUses = "--only-report-sdk-uses";
+static const char* kAppClassFilter = "--app-class-filter=";
 
 struct VeridexOptions {
   const char* dex_file = nullptr;
@@ -79,6 +81,7 @@ struct VeridexOptions {
   bool precise = true;
   int target_sdk_version = 28; /* P */
   bool only_report_sdk_uses = false;
+  std::vector<std::string> app_class_name_filter;
 };
 
 static const char* Substr(const char* str, int index) {
@@ -107,6 +110,11 @@ static void ParseArgs(VeridexOptions* options, int argc, char** argv) {
       options->target_sdk_version = atoi(Substr(argv[i], strlen(kTargetSdkVersion)));
     } else if (strcmp(argv[i], kOnlyReportSdkUses) == 0) {
       options->only_report_sdk_uses = true;
+    } else if (StartsWith(argv[i], kAppClassFilter)) {
+      options->app_class_name_filter = android::base::Split(
+          Substr(argv[i], strlen(kAppClassFilter)), ",");
+    } else {
+      LOG(WARNING) << "Unknown command line argument: " << argv[i];
     }
   }
 }
@@ -218,17 +226,19 @@ class Veridex {
     std::vector<std::unique_ptr<VeridexResolver>> app_resolvers;
     Resolve(app_dex_files, resolver_map, type_map, &app_resolvers);
 
+    ClassFilter app_class_filter(options.app_class_name_filter);
+
     // Find and log uses of hidden APIs.
     HiddenApi hidden_api(options.flags_file, options.only_report_sdk_uses);
     HiddenApiStats stats;
 
     HiddenApiFinder api_finder(hidden_api);
-    api_finder.Run(app_resolvers);
+    api_finder.Run(app_resolvers, app_class_filter);
     api_finder.Dump(std::cout, &stats, !options.precise);
 
     if (options.precise) {
       PreciseHiddenApiFinder precise_api_finder(hidden_api);
-      precise_api_finder.Run(app_resolvers);
+      precise_api_finder.Run(app_resolvers, app_class_filter);
       precise_api_finder.Dump(std::cout, &stats);
     }
 
