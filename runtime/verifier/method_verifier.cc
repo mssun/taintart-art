@@ -5310,9 +5310,12 @@ MethodVerifier::FailureData MethodVerifier::VerifyMethod(Thread* self,
   if (kTimeVerifyMethod) {
     uint64_t duration_ns = NanoTime() - start_ns;
     if (duration_ns > MsToNs(Runtime::Current()->GetVerifierLoggingThresholdMs())) {
+      double bytecodes_per_second =
+          verifier.code_item_accessor_.InsnsSizeInCodeUnits() / (duration_ns * 1e-9);
       LOG(WARNING) << "Verification of " << dex_file->PrettyMethod(method_idx)
                    << " took " << PrettyDuration(duration_ns)
-                   << (impl::IsLargeMethod(verifier.CodeItem()) ? " (large method)" : "");
+                   << (impl::IsLargeMethod(verifier.CodeItem()) ? " (large method)" : "")
+                   << " (" << StringPrintf("%.2f", bytecodes_per_second) << " bytecodes/s)";
     }
   }
   result.types = verifier.encountered_failure_types_;
