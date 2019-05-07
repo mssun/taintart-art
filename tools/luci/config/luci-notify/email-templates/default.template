@@ -1,0 +1,37 @@
+[Build Status] Builder "{{ .Build.Builder | formatBuilderID }}" {{ .Build.Status }}
+
+luci-notify detected a status change for builder "{{ .Build.Builder | formatBuilderID }}" at {{ .Build.UpdateTime | time }}.
+<br/>
+<table>
+  <tr>
+    <td>New status:</td>
+    <td><b>{{ .Build.Status }}</b></td>
+  </tr>
+  <tr>
+    <td>Previous status:</td>
+    <td>{{ .OldStatus }}</td>
+  </tr>
+  <tr>
+    <td>Builder:</td>
+    <td>{{ .Build.Builder | formatBuilderID }}</td>
+  </tr>
+  <tr>
+    <td>Created by:</td>
+    <td>{{ .Build.CreatedBy }}</td>
+  </tr>
+  <tr>
+    <td>Created at:</td>
+    <td>{{ .Build.CreateTime | time }}</td>
+  </tr>
+  <tr>
+    <td>Finished at:</td>
+    <td>{{ .Build.EndTime | time }}</td>
+  </tr>
+  <tr>
+    <td>Summary:</td>
+    <td>{{ .Build.SummaryMarkdown }}</td>
+  </tr>
+</table>
+<br/>
+Full details are available <a href="https://{{.BuildbucketHostname}}/build/{{.Build.Id}}">here</a>.
+<br/><br/>
