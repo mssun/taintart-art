@@ -123,7 +123,7 @@ static void NotifySetObjectField(ArtField* field, jobject obj, jobject jval)
     JValue val;
     val.SetL(self->DecodeJObject(jval));
     instrumentation->FieldWriteEvent(self,
-                                     self->DecodeJObject(obj).Ptr(),
+                                     self->DecodeJObject(obj),
                                      cur_method,
                                      0,  // dex_pc is always 0 since this is a native method.
                                      field,
@@ -148,7 +148,7 @@ static void NotifySetPrimitiveField(ArtField* field, jobject obj, JValue val)
     }
     DCHECK(cur_method->IsNative());
     instrumentation->FieldWriteEvent(self,
-                                     self->DecodeJObject(obj).Ptr(),
+                                     self->DecodeJObject(obj),
                                      cur_method,
                                      0,  // dex_pc is always 0 since this is a native method.
                                      field,
@@ -172,7 +172,7 @@ static void NotifyGetField(ArtField* field, jobject obj)
     }
     DCHECK(cur_method->IsNative());
     instrumentation->FieldReadEvent(self,
-                                    self->DecodeJObject(obj).Ptr(),
+                                    self->DecodeJObject(obj),
                                     cur_method,
                                     0,  // dex_pc is always 0 since this is a native method.
                                     field);

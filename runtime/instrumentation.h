@@ -388,8 +388,10 @@ class Instrumentation {
 
   // Inform listeners that a method has been entered. A dex PC is provided as we may install
   // listeners into executing code and get method enter events for methods already on the stack.
-  void MethodEnterEvent(Thread* thread, mirror::Object* this_object,
-                        ArtMethod* method, uint32_t dex_pc) const
+  void MethodEnterEvent(Thread* thread,
+                        ObjPtr<mirror::Object> this_object,
+                        ArtMethod* method,
+                        uint32_t dex_pc) const
       REQUIRES_SHARED(Locks::mutator_lock_) {
     if (UNLIKELY(HasMethodEntryListeners())) {
       MethodEnterEventImpl(thread, this_object, method, dex_pc);
@@ -398,7 +400,7 @@ class Instrumentation {
 
   // Inform listeners that a method has been exited.
   void MethodExitEvent(Thread* thread,
-                       mirror::Object* this_object,
+                       ObjPtr<mirror::Object> this_object,
                        ArtMethod* method,
                        uint32_t dex_pc,
                        const JValue& return_value) const
@@ -409,13 +411,17 @@ class Instrumentation {
   }
 
   // Inform listeners that a method has been exited due to an exception.
-  void MethodUnwindEvent(Thread* thread, mirror::Object* this_object,
-                         ArtMethod* method, uint32_t dex_pc) const
+  void MethodUnwindEvent(Thread* thread,
+                         ObjPtr<mirror::Object> this_object,
+                         ArtMethod* method,
+                         uint32_t dex_pc) const
       REQUIRES_SHARED(Locks::mutator_lock_);
 
   // Inform listeners that the dex pc has moved (only supported by the interpreter).
-  void DexPcMovedEvent(Thread* thread, mirror::Object* this_object,
-                       ArtMethod* method, uint32_t dex_pc) const
+  void DexPcMovedEvent(Thread* thread,
+                       ObjPtr<mirror::Object> this_object,
+                       ArtMethod* method,
+                       uint32_t dex_pc) const
       REQUIRES_SHARED(Locks::mutator_lock_) {
     if (UNLIKELY(HasDexPcListeners())) {
       DexPcMovedEventImpl(thread, this_object, method, dex_pc);
@@ -431,8 +437,10 @@ class Instrumentation {
   }
 
   // Inform listeners that we read a field (only supported by the interpreter).
-  void FieldReadEvent(Thread* thread, mirror::Object* this_object,
-                      ArtMethod* method, uint32_t dex_pc,
+  void FieldReadEvent(Thread* thread,
+                      ObjPtr<mirror::Object> this_object,
+                      ArtMethod* method,
+                      uint32_t dex_pc,
                       ArtField* field) const
       REQUIRES_SHARED(Locks::mutator_lock_) {
     if (UNLIKELY(HasFieldReadListeners())) {
@@ -441,9 +449,12 @@ class Instrumentation {
   }
 
   // Inform listeners that we write a field (only supported by the interpreter).
-  void FieldWriteEvent(Thread* thread, mirror::Object* this_object,
-                       ArtMethod* method, uint32_t dex_pc,
-                       ArtField* field, const JValue& field_value) const
+  void FieldWriteEvent(Thread* thread,
+                       ObjPtr<mirror::Object> this_object,
+                       ArtMethod* method,
+                       uint32_t dex_pc,
+                       ArtField* field,
+                       const JValue& field_value) const
       REQUIRES_SHARED(Locks::mutator_lock_) {
     if (UNLIKELY(HasFieldWriteListeners())) {
       FieldWriteEventImpl(thread, this_object, method, dex_pc, field, field_value);
@@ -459,18 +470,20 @@ class Instrumentation {
   }
 
   // Inform listeners that an exception was thrown.
-  void ExceptionThrownEvent(Thread* thread, mirror::Throwable* exception_object) const
+  void ExceptionThrownEvent(Thread* thread, ObjPtr<mirror::Throwable> exception_object) const
       REQUIRES_SHARED(Locks::mutator_lock_);
 
   // Inform listeners that an exception has been handled. This is not sent for native code or for
   // exceptions which reach the end of the thread's stack.
-  void ExceptionHandledEvent(Thread* thread, mirror::Throwable* exception_object) const
+  void ExceptionHandledEvent(Thread* thread, ObjPtr<mirror::Throwable> exception_object) const
       REQUIRES_SHARED(Locks::mutator_lock_);
 
   // Called when an instrumented method is entered. The intended link register (lr) is saved so
   // that returning causes a branch to the method exit stub. Generates method enter events.
-  void PushInstrumentationStackFrame(Thread* self, mirror::Object* this_object,
-                                     ArtMethod* method, uintptr_t lr,
+  void PushInstrumentationStackFrame(Thread* self,
+                                     ObjPtr<mirror::Object> this_object,
+                                     ArtMethod* method,
+                                     uintptr_t lr,
                                      bool interpreter_entry)
       REQUIRES_SHARED(Locks::mutator_lock_);
 
@@ -493,7 +506,7 @@ class Instrumentation {
       REQUIRES_SHARED(Locks::mutator_lock_);
 
   // Call back for configure stubs.
-  void InstallStubsForClass(mirror::Class* klass) REQUIRES_SHARED(Locks::mutator_lock_)
+  void InstallStubsForClass(ObjPtr<mirror::Class> klass) REQUIRES_SHARED(Locks::mutator_lock_)
       REQUIRES(!GetDeoptimizedMethodsLock());
 
   void InstallStubsForMethod(ArtMethod* method)

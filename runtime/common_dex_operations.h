@@ -107,7 +107,7 @@ static ALWAYS_INLINE bool DoFieldGetCommon(Thread* self,
       this_object = obj;
     }
     instrumentation->FieldReadEvent(self,
-                                    this_object.Ptr(),
+                                    this_object,
                                     shadow_frame.GetMethod(),
                                     shadow_frame.GetDexPC(),
                                     field);
@@ -166,7 +166,7 @@ ALWAYS_INLINE bool DoFieldPutCommon(Thread* self,
     HandleWrapper<mirror::Object> ret(hs.NewHandleWrapper<mirror::Object>(
         field_type == Primitive::kPrimNot ? value.GetGCRoot() : &fake_root));
     instrumentation->FieldWriteEvent(self,
-                                     this_object.Ptr(),
+                                     this_object,
                                      shadow_frame.GetMethod(),
                                      shadow_frame.GetDexPC(),
                                      field,
@@ -220,7 +220,7 @@ ALWAYS_INLINE bool DoFieldPutCommon(Thread* self,
           Thread::Current()->AssertPendingException();
           return false;
         }
-        if (UNLIKELY(!reg->VerifierInstanceOf(field_class.Ptr()))) {
+        if (UNLIKELY(!reg->VerifierInstanceOf(field_class))) {
           // This should never happen.
           std::string temp1, temp2, temp3;
           self->ThrowNewExceptionF("Ljava/lang/InternalError;",
