@@ -41,6 +41,7 @@
 #include "gc/scoped_gc_critical_section.h"
 #include "gc/space/image_space.h"
 #include "handle_scope-inl.h"
+#include "jit/jit.h"
 #include "jni/java_vm_ext.h"
 #include "jni/jni_internal.h"
 #include "mirror/class_loader.h"
@@ -643,6 +644,12 @@ std::vector<std::unique_ptr<const DexFile>> OatFileManager::OpenDexFilesFromOat(
       error_msgs->push_back("No original dex files found for dex location "
           + std::string(dex_location));
     }
+  }
+
+  if (Runtime::Current()->GetJit() != nullptr) {
+    ScopedObjectAccess soa(self);
+    Runtime::Current()->GetJit()->RegisterDexFiles(
+        dex_files, soa.Decode<mirror::ClassLoader>(class_loader));
   }
 
   return dex_files;

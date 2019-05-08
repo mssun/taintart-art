@@ -229,6 +229,7 @@ Runtime::Runtime()
       instruction_set_(InstructionSet::kNone),
       compiler_callbacks_(nullptr),
       is_zygote_(false),
+      is_system_server_(false),
       must_relocate_(false),
       is_concurrent_gc_enabled_(true),
       is_explicit_gc_disabled_(false),

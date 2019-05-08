@@ -620,11 +620,77 @@ class ZygoteTask final : public Task {
   ZygoteTask() {}
 
   void Run(Thread* self) override {
-    Runtime::Current()->GetJit()->AddNonAotBootMethodsToQueue(self);
+    Runtime* runtime = Runtime::Current();
+    std::string profile_file;
+    for (const std::string& option : runtime->GetImageCompilerOptions()) {
+      if (android::base::StartsWith(option, "--profile-file=")) {
+        profile_file = option.substr(strlen("--profile-file="));
+        break;
+      }
+    }
+
+    const std::vector<const DexFile*>& boot_class_path =
+        runtime->GetClassLinker()->GetBootClassPath();
+    ScopedNullHandle<mirror::ClassLoader> null_handle;
+    // We add to the queue for zygote so that we can fork processes in-between
+    // compilations.
+    runtime->GetJit()->CompileMethodsFromProfile(
+        self, boot_class_path, profile_file, null_handle, /* add_to_queue= */ true);
+  }
+
+  void Finalize() override {
+    delete this;
   }
 
  private:
   DISALLOW_COPY_AND_ASSIGN(ZygoteTask);
+};
+
+static std::string GetProfileFile(const std::string& dex_location) {
+  // Hardcoded assumption where the profile file is.
+  // TODO(ngeoffray): this is brittle and we would need to change change if we
+  // wanted to do more eager JITting of methods in a profile. This is
+  // currently only for system server.
+  return dex_location + ".prof";
+}
+
+class JitProfileTask final : public Task {
+ public:
+  JitProfileTask(const std::vector<std::unique_ptr<const DexFile>>& dex_files,
+                 ObjPtr<mirror::ClassLoader> class_loader) {
+    ClassLinker* class_linker = Runtime::Current()->GetClassLinker();
+    for (const auto& dex_file : dex_files) {
+      dex_files_.push_back(dex_file.get());
+      // Register the dex file so that we can guarantee it doesn't get deleted
+      // while reading it during the task.
+      class_linker->RegisterDexFile(*dex_file.get(), class_loader);
+    }
+    ScopedObjectAccess soa(Thread::Current());
+    class_loader_ = soa.Vm()->AddGlobalRef(soa.Self(), class_loader.Ptr());
+  }
+
+  void Run(Thread* self) override {
+    ScopedObjectAccess soa(self);
+    StackHandleScope<1> hs(self);
+    Handle<mirror::ClassLoader> loader = hs.NewHandle<mirror::ClassLoader>(
+        soa.Decode<mirror::ClassLoader>(class_loader_));
+    Runtime::Current()->GetJit()->CompileMethodsFromProfile(
+        self,
+        dex_files_,
+        GetProfileFile(dex_files_[0]->GetLocation()),
+        loader,
+        /* add_to_queue= */ false);
+  }
+
+  void Finalize() override {
+    delete this;
+  }
+
+ private:
+  std::vector<const DexFile*> dex_files_;
+  jobject class_loader_;
+
+  DISALLOW_COPY_AND_ASSIGN(JitProfileTask);
 };
 
 void Jit::CreateThreadPool() {
@@ -646,45 +712,49 @@ void Jit::CreateThreadPool() {
   }
 }
 
-void Jit::AddNonAotBootMethodsToQueue(Thread* self) {
-  Runtime* runtime = Runtime::Current();
-  std::string profile_location;
-  for (const std::string& option : runtime->GetImageCompilerOptions()) {
-    if (android::base::StartsWith(option, "--profile-file=")) {
-      profile_location = option.substr(strlen("--profile-file="));
-      break;
-    }
+void Jit::RegisterDexFiles(const std::vector<std::unique_ptr<const DexFile>>& dex_files,
+                           ObjPtr<mirror::ClassLoader> class_loader) {
+  if (dex_files.empty()) {
+    return;
   }
-  if (profile_location.empty()) {
-    LOG(WARNING) << "Expected a profile location in JIT zygote mode";
+  Runtime* runtime = Runtime::Current();
+  if (runtime->IsSystemServer() && runtime->IsUsingApexBootImageLocation() && UseJitCompilation()) {
+    thread_pool_->AddTask(Thread::Current(), new JitProfileTask(dex_files, class_loader));
+  }
+}
+
+void Jit::CompileMethodsFromProfile(
+    Thread* self,
+    const std::vector<const DexFile*>& dex_files,
+    const std::string& profile_file,
+    Handle<mirror::ClassLoader> class_loader,
+    bool add_to_queue) {
+
+  if (profile_file.empty()) {
+    LOG(WARNING) << "Expected a profile file in JIT zygote mode";
     return;
   }
 
   std::string error_msg;
-  ScopedFlock profile_file = LockedFile::Open(
-      profile_location.c_str(), O_RDONLY, true, &error_msg);
+  ScopedFlock profile = LockedFile::Open(
+      profile_file.c_str(), O_RDONLY, /* block= */ false, &error_msg);
 
   // Return early if we're unable to obtain a lock on the profile.
-  if (profile_file.get() == nullptr) {
+  if (profile.get() == nullptr) {
     LOG(ERROR) << "Cannot lock profile: " << error_msg;
     return;
   }
 
   ProfileCompilationInfo profile_info;
-  if (!profile_info.Load(profile_file->Fd())) {
+  if (!profile_info.Load(profile->Fd())) {
     LOG(ERROR) << "Could not load profile file";
     return;
   }
-
-  const std::vector<const DexFile*>& boot_class_path =
-      runtime->GetClassLinker()->GetBootClassPath();
   ScopedObjectAccess soa(self);
   StackHandleScope<1> hs(self);
   MutableHandle<mirror::DexCache> dex_cache = hs.NewHandle<mirror::DexCache>(nullptr);
-  ScopedNullHandle<mirror::ClassLoader> null_handle;
-  ClassLinker* class_linker = runtime->GetClassLinker();
-
-  for (const DexFile* dex_file : boot_class_path) {
+  ClassLinker* class_linker = Runtime::Current()->GetClassLinker();
+  for (const DexFile* dex_file : dex_files) {
     if (LocationIsOnRuntimeModule(dex_file->GetLocation().c_str())) {
       // The runtime module jars are already preopted.
       continue;
@@ -714,7 +784,7 @@ void Jit::AddNonAotBootMethodsToQueue(Thread* self) {
 
     for (uint16_t method_idx : all_methods) {
       ArtMethod* method = class_linker->ResolveMethodWithoutInvokeType(
-          method_idx, dex_cache, null_handle);
+          method_idx, dex_cache, class_loader);
       if (method == nullptr) {
         self->ClearException();
         continue;
@@ -733,7 +803,7 @@ void Jit::AddNonAotBootMethodsToQueue(Thread* self) {
         // Special case ZygoteServer class so that it gets compiled before the
         // zygote enters it. This avoids needing to do OSR during app startup.
         // TODO: have a profile instead.
-        if (method->GetDeclaringClass()->DescriptorEquals(
+        if (!add_to_queue || method->GetDeclaringClass()->DescriptorEquals(
                 "Lcom/android/internal/os/ZygoteServer;")) {
           CompileMethod(method, self, /* baseline= */ false, /* osr= */ false);
         } else {
@@ -964,6 +1034,11 @@ void Jit::PostForkChildAction(bool is_system_server, bool is_zygote) {
       // We keep the queue for system server, as not having those methods compiled
       // impacts app startup.
       thread_pool_->RemoveAllTasks(Thread::Current());
+    } else if (Runtime::Current()->IsUsingApexBootImageLocation() && UseJitCompilation()) {
+      // Disable garbage collection: we don't want it to delete methods we're compiling
+      // through boot and system server profiles.
+      // TODO(ngeoffray): Fix this so we still collect deoptimized and unused code.
+      code_cache_->SetGarbageCollectCode(false);
     }
 
     // Resume JIT compilation.
