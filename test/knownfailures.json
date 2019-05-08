@@ -1184,15 +1184,6 @@
         "description": ["Timeout with ASan and interp-ac on 32-bit host (x86)."]
     },
     {
-        "tests": ["980-redefine-object"],
-        "description": ["This test appears to be unusally flaky on no-image + jit. The cause of ",
-                        "this flakiness is unknown but appears to be related to the ",
-                        "jit-compilation of JNI bridges. Until more investigation is done we skip ",
-                        "this test."],
-        "bug": "http://b/73333076",
-        "variant": "no-image & jit"
-    },
-    {
         "tests": ["454-get-vreg", "457-regs"],
         "variant": "baseline",
         "description": ["Tests are expected to fail with baseline."]
