@@ -117,7 +117,9 @@ enum PaletteStatus PaletteTombstonedMessage(/*in*/const char* msg, size_t msg_le
   if (!android::base::WriteFully(output_fd, msg, msg_len)) {
     PLOG(ERROR) << "Failed to write tombstoned output";
     success = false;
-  } else if (TEMP_FAILURE_RETRY(fsync(output_fd)) == -1) {
+  } else if (TEMP_FAILURE_RETRY(fsync(output_fd)) == -1 && errno != EINVAL) {
+    // Ignore EINVAL so we don't report failure if we just tried to flush a pipe
+    // or socket.
     PLOG(ERROR) << "Failed to fsync tombstoned output";
     success = false;
   } else if (close(output_fd.release()) == -1) {
