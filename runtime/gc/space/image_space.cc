@@ -124,15 +124,31 @@ static bool GenerateImage(const std::string& image_filename,
   std::string dex2oat(Runtime::Current()->GetCompilerExecutable());
   arg_vector.push_back(dex2oat);
 
+  char* dex2oat_bcp = getenv("DEX2OATBOOTCLASSPATH");
+  std::vector<std::string> dex2oat_bcp_vector;
+  if (dex2oat_bcp != nullptr) {
+    arg_vector.push_back("--runtime-arg");
+    arg_vector.push_back(StringPrintf("-Xbootclasspath:%s", dex2oat_bcp));
+    Split(dex2oat_bcp, ':', &dex2oat_bcp_vector);
+  }
+
   std::string image_option_string("--image=");
   image_option_string += image_filename;
   arg_vector.push_back(image_option_string);
 
-  const std::vector<std::string>& boot_class_path_locations = runtime->GetBootClassPathLocations();
-  DCHECK_EQ(boot_class_path.size(), boot_class_path_locations.size());
-  for (size_t i = 0u; i < boot_class_path.size(); i++) {
-    arg_vector.push_back(std::string("--dex-file=") + boot_class_path[i]);
-    arg_vector.push_back(std::string("--dex-location=") + boot_class_path_locations[i]);
+  if (!dex2oat_bcp_vector.empty()) {
+    for (size_t i = 0u; i < dex2oat_bcp_vector.size(); i++) {
+      arg_vector.push_back(std::string("--dex-file=") + dex2oat_bcp_vector[i]);
+      arg_vector.push_back(std::string("--dex-location=") + dex2oat_bcp_vector[i]);
+    }
+  } else {
+    const std::vector<std::string>& boot_class_path_locations =
+        runtime->GetBootClassPathLocations();
+    DCHECK_EQ(boot_class_path.size(), boot_class_path_locations.size());
+    for (size_t i = 0u; i < boot_class_path.size(); i++) {
+      arg_vector.push_back(std::string("--dex-file=") + boot_class_path[i]);
+      arg_vector.push_back(std::string("--dex-location=") + boot_class_path_locations[i]);
+    }
   }
 
   std::string oat_file_option_string("--oat-file=");
