@@ -814,13 +814,9 @@ class SetLocalVariableClosure : public CommonLocalVariableClosure {
       override REQUIRES_SHARED(art::Locks::mutator_lock_) {
     switch (type_) {
       case art::Primitive::kPrimNot: {
-        uint32_t ptr_val;
-        art::ObjPtr<art::mirror::Object> obj(caller_->DecodeJObject(val_.l));
-        ptr_val = static_cast<uint32_t>(reinterpret_cast<uintptr_t>(obj.Ptr()));
-        if (!visitor.SetVReg(method,
-                             static_cast<uint16_t>(slot_),
-                             ptr_val,
-                             art::kReferenceVReg)) {
+        if (!visitor.SetVRegReference(method,
+                                      static_cast<uint16_t>(slot_),
+                                      caller_->DecodeJObject(val_.l))) {
           return ERR(OPAQUE_FRAME);
         }
         break;

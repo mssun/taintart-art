@@ -2848,8 +2848,7 @@ JDWP::JdwpError Dbg::SetLocalValue(Thread* thread, StackVisitor& visitor, int sl
         VLOG(jdwp) << tag << " object " << o << " is an invalid object";
         return JDWP::ERR_INVALID_OBJECT;
       }
-      if (!visitor.SetVReg(m, vreg, static_cast<uint32_t>(reinterpret_cast<uintptr_t>(o.Ptr())),
-                                 kReferenceVReg)) {
+      if (!visitor.SetVRegReference(m, vreg, o)) {
         return FailSetLocalValue(visitor, vreg, tag, reinterpret_cast<uintptr_t>(o.Ptr()));
       }
       break;
