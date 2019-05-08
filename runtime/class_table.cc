@@ -34,15 +34,7 @@ void ClassTable::FreezeSnapshot() {
 }
 
 bool ClassTable::Contains(ObjPtr<mirror::Class> klass) {
-  ReaderMutexLock mu(Thread::Current(), lock_);
-  TableSlot slot(klass);
-  for (ClassSet& class_set : classes_) {
-    auto it = class_set.find(slot);
-    if (it != class_set.end()) {
-      return it->Read() == klass;
-    }
-  }
-  return false;
+  return LookupByDescriptor(klass) == klass;
 }
 
 mirror::Class* ClassTable::LookupByDescriptor(ObjPtr<mirror::Class> klass) {
@@ -191,27 +183,35 @@ bool ClassTable::Remove(const char* descriptor) {
 uint32_t ClassTable::ClassDescriptorHashEquals::operator()(const TableSlot& slot)
     const {
   std::string temp;
-  return ComputeModifiedUtf8Hash(slot.Read()->GetDescriptor(&temp));
+  // No read barrier needed, we're reading a chain of constant references for comparison
+  // with null and retrieval of constant primitive data. See ReadBarrierOption.
+  return ComputeModifiedUtf8Hash(slot.Read<kWithoutReadBarrier>()->GetDescriptor(&temp));
 }
 
 bool ClassTable::ClassDescriptorHashEquals::operator()(const TableSlot& a,
                                                        const TableSlot& b) const {
+  // No read barrier needed, we're reading a chain of constant references for comparison
+  // with null and retrieval of constant primitive data. See ReadBarrierOption.
   if (a.Hash() != b.Hash()) {
     std::string temp;
-    DCHECK(!a.Read()->DescriptorEquals(b.Read()->GetDescriptor(&temp)));
+    DCHECK(!a.Read<kWithoutReadBarrier>()->DescriptorEquals(
+        b.Read<kWithoutReadBarrier>()->GetDescriptor(&temp)));
     return false;
   }
   std::string temp;
-  return a.Read()->DescriptorEquals(b.Read()->GetDescriptor(&temp));
+  return a.Read<kWithoutReadBarrier>()->DescriptorEquals(
+      b.Read<kWithoutReadBarrier>()->GetDescriptor(&temp));
 }
 
 bool ClassTable::ClassDescriptorHashEquals::operator()(const TableSlot& a,
                                                        const DescriptorHashPair& b) const {
+  // No read barrier needed, we're reading a chain of constant references for comparison
+  // with null and retrieval of constant primitive data. See ReadBarrierOption.
   if (!a.MaskedHashEquals(b.second)) {
-    DCHECK(!a.Read()->DescriptorEquals(b.first));
+    DCHECK(!a.Read<kWithoutReadBarrier>()->DescriptorEquals(b.first));
     return false;
   }
-  return a.Read()->DescriptorEquals(b.first);
+  return a.Read<kWithoutReadBarrier>()->DescriptorEquals(b.first);
 }
 
 uint32_t ClassTable::ClassDescriptorHashEquals::operator()(const DescriptorHashPair& pair) const {

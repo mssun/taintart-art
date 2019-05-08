@@ -88,6 +88,10 @@ bool ClassTable::Visit(const Visitor& visitor) {
   return true;
 }
 
+inline bool ClassTable::TableSlot::IsNull() const {
+  return Read<kWithoutReadBarrier>() == nullptr;
+}
+
 template<ReadBarrierOption kReadBarrierOption>
 inline mirror::Class* ClassTable::TableSlot::Read() const {
   const uint32_t before = data_.load(std::memory_order_relaxed);
@@ -127,11 +131,7 @@ inline uint32_t ClassTable::TableSlot::Encode(ObjPtr<mirror::Class> klass, uint3
 
 inline ClassTable::TableSlot::TableSlot(ObjPtr<mirror::Class> klass, uint32_t descriptor_hash)
     : data_(Encode(klass, MaskHash(descriptor_hash))) {
-  if (kIsDebugBuild) {
-    std::string temp;
-    const uint32_t hash = ComputeModifiedUtf8Hash(klass->GetDescriptor(&temp));
-    CHECK_EQ(descriptor_hash, hash);
-  }
+  DCHECK_EQ(descriptor_hash, HashDescriptor(klass));
 }
 
 template <typename Filter>
