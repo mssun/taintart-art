@@ -17,6 +17,7 @@
 #ifndef ART_TOOLS_VERIDEX_HIDDEN_API_FINDER_H_
 #define ART_TOOLS_VERIDEX_HIDDEN_API_FINDER_H_
 
+#include "class_filter.h"
 #include "dex/method_reference.h"
 
 #include <iostream>
@@ -39,12 +40,13 @@ class HiddenApiFinder {
 
   // Iterate over the dex files associated with the passed resolvers to report
   // hidden API uses.
-  void Run(const std::vector<std::unique_ptr<VeridexResolver>>& app_resolvers);
+  void Run(const std::vector<std::unique_ptr<VeridexResolver>>& app_resolvers,
+           const ClassFilter& app_class_filter);
 
   void Dump(std::ostream& os, HiddenApiStats* stats, bool dump_reflection);
 
  private:
-  void CollectAccesses(VeridexResolver* resolver);
+  void CollectAccesses(VeridexResolver* resolver, const ClassFilter& class_filter);
   void CheckMethod(uint32_t method_idx, VeridexResolver* resolver, MethodReference ref);
   void CheckField(uint32_t field_idx, VeridexResolver* resolver, MethodReference ref);
   void DumpReferences(std::ostream& os, const std::vector<MethodReference>& references);

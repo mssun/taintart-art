@@ -51,7 +51,8 @@ void HiddenApiFinder::CheckField(uint32_t field_id,
   }
 }
 
-void HiddenApiFinder::CollectAccesses(VeridexResolver* resolver) {
+void HiddenApiFinder::CollectAccesses(VeridexResolver* resolver,
+                                      const ClassFilter& class_filter) {
   const DexFile& dex_file = resolver->GetDexFile();
   // Look at all types referenced in this dex file. Any of these
   // types can lead to being used through reflection.
@@ -64,110 +65,113 @@ void HiddenApiFinder::CollectAccesses(VeridexResolver* resolver) {
   // Note: we collect strings constants only referenced in code items as the string table
   // contains other kind of strings (eg types).
   for (ClassAccessor accessor : dex_file.GetClasses()) {
-    for (const ClassAccessor::Method& method : accessor.GetMethods()) {
-      for (const DexInstructionPcPair& inst : method.GetInstructions()) {
-        switch (inst->Opcode()) {
-          case Instruction::CONST_STRING: {
-            dex::StringIndex string_index(inst->VRegB_21c());
-            std::string name = std::string(dex_file.StringDataByIdx(string_index));
-            // Cheap filtering on the string literal. We know it cannot be a field/method/class
-            // if it contains a space.
-            if (name.find(' ') == std::string::npos) {
-              // Class names at the Java level are of the form x.y.z, but the list encodes
-              // them of the form Lx/y/z;. Inner classes have '$' for both Java level class
-              // names in strings, and hidden API lists.
-              std::string str = HiddenApi::ToInternalName(name);
-              // Note: we can query the lists directly, as HiddenApi added classes that own
-              // private methods and fields in them.
-              // We don't add class names to the `strings_` set as we know method/field names
-              // don't have '.' or '/'. All hidden API class names have a '/'.
-              if (hidden_api_.IsInAnyList(str)) {
-                classes_.insert(str);
-              } else if (hidden_api_.IsInAnyList(name)) {
-                // Could be something passed to JNI.
-                classes_.insert(name);
-              } else {
-                // We only keep track of the location for strings, as these will be the
-                // field/method names the user is interested in.
-                strings_.insert(name);
-                reflection_locations_[name].push_back(method.GetReference());
+    if (class_filter.Matches(accessor.GetDescriptor())) {
+      for (const ClassAccessor::Method& method : accessor.GetMethods()) {
+        for (const DexInstructionPcPair& inst : method.GetInstructions()) {
+          switch (inst->Opcode()) {
+            case Instruction::CONST_STRING: {
+              dex::StringIndex string_index(inst->VRegB_21c());
+              std::string name = std::string(dex_file.StringDataByIdx(string_index));
+              // Cheap filtering on the string literal. We know it cannot be a field/method/class
+              // if it contains a space.
+              if (name.find(' ') == std::string::npos) {
+                // Class names at the Java level are of the form x.y.z, but the list encodes
+                // them of the form Lx/y/z;. Inner classes have '$' for both Java level class
+                // names in strings, and hidden API lists.
+                std::string str = HiddenApi::ToInternalName(name);
+                // Note: we can query the lists directly, as HiddenApi added classes that own
+                // private methods and fields in them.
+                // We don't add class names to the `strings_` set as we know method/field names
+                // don't have '.' or '/'. All hidden API class names have a '/'.
+                if (hidden_api_.IsInAnyList(str)) {
+                  classes_.insert(str);
+                } else if (hidden_api_.IsInAnyList(name)) {
+                  // Could be something passed to JNI.
+                  classes_.insert(name);
+                } else {
+                  // We only keep track of the location for strings, as these will be the
+                  // field/method names the user is interested in.
+                  strings_.insert(name);
+                  reflection_locations_[name].push_back(method.GetReference());
+                }
               }
+              break;
             }
-            break;
-          }
-          case Instruction::INVOKE_DIRECT:
-          case Instruction::INVOKE_INTERFACE:
-          case Instruction::INVOKE_STATIC:
-          case Instruction::INVOKE_SUPER:
-          case Instruction::INVOKE_VIRTUAL: {
-            CheckMethod(inst->VRegB_35c(), resolver, method.GetReference());
-            break;
-          }
+            case Instruction::INVOKE_DIRECT:
+            case Instruction::INVOKE_INTERFACE:
+            case Instruction::INVOKE_STATIC:
+            case Instruction::INVOKE_SUPER:
+            case Instruction::INVOKE_VIRTUAL: {
+              CheckMethod(inst->VRegB_35c(), resolver, method.GetReference());
+              break;
+            }
 
-          case Instruction::INVOKE_DIRECT_RANGE:
-          case Instruction::INVOKE_INTERFACE_RANGE:
-          case Instruction::INVOKE_STATIC_RANGE:
-          case Instruction::INVOKE_SUPER_RANGE:
-          case Instruction::INVOKE_VIRTUAL_RANGE: {
-            CheckMethod(inst->VRegB_3rc(), resolver, method.GetReference());
-            break;
-          }
+            case Instruction::INVOKE_DIRECT_RANGE:
+            case Instruction::INVOKE_INTERFACE_RANGE:
+            case Instruction::INVOKE_STATIC_RANGE:
+            case Instruction::INVOKE_SUPER_RANGE:
+            case Instruction::INVOKE_VIRTUAL_RANGE: {
+              CheckMethod(inst->VRegB_3rc(), resolver, method.GetReference());
+              break;
+            }
 
-          case Instruction::IGET:
-          case Instruction::IGET_WIDE:
-          case Instruction::IGET_OBJECT:
-          case Instruction::IGET_BOOLEAN:
-          case Instruction::IGET_BYTE:
-          case Instruction::IGET_CHAR:
-          case Instruction::IGET_SHORT: {
-            CheckField(inst->VRegC_22c(), resolver, method.GetReference());
-            break;
-          }
+            case Instruction::IGET:
+            case Instruction::IGET_WIDE:
+            case Instruction::IGET_OBJECT:
+            case Instruction::IGET_BOOLEAN:
+            case Instruction::IGET_BYTE:
+            case Instruction::IGET_CHAR:
+            case Instruction::IGET_SHORT: {
+              CheckField(inst->VRegC_22c(), resolver, method.GetReference());
+              break;
+            }
 
-          case Instruction::IPUT:
-          case Instruction::IPUT_WIDE:
-          case Instruction::IPUT_OBJECT:
-          case Instruction::IPUT_BOOLEAN:
-          case Instruction::IPUT_BYTE:
-          case Instruction::IPUT_CHAR:
-          case Instruction::IPUT_SHORT: {
-            CheckField(inst->VRegC_22c(), resolver, method.GetReference());
-            break;
-          }
+            case Instruction::IPUT:
+            case Instruction::IPUT_WIDE:
+            case Instruction::IPUT_OBJECT:
+            case Instruction::IPUT_BOOLEAN:
+            case Instruction::IPUT_BYTE:
+            case Instruction::IPUT_CHAR:
+            case Instruction::IPUT_SHORT: {
+              CheckField(inst->VRegC_22c(), resolver, method.GetReference());
+              break;
+            }
 
-          case Instruction::SGET:
-          case Instruction::SGET_WIDE:
-          case Instruction::SGET_OBJECT:
-          case Instruction::SGET_BOOLEAN:
-          case Instruction::SGET_BYTE:
-          case Instruction::SGET_CHAR:
-          case Instruction::SGET_SHORT: {
-            CheckField(inst->VRegB_21c(), resolver, method.GetReference());
-            break;
-          }
+            case Instruction::SGET:
+            case Instruction::SGET_WIDE:
+            case Instruction::SGET_OBJECT:
+            case Instruction::SGET_BOOLEAN:
+            case Instruction::SGET_BYTE:
+            case Instruction::SGET_CHAR:
+            case Instruction::SGET_SHORT: {
+              CheckField(inst->VRegB_21c(), resolver, method.GetReference());
+              break;
+            }
 
-          case Instruction::SPUT:
-          case Instruction::SPUT_WIDE:
-          case Instruction::SPUT_OBJECT:
-          case Instruction::SPUT_BOOLEAN:
-          case Instruction::SPUT_BYTE:
-          case Instruction::SPUT_CHAR:
-          case Instruction::SPUT_SHORT: {
-            CheckField(inst->VRegB_21c(), resolver, method.GetReference());
-            break;
-          }
+            case Instruction::SPUT:
+            case Instruction::SPUT_WIDE:
+            case Instruction::SPUT_OBJECT:
+            case Instruction::SPUT_BOOLEAN:
+            case Instruction::SPUT_BYTE:
+            case Instruction::SPUT_CHAR:
+            case Instruction::SPUT_SHORT: {
+              CheckField(inst->VRegB_21c(), resolver, method.GetReference());
+              break;
+            }
 
-          default:
-            break;
+            default:
+              break;
+          }
         }
       }
     }
   }
 }
 
-void HiddenApiFinder::Run(const std::vector<std::unique_ptr<VeridexResolver>>& resolvers) {
+void HiddenApiFinder::Run(const std::vector<std::unique_ptr<VeridexResolver>>& resolvers,
+                          const ClassFilter& class_filter) {
   for (const std::unique_ptr<VeridexResolver>& resolver : resolvers) {
-    CollectAccesses(resolver.get());
+    CollectAccesses(resolver.get(), class_filter);
   }
 }
 
