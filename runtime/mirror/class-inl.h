@@ -24,6 +24,7 @@
 #include "base/array_slice.h"
 #include "base/iteration_range.h"
 #include "base/length_prefixed_array.h"
+#include "base/stride_iterator.h"
 #include "base/utils.h"
 #include "class_linker.h"
 #include "class_loader.h"
