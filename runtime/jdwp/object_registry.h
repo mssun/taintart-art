@@ -81,14 +81,9 @@ class ObjectRegistry {
       REQUIRES_SHARED(Locks::mutator_lock_)
       REQUIRES(!Locks::thread_list_lock_, !Locks::thread_suspend_count_lock_, !lock_);
 
-  template<typename T> T Get(JDWP::ObjectId id, JDWP::JdwpError* error)
-      REQUIRES_SHARED(Locks::mutator_lock_) REQUIRES(!lock_) {
-    if (id == 0) {
-      *error = JDWP::ERR_NONE;
-      return nullptr;
-    }
-    return down_cast<T>(InternalGet(id, error));
-  }
+  template<typename T>
+  ObjPtr<T> Get(JDWP::ObjectId id, JDWP::JdwpError* error)
+      REQUIRES_SHARED(Locks::mutator_lock_) REQUIRES(!lock_);
 
   void Clear() REQUIRES_SHARED(Locks::mutator_lock_) REQUIRES(!lock_);
 
@@ -104,7 +99,7 @@ class ObjectRegistry {
   void DisposeObject(JDWP::ObjectId id, uint32_t reference_count)
       REQUIRES_SHARED(Locks::mutator_lock_) REQUIRES(!lock_);
 
-  // This is needed to get the jobject instead of the Object*.
+  // This is needed to get the jobject instead of the ObjPtr<Object>.
   // Avoid using this and use standard Get when possible.
   jobject GetJObject(JDWP::ObjectId id) REQUIRES_SHARED(Locks::mutator_lock_) REQUIRES(!lock_);
 
@@ -114,7 +109,7 @@ class ObjectRegistry {
       REQUIRES_SHARED(Locks::mutator_lock_)
       REQUIRES(!lock_, !Locks::thread_list_lock_, !Locks::thread_suspend_count_lock_);
 
-  mirror::Object* InternalGet(JDWP::ObjectId id, JDWP::JdwpError* error)
+  ObjPtr<mirror::Object> InternalGet(JDWP::ObjectId id, JDWP::JdwpError* error)
       REQUIRES_SHARED(Locks::mutator_lock_) REQUIRES(!lock_);
 
   void Demote(ObjectRegistryEntry& entry)

@@ -30,7 +30,8 @@
 #include "jdwp/jdwp_constants.h"
 #include "jdwp/jdwp_expand_buf.h"
 #include "jdwp/jdwp_priv.h"
-#include "jdwp/object_registry.h"
+#include "jdwp/object_registry-inl.h"
+#include "obj_ptr-inl.h"
 #include "scoped_thread_state_change-inl.h"
 #include "thread-inl.h"
 
@@ -267,7 +268,7 @@ void JdwpState::UnregisterLocationEventsOnClass(ObjPtr<mirror::Class> klass) {
           JdwpLocation& loc = mod.locationOnly.loc;
           JdwpError error;
           ObjPtr<mirror::Class> breakpoint_class(
-              Dbg::GetObjectRegistry()->Get<art::mirror::Class*>(loc.class_id, &error));
+              Dbg::GetObjectRegistry()->Get<art::mirror::Class>(loc.class_id, &error));
           DCHECK_EQ(error, ERR_NONE);
           if (breakpoint_class == h_klass.Get()) {
             to_remove.push_back(cur_event);
@@ -868,8 +869,10 @@ static void SetJdwpLocationFromEventLocation(const JDWP::EventLocation* event_lo
  *  - Single-step to a line with a breakpoint.  Should get a single
  *    event message with both events in it.
  */
-void JdwpState::PostLocationEvent(const EventLocation* pLoc, mirror::Object* thisPtr,
-                                  int eventFlags, const JValue* returnValue) {
+void JdwpState::PostLocationEvent(const EventLocation* pLoc,
+                                  ObjPtr<mirror::Object> thisPtr,
+                                  int eventFlags,
+                                  const JValue* returnValue) {
   DCHECK(pLoc != nullptr);
   DCHECK(pLoc->method != nullptr);
   DCHECK_EQ(pLoc->method->IsStatic(), thisPtr == nullptr);
@@ -964,8 +967,10 @@ void JdwpState::PostLocationEvent(const EventLocation* pLoc, mirror::Object* thi
   SendRequestAndPossiblySuspend(pReq, suspend_policy, thread_id);
 }
 
-void JdwpState::PostFieldEvent(const EventLocation* pLoc, ArtField* field,
-                               mirror::Object* this_object, const JValue* fieldValue,
+void JdwpState::PostFieldEvent(const EventLocation* pLoc,
+                               ArtField* field,
+                               ObjPtr<mirror::Object> this_object,
+                               const JValue* fieldValue,
                                bool is_modification) {
   DCHECK(pLoc != nullptr);
   DCHECK(field != nullptr);
@@ -1141,8 +1146,10 @@ bool JdwpState::PostVMDeath() {
  * because there's a pretty good chance that we're not going to send it
  * up the debugger.
  */
-void JdwpState::PostException(const EventLocation* pThrowLoc, mirror::Throwable* exception_object,
-                              const EventLocation* pCatchLoc, mirror::Object* thisPtr) {
+void JdwpState::PostException(const EventLocation* pThrowLoc,
+                              ObjPtr<mirror::Throwable> exception_object,
+                              const EventLocation* pCatchLoc,
+                              ObjPtr<mirror::Object> thisPtr) {
   DCHECK(exception_object != nullptr);
   DCHECK(pThrowLoc != nullptr);
   DCHECK(pCatchLoc != nullptr);
@@ -1228,7 +1235,7 @@ void JdwpState::PostException(const EventLocation* pThrowLoc, mirror::Throwable*
  * Valid mods:
  *  Count, ThreadOnly, ClassOnly, ClassMatch, ClassExclude
  */
-void JdwpState::PostClassPrepare(mirror::Class* klass) {
+void JdwpState::PostClassPrepare(ObjPtr<mirror::Class> klass) {
   DCHECK(klass != nullptr);
 
   ModBasket basket(Thread::Current());
