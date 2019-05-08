@@ -38,6 +38,7 @@ public class OtherThread {
     PrintThread.print(t, 1, 25);
     PrintThread.print(t, 0, 7);
     PrintThread.print(t, 2, 7);
+    PrintThread.print(t, 2, 1);
 
     System.out.println("From bottom");
     PrintThread.print(t, -1, 25);

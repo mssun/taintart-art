@@ -232,7 +232,7 @@ struct GetStackTraceDirectClosure : public art::Closure {
   size_t index = 0;
 };
 
-jvmtiError StackUtil::GetStackTrace(jvmtiEnv* jvmti_env ATTRIBUTE_UNUSED,
+jvmtiError StackUtil::GetStackTrace(jvmtiEnv* jvmti_env,
                                     jthread java_thread,
                                     jint start_depth,
                                     jint max_frame_count,
@@ -282,7 +282,9 @@ jvmtiError StackUtil::GetStackTrace(jvmtiEnv* jvmti_env ATTRIBUTE_UNUSED,
       return ERR(THREAD_NOT_ALIVE);
     }
     *count_ptr = static_cast<jint>(closure.index);
-    if (closure.index < static_cast<size_t>(start_depth)) {
+    if (closure.index == 0) {
+      JVMTI_LOG(INFO, jvmti_env) << "The stack is not large enough for a start_depth of "
+                                 << start_depth << ".";
       return ERR(ILLEGAL_ARGUMENT);
     }
     return ERR(NONE);

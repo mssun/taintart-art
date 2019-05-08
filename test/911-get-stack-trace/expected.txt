@@ -55,6 +55,8 @@ From top
  bar (IIILart/ControlData;)J 0 26
  foo (IIILart/ControlData;)I 0 21
  baz (IIILart/ControlData;)Ljava/lang/Object; 8 34
+---------
+ printOrWait (IILart/ControlData;)V 6 41
 From bottom
 ---------
  run ()V 0 25
@@ -62,7 +64,7 @@ From bottom
  baz (IIILart/ControlData;)Ljava/lang/Object; 8 34
  bar (IIILart/ControlData;)J 0 26
  foo (IIILart/ControlData;)I 0 21
- doTest ()V 58 32
+ doTest ()V 61 33
  run ()V 0 25
 ---------
  bar (IIILart/ControlData;)J 0 26
@@ -132,6 +134,8 @@ From top
  foo (IIILart/ControlData;)I 0 21
  baz (IIILart/ControlData;)Ljava/lang/Object; 8 34
  bar (IIILart/ControlData;)J 0 26
+---------
+ wait ()V 2 568
 From bottom
 ---------
  run ()V 4 28
@@ -169,7 +173,7 @@ From top
  baz (IIILart/ControlData;)Ljava/lang/Object; 8 34
  bar (IIILart/ControlData;)J 0 26
  foo (IIILart/ControlData;)I 0 21
- run ()V 4 61
+ run ()V 4 62
 ---------
  baz (IIILart/ControlData;)Ljava/lang/Object; 2 32
  bar (IIILart/ControlData;)J 0 26
@@ -186,7 +190,7 @@ From top
  baz (IIILart/ControlData;)Ljava/lang/Object; 8 34
  bar (IIILart/ControlData;)J 0 26
  foo (IIILart/ControlData;)I 0 21
- run ()V 4 61
+ run ()V 4 62
 ---------
  printOrWait (IILart/ControlData;)V 45 54
  baz (IIILart/ControlData;)Ljava/lang/Object; 2 32
@@ -201,13 +205,13 @@ From top
  foo (IIILart/ControlData;)I 0 21
 From bottom
 ---------
- run ()V 4 61
+ run ()V 4 62
 ---------
  foo (IIILart/ControlData;)I 0 21
  baz (IIILart/ControlData;)Ljava/lang/Object; 8 34
  bar (IIILart/ControlData;)J 0 26
  foo (IIILart/ControlData;)I 0 21
- run ()V 4 61
+ run ()V 4 62
 ---------
  baz (IIILart/ControlData;)Ljava/lang/Object; 8 34
  bar (IIILart/ControlData;)J 0 26
