@@ -188,7 +188,7 @@ void X86Assembler::movntl(const Address& dst, Register src) {
 
 void X86Assembler::blsi(Register dst, Register src) {
   AssemblerBuffer::EnsureCapacity ensured(&buffer_);
-  uint8_t byte_zero = EmitVexPrefixByteZero(false /*is_two_byte*/);
+  uint8_t byte_zero = EmitVexPrefixByteZero(/*is_twobyte_form=*/ false);
   uint8_t byte_one  = EmitVexPrefixByteOne(false, false, false, SET_VEX_M_0F_38);
   uint8_t byte_two  = EmitVexPrefixByteTwo(false,
                                            X86ManagedRegister::FromCpuRegister(dst),
@@ -202,7 +202,7 @@ void X86Assembler::blsi(Register dst, Register src) {
 
 void X86Assembler::blsmsk(Register dst, Register src) {
   AssemblerBuffer::EnsureCapacity ensured(&buffer_);
-  uint8_t byte_zero = EmitVexPrefixByteZero(false /*is_two_byte*/);
+  uint8_t byte_zero = EmitVexPrefixByteZero(/*is_twobyte_form=*/ false);
   uint8_t byte_one = EmitVexPrefixByteOne(false, false, false, SET_VEX_M_0F_38);
   uint8_t byte_two = EmitVexPrefixByteTwo(false,
                                          X86ManagedRegister::FromCpuRegister(dst),
@@ -216,7 +216,7 @@ void X86Assembler::blsmsk(Register dst, Register src) {
 
 void X86Assembler::blsr(Register dst, Register src) {
   AssemblerBuffer::EnsureCapacity ensured(&buffer_);
-  uint8_t byte_zero = EmitVexPrefixByteZero(false /*is_two_byte*/);
+  uint8_t byte_zero = EmitVexPrefixByteZero(/*is_twobyte_form=*/ false);
   uint8_t byte_one = EmitVexPrefixByteOne(false, false, false,  SET_VEX_M_0F_38);
   uint8_t byte_two = EmitVexPrefixByteTwo(false,
                                           X86ManagedRegister::FromCpuRegister(dst),
@@ -434,11 +434,11 @@ void X86Assembler::vmovaps(XmmRegister dst, XmmRegister src) {
   DCHECK(CpuHasAVXorAVX2FeatureFlag());
   AssemblerBuffer::EnsureCapacity ensured(&buffer_);
   /**Instruction VEX Prefix*/
-  uint8_t byte_zero = EmitVexPrefixByteZero(/**is_twobyte_form= */true);
+  uint8_t byte_zero = EmitVexPrefixByteZero(/*is_twobyte_form=*/ true);
   X86ManagedRegister vvvv_reg = ManagedRegister::NoRegister().AsX86();
   /**a REX prefix is necessary only if an instruction references one of the
   extended registers or uses a 64-bit operand.*/
-  uint8_t byte_one = EmitVexPrefixByteOne(/**R = */false,
+  uint8_t byte_one = EmitVexPrefixByteOne(/*R=*/ false,
                                           vvvv_reg,
                                           SET_VEX_L_128,
                                           SET_VEX_PP_NONE);
@@ -466,11 +466,11 @@ void X86Assembler::vmovaps(XmmRegister dst, const Address& src) {
   DCHECK(CpuHasAVXorAVX2FeatureFlag());
   AssemblerBuffer::EnsureCapacity ensured(&buffer_);
   /**Instruction VEX Prefix*/
-  uint8_t ByteZero = EmitVexPrefixByteZero(/**is_twobyte_form= */true);
+  uint8_t ByteZero = EmitVexPrefixByteZero(/*is_twobyte_form=*/ true);
   X86ManagedRegister vvvv_reg = ManagedRegister::NoRegister().AsX86();
   /**a REX prefix is necessary only if an instruction references one of the
   extended registers or uses a 64-bit operand.*/
-  uint8_t ByteOne = EmitVexPrefixByteOne(/**R = */false,
+  uint8_t ByteOne = EmitVexPrefixByteOne(/*R=*/ false,
                                          vvvv_reg,
                                          SET_VEX_L_128,
                                          SET_VEX_PP_NONE);
@@ -498,11 +498,11 @@ void X86Assembler::vmovups(XmmRegister dst, const Address& src) {
   DCHECK(CpuHasAVXorAVX2FeatureFlag());
   AssemblerBuffer::EnsureCapacity ensured(&buffer_);
   /**Instruction VEX Prefix*/
-  uint8_t ByteZero = EmitVexPrefixByteZero(/**is_twobyte_form= */true);
+  uint8_t ByteZero = EmitVexPrefixByteZero(/*is_twobyte_form=*/ true);
   X86ManagedRegister vvvv_reg = ManagedRegister::NoRegister().AsX86();
   /**a REX prefix is necessary only if an instruction references one of the
   extended registers or uses a 64-bit operand.*/
-  uint8_t ByteOne = EmitVexPrefixByteOne(/**R = */false,
+  uint8_t ByteOne = EmitVexPrefixByteOne(/*R=*/ false,
                                          vvvv_reg,
                                          SET_VEX_L_128,
                                          SET_VEX_PP_NONE);
@@ -530,11 +530,11 @@ void X86Assembler::vmovaps(const Address& dst, XmmRegister src) {
   DCHECK(CpuHasAVXorAVX2FeatureFlag());
   AssemblerBuffer::EnsureCapacity ensured(&buffer_);
   /**Instruction VEX Prefix*/
-  uint8_t ByteZero = EmitVexPrefixByteZero(/**is_twobyte_form= */true);
+  uint8_t ByteZero = EmitVexPrefixByteZero(/*is_twobyte_form=*/ true);
   X86ManagedRegister vvvv_reg = ManagedRegister::NoRegister().AsX86();
   /**a REX prefix is necessary only if an instruction references one of the
   extended registers or uses a 64-bit operand.*/
-  uint8_t ByteOne = EmitVexPrefixByteOne(/**R = */false,
+  uint8_t ByteOne = EmitVexPrefixByteOne(/*R=*/ false,
                                          vvvv_reg,
                                          SET_VEX_L_128,
                                          SET_VEX_PP_NONE);
@@ -562,11 +562,11 @@ void X86Assembler::vmovups(const Address& dst, XmmRegister src) {
   DCHECK(CpuHasAVXorAVX2FeatureFlag());
   AssemblerBuffer::EnsureCapacity ensured(&buffer_);
   /**Instruction VEX Prefix*/
-  uint8_t ByteZero = EmitVexPrefixByteZero(/**is_twobyte_form= */true);
+  uint8_t ByteZero = EmitVexPrefixByteZero(/*is_twobyte_form=*/ true);
   X86ManagedRegister vvvv_reg = ManagedRegister::NoRegister().AsX86();
   /**a REX prefix is necessary only if an instruction references one of the
   extended registers or uses a 64-bit operand.*/
-  uint8_t ByteOne = EmitVexPrefixByteOne(/**R = */false,
+  uint8_t ByteOne = EmitVexPrefixByteOne(/*R=*/ false,
                                          vvvv_reg,
                                          SET_VEX_L_128,
                                          SET_VEX_PP_NONE);
@@ -745,11 +745,11 @@ void X86Assembler::vmovapd(XmmRegister dst, XmmRegister src) {
   DCHECK(CpuHasAVXorAVX2FeatureFlag());
   AssemblerBuffer::EnsureCapacity ensured(&buffer_);
   /**Instruction VEX Prefix*/
-  uint8_t ByteZero = EmitVexPrefixByteZero(/**is_twobyte_form= */true);
+  uint8_t ByteZero = EmitVexPrefixByteZero(/*is_twobyte_form=*/ true);
   X86ManagedRegister vvvv_reg = ManagedRegister::NoRegister().AsX86();
   /**a REX prefix is necessary only if an instruction references one of the
   extended registers or uses a 64-bit operand.*/
-  uint8_t ByteOne = EmitVexPrefixByteOne(/**R = */false,
+  uint8_t ByteOne = EmitVexPrefixByteOne(/*R=*/ false,
                                          vvvv_reg ,
                                          SET_VEX_L_128,
                                          SET_VEX_PP_66);
@@ -778,11 +778,11 @@ void X86Assembler::vmovapd(XmmRegister dst, const Address& src) {
   DCHECK(CpuHasAVXorAVX2FeatureFlag());
   AssemblerBuffer::EnsureCapacity ensured(&buffer_);
   /**Instruction VEX Prefix*/
-  uint8_t ByteZero = EmitVexPrefixByteZero(/**is_twobyte_form= */true);
+  uint8_t ByteZero = EmitVexPrefixByteZero(/*is_twobyte_form=*/ true);
   X86ManagedRegister vvvv_reg = ManagedRegister::NoRegister().AsX86();
   /**a REX prefix is necessary only if an instruction references one of the
   extended registers or uses a 64-bit operand.*/
-  uint8_t ByteOne = EmitVexPrefixByteOne(/**R = */false,
+  uint8_t ByteOne = EmitVexPrefixByteOne(/*R=*/ false,
                                          vvvv_reg,
                                          SET_VEX_L_128,
                                          SET_VEX_PP_66);
@@ -811,11 +811,11 @@ void X86Assembler::vmovupd(XmmRegister dst, const Address& src) {
   DCHECK(CpuHasAVXorAVX2FeatureFlag());
   AssemblerBuffer::EnsureCapacity ensured(&buffer_);
   /**Instruction VEX Prefix*/
-  uint8_t ByteZero = EmitVexPrefixByteZero(/**is_twobyte_form= */true);
+  uint8_t ByteZero = EmitVexPrefixByteZero(/*is_twobyte_form=*/ true);
   X86ManagedRegister vvvv_reg = ManagedRegister::NoRegister().AsX86();
   /**a REX prefix is necessary only if an instruction references one of the
   extended registers or uses a 64-bit operand.*/
-  uint8_t ByteOne = EmitVexPrefixByteOne(/**R = */false,
+  uint8_t ByteOne = EmitVexPrefixByteOne(/*R=*/ false,
                                          vvvv_reg,
                                          SET_VEX_L_128,
                                          SET_VEX_PP_66);
@@ -845,11 +845,11 @@ void X86Assembler::vmovapd(const Address& dst, XmmRegister src) {
   DCHECK(CpuHasAVXorAVX2FeatureFlag());
   AssemblerBuffer::EnsureCapacity ensured(&buffer_);
   /**Instruction VEX Prefix */
-  uint8_t ByteZero = EmitVexPrefixByteZero(/**is_twobyte_form= */true);
+  uint8_t ByteZero = EmitVexPrefixByteZero(/*is_twobyte_form=*/ true);
   X86ManagedRegister vvvv_reg = ManagedRegister::NoRegister().AsX86();
   /**a REX prefix is necessary only if an instruction references one of the
   extended registers or uses a 64-bit operand.*/
-  uint8_t ByteOne = EmitVexPrefixByteOne(/**R = */false,
+  uint8_t ByteOne = EmitVexPrefixByteOne(/*R=*/ false,
                                          vvvv_reg,
                                          SET_VEX_L_128,
                                          SET_VEX_PP_66);
@@ -878,11 +878,11 @@ void X86Assembler::vmovupd(const Address& dst, XmmRegister src) {
   DCHECK(CpuHasAVXorAVX2FeatureFlag());
   AssemblerBuffer::EnsureCapacity ensured(&buffer_);
   /**Instruction VEX Prefix */
-  uint8_t ByteZero = EmitVexPrefixByteZero(/**is_twobyte_form= */true);
+  uint8_t ByteZero = EmitVexPrefixByteZero(/*is_twobyte_form=*/ true);
   X86ManagedRegister vvvv_reg = ManagedRegister::NoRegister().AsX86();
   /**a REX prefix is necessary only if an instruction references one of the
   extended registers or uses a 64-bit operand.**/
-  uint8_t ByteOne = EmitVexPrefixByteOne(/**R = */false,
+  uint8_t ByteOne = EmitVexPrefixByteOne(/*R=*/ false,
                                          vvvv_reg,
                                          SET_VEX_L_128,
                                          SET_VEX_PP_66);
@@ -1085,9 +1085,9 @@ void X86Assembler::vmovdqa(XmmRegister dst, XmmRegister src) {
   DCHECK(CpuHasAVXorAVX2FeatureFlag());
   AssemblerBuffer::EnsureCapacity ensured(&buffer_);
   /**Instruction VEX Prefix */
-  uint8_t ByteZero = EmitVexPrefixByteZero(/**is_twobyte_form= */true);
+  uint8_t ByteZero = EmitVexPrefixByteZero(/*is_twobyte_form=*/ true);
   X86ManagedRegister vvvv_reg = ManagedRegister::NoRegister().AsX86();
-  uint8_t ByteOne = EmitVexPrefixByteOne(/**R = */false,
+  uint8_t ByteOne = EmitVexPrefixByteOne(/*R=*/ false,
                                          vvvv_reg,
                                          SET_VEX_L_128,
                                          SET_VEX_PP_66);
@@ -1116,9 +1116,9 @@ void X86Assembler::vmovdqa(XmmRegister dst, const Address& src) {
   DCHECK(CpuHasAVXorAVX2FeatureFlag());
   AssemblerBuffer::EnsureCapacity ensured(&buffer_);
   /**Instruction VEX Prefix */
-  uint8_t ByteZero = EmitVexPrefixByteZero(/**is_twobyte_form= */true);
+  uint8_t ByteZero = EmitVexPrefixByteZero(/*is_twobyte_form=*/ true);
   X86ManagedRegister vvvv_reg = ManagedRegister::NoRegister().AsX86();
-  uint8_t ByteOne = EmitVexPrefixByteOne(/**R = */false,
+  uint8_t ByteOne = EmitVexPrefixByteOne(/*R=*/ false,
                                          vvvv_reg,
                                          SET_VEX_L_128,
                                          SET_VEX_PP_66);
@@ -1147,9 +1147,9 @@ void X86Assembler::vmovdqu(XmmRegister dst, const Address& src) {
   DCHECK(CpuHasAVXorAVX2FeatureFlag());
   AssemblerBuffer::EnsureCapacity ensured(&buffer_);
   /**Instruction VEX Prefix */
-  uint8_t ByteZero = EmitVexPrefixByteZero(/**is_twobyte_form= */true);
+  uint8_t ByteZero = EmitVexPrefixByteZero(/*is_twobyte_form=*/ true);
   X86ManagedRegister vvvv_reg = ManagedRegister::NoRegister().AsX86();
-  uint8_t ByteOne = EmitVexPrefixByteOne(/**R = */false,
+  uint8_t ByteOne = EmitVexPrefixByteOne(/*R=*/ false,
                                          vvvv_reg,
                                          SET_VEX_L_128,
                                          SET_VEX_PP_F3);
@@ -1178,9 +1178,9 @@ void X86Assembler::vmovdqa(const Address& dst, XmmRegister src) {
   DCHECK(CpuHasAVXorAVX2FeatureFlag());
   AssemblerBuffer::EnsureCapacity ensured(&buffer_);
   /**Instruction VEX Prefix */
-  uint8_t ByteZero = EmitVexPrefixByteZero(/**is_twobyte_form= */true);
+  uint8_t ByteZero = EmitVexPrefixByteZero(/*is_twobyte_form=*/ true);
   X86ManagedRegister vvvv_reg = ManagedRegister::NoRegister().AsX86();
-  uint8_t ByteOne = EmitVexPrefixByteOne(/**R = */false,
+  uint8_t ByteOne = EmitVexPrefixByteOne(/*R=*/ false,
                                          vvvv_reg,
                                          SET_VEX_L_128,
                                          SET_VEX_PP_66);
@@ -1210,9 +1210,9 @@ void X86Assembler::vmovdqu(const Address& dst, XmmRegister src) {
   DCHECK(CpuHasAVXorAVX2FeatureFlag());
   AssemblerBuffer::EnsureCapacity ensured(&buffer_);
   // Instruction VEX Prefix
-  uint8_t ByteZero = EmitVexPrefixByteZero(/**is_twobyte_form= */true);
+  uint8_t ByteZero = EmitVexPrefixByteZero(/*is_twobyte_form=*/ true);
   X86ManagedRegister vvvv_reg = ManagedRegister::NoRegister().AsX86();
-  uint8_t ByteOne = EmitVexPrefixByteOne(/**R = */false,
+  uint8_t ByteOne = EmitVexPrefixByteOne(/*R=*/ false,
                                          vvvv_reg,
                                          SET_VEX_L_128,
                                          SET_VEX_PP_F3);
@@ -1716,12 +1716,12 @@ void X86Assembler::orps(XmmRegister dst, XmmRegister src) {
 
 void X86Assembler::andn(Register dst, Register src1, Register src2) {
   AssemblerBuffer::EnsureCapacity ensured(&buffer_);
-  uint8_t byte_zero = EmitVexPrefixByteZero(/**is_twobyte_form= */false);
-  uint8_t byte_one = EmitVexPrefixByteOne(/**R = */false,
-                                          /**X = */false,
-                                          /**B = */false,
+  uint8_t byte_zero = EmitVexPrefixByteZero(/*is_twobyte_form=*/ false);
+  uint8_t byte_one = EmitVexPrefixByteOne(/*R=*/ false,
+                                          /*X=*/ false,
+                                          /*B=*/ false,
                                           SET_VEX_M_0F_38);
-  uint8_t byte_two = EmitVexPrefixByteTwo(/**W= */false,
+  uint8_t byte_two = EmitVexPrefixByteTwo(/*W=*/ false,
                                           X86ManagedRegister::FromCpuRegister(src1),
                                           SET_VEX_L_128,
                                           SET_VEX_PP_NONE);
