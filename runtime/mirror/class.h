@@ -21,7 +21,6 @@
 
 #include "base/bit_utils.h"
 #include "base/casts.h"
-#include "base/stride_iterator.h"
 #include "class_flags.h"
 #include "class_status.h"
 #include "dex/dex_file_types.h"
@@ -55,6 +54,7 @@ template <typename Iter> class IterationRange;
 template<typename T> class LengthPrefixedArray;
 enum class PointerSize : size_t;
 class Signature;
+template<typename T> class StrideIterator;
 template<size_t kNumReferences> class PACKED(4) StackHandleScope;
 class Thread;
 
