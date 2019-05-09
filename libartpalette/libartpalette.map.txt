@@ -20,7 +20,7 @@ LIBARTPALETTE_1 {
     PaletteGetVersion;
     PaletteSchedSetPriority;
     PaletteSchedGetPriority;
-    PaletteTombstonedMessage;
+    PaletteWriteCrashThreadStacks;
     PaletteTraceEnabled;
     PaletteTraceBegin;
     PaletteTraceEnd;

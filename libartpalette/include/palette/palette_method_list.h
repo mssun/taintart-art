@@ -25,7 +25,7 @@
   M(PaletteGetVersion, /*out*/int32_t* version)                             \
   M(PaletteSchedSetPriority, int32_t tid, int32_t java_priority)            \
   M(PaletteSchedGetPriority, int32_t tid, /*out*/int32_t* java_priority)    \
-  M(PaletteTombstonedMessage, const char* msg, size_t msg_len)              \
+  M(PaletteWriteCrashThreadStacks, const char* stacks, size_t stacks_len)   \
   M(PaletteTraceEnabled, /*out*/int32_t* enabled)                           \
   M(PaletteTraceBegin, const char* name)                                    \
   M(PaletteTraceEnd)                                                        \

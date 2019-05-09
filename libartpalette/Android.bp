@@ -42,6 +42,7 @@ art_cc_library {
         host: {
           header_libs: ["libbase_headers"],
           srcs: ["system/palette_fake.cc",],
+          shared_libs: ["libbase"],
         },
         darwin: {
             enabled: false,
@@ -81,7 +82,10 @@ art_cc_library {
           header_libs: ["libbase_headers"],
             srcs: ["system/palette_fake.cc"],
             shared: {
-                shared_libs: ["liblog"],
+              shared_libs: [
+                "libbase",
+                "liblog"
+              ],
             },
             version_script: "libartpalette.map.txt",
         },
@@ -89,7 +93,10 @@ art_cc_library {
           header_libs: ["libbase_headers"],
             srcs: ["system/palette_fake.cc"],
             shared: {
-                shared_libs: ["liblog"],
+              shared_libs: [
+                "libbase",
+                "liblog"
+              ],
             },
             version_script: "libartpalette.map.txt",
         },
@@ -99,11 +106,19 @@ art_cc_library {
             enabled: true,
             header_libs: ["libbase_headers"],
             srcs: ["system/palette_fake.cc"],
+            static_libs: [
+              "libbase",
+              "liblog"
+            ],
         },
         windows: {
             enabled: true,
             header_libs: ["libbase_headers"],
             srcs: ["system/palette_fake.cc"],
+            static_libs: [
+              "libbase",
+              "liblog"
+            ],
         },
     }
 }
