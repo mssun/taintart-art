@@ -27,7 +27,6 @@ cc_defaults {
         "base/enums.cc",
         "base/file_magic.cc",
         "base/file_utils.cc",
-        "base/globals.cc",
         "base/hex_dump.cc",
         "base/hiddenapi_flags.cc",
         "base/logging.cc",
@@ -74,6 +73,7 @@ cc_defaults {
         },
         not_windows: {
             srcs: [
+                "base/globals_unix.cc",
                 "base/mem_map_unix.cc",
             ],
             shared_libs: [
