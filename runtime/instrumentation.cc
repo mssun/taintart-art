@@ -169,7 +169,8 @@ Instrumentation::Instrumentation()
       deoptimization_enabled_(false),
       interpreter_handler_table_(kMainHandlerTable),
       quick_alloc_entry_points_instrumentation_counter_(0),
-      alloc_entrypoints_instrumented_(false) {
+      alloc_entrypoints_instrumented_(false),
+      can_use_instrumentation_trampolines_(true) {
 }
 
 void Instrumentation::InstallStubsForClass(ObjPtr<mirror::Class> klass) {
@@ -698,6 +699,19 @@ bool Instrumentation::RequiresInstrumentationInstallation(InstrumentationLevel n
   return GetCurrentInstrumentationLevel() != new_level;
 }
 
+void Instrumentation::UpdateInstrumentationLevels(InstrumentationLevel level) {
+  if (level == InstrumentationLevel::kInstrumentWithInterpreter) {
+    can_use_instrumentation_trampolines_ = false;
+  }
+  if (UNLIKELY(!can_use_instrumentation_trampolines_)) {
+    for (auto& p : requested_instrumentation_levels_) {
+      if (p.second == InstrumentationLevel::kInstrumentWithInstrumentationStubs) {
+        p.second = InstrumentationLevel::kInstrumentWithInterpreter;
+      }
+    }
+  }
+}
+
 void Instrumentation::ConfigureStubs(const char* key, InstrumentationLevel desired_level) {
   // Store the instrumentation level for this key or remove it.
   if (desired_level == InstrumentationLevel::kInstrumentNothing) {
@@ -708,11 +722,28 @@ void Instrumentation::ConfigureStubs(const char* key, InstrumentationLevel desir
     requested_instrumentation_levels_.Overwrite(key, desired_level);
   }
 
+  UpdateInstrumentationLevels(desired_level);
+  UpdateStubs();
+}
+
+void Instrumentation::EnableSingleThreadDeopt() {
+  // Single-thread deopt only uses interpreter.
+  can_use_instrumentation_trampolines_ = false;
+  UpdateInstrumentationLevels(InstrumentationLevel::kInstrumentWithInterpreter);
+  UpdateStubs();
+}
+
+void Instrumentation::UpdateStubs() {
   // Look for the highest required instrumentation level.
   InstrumentationLevel requested_level = InstrumentationLevel::kInstrumentNothing;
   for (const auto& v : requested_instrumentation_levels_) {
     requested_level = std::max(requested_level, v.second);
   }
+
+  DCHECK(can_use_instrumentation_trampolines_ ||
+         requested_level != InstrumentationLevel::kInstrumentWithInstrumentationStubs)
+      << "Use trampolines: " << can_use_instrumentation_trampolines_ << " level "
+      << requested_level;
 
   interpret_only_ = (requested_level == InstrumentationLevel::kInstrumentWithInterpreter) ||
                     forced_interpret_only_;

@@ -45,6 +45,7 @@
 #include "gc/collector_type.h"
 #include "gc/heap.h"
 #include "gc/scoped_gc_critical_section.h"
+#include "instrumentation.h"
 #include "jit/jit.h"
 #include "jni/jni_internal.h"
 #include "mirror/class-inl.h"
@@ -472,8 +473,12 @@ void DeoptManager::AddDeoptimizationRequester() {
   deopter_count_++;
   if (deopter_count_ == 1) {
     ScopedDeoptimizationContext sdc(self, this);
-    art::Runtime::Current()->GetInstrumentation()->EnableDeoptimization();
-    return;
+    art::instrumentation::Instrumentation* instrumentation =
+        art::Runtime::Current()->GetInstrumentation();
+    // Enable deoptimization
+    instrumentation->EnableDeoptimization();
+    // Tell instrumentation we will be deopting single threads.
+    instrumentation->EnableSingleThreadDeopt();
   } else {
     deoptimization_status_lock_.ExclusiveUnlock(self);
   }
