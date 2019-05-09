@@ -17,12 +17,13 @@
 # Script to run all gtests located under $ART_TEST_CHROOT/data/nativetest{64}
 
 ADB="${ADB:-adb}"
-all_tests=()
+all_tests=
 failing_tests=()
 
 function add_tests {
   # Search for *_test and *_tests executables, but skip e.g. libfoo_test.so.
-  all_tests+=$(${ADB} shell "test -d $ART_TEST_CHROOT/$1 && chroot $ART_TEST_CHROOT find $1 -type f -perm /ugo+x -name \*_test\* \! -name \*.so")
+  local found_tests=$(${ADB} shell "test -d $ART_TEST_CHROOT/$1 && chroot $ART_TEST_CHROOT find $1 -type f -perm /ugo+x -name \*_test\* \! -name \*.so")
+  all_tests+=" $found_tests"
 }
 
 function fail {
