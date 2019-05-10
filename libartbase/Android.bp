@@ -222,6 +222,12 @@ art_cc_library {
     header_libs: [
         "libnativehelper_header_only",
     ],
+    static: {
+        whole_static_libs: ["libc++fs"],
+    },
+    shared: {
+        static_libs: ["libc++fs"],
+    },
 }
 
 art_cc_test {
