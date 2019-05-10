@@ -29,6 +29,8 @@
 namespace art {
 namespace debug {
 
+static constexpr bool kWriteDebugFrameHdr = false;
+
 // Binary search table is not useful if the number of entries is small.
 // In particular, this avoids it for the in-memory JIT mini-debug-info.
 static constexpr size_t kMinDebugFrameHdrEntries = 100;
@@ -198,7 +200,9 @@ void WriteCFISection(ElfBuilder<ElfTypes>* builder,
       });
 
   std::vector<uint32_t> binary_search_table;
-  binary_search_table.reserve(2 * sorted_method_infos.size());
+  if (kWriteDebugFrameHdr) {
+    binary_search_table.reserve(2 * sorted_method_infos.size());
+  }
 
   // Write .debug_frame section.
   auto* cfi_section = builder->GetDebugFrame();
@@ -214,8 +218,10 @@ void WriteCFISection(ElfBuilder<ElfTypes>* builder,
       DCHECK(!mi->cfi.empty());
       const Elf_Addr code_address = mi->code_address +
           (mi->is_code_address_text_relative ? builder->GetText()->GetAddress() : 0);
-      binary_search_table.push_back(dchecked_integral_cast<uint32_t>(code_address));
-      binary_search_table.push_back(cfi_section->GetPosition());
+      if (kWriteDebugFrameHdr) {
+        binary_search_table.push_back(dchecked_integral_cast<uint32_t>(code_address));
+        binary_search_table.push_back(cfi_section->GetPosition());
+      }
       dwarf::WriteFDE(is64bit,
                       /* cie_pointer= */ 0,
                       code_address,
@@ -228,7 +234,7 @@ void WriteCFISection(ElfBuilder<ElfTypes>* builder,
     cfi_section->End();
   }
 
-  if (method_infos.size() > kMinDebugFrameHdrEntries) {
+  if (kWriteDebugFrameHdr && method_infos.size() > kMinDebugFrameHdrEntries) {
     std::sort(binary_search_table.begin(), binary_search_table.end());
 
     // Custom Android section. It is very similar to the official .eh_frame_hdr format.
