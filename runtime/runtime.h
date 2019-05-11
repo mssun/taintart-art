@@ -164,6 +164,14 @@ class Runtime {
     return is_zygote_;
   }
 
+  bool IsSystemServer() const {
+    return is_system_server_;
+  }
+
+  void SetSystemServer(bool value) {
+    is_system_server_ = value;
+  }
+
   bool IsExplicitGcDisabled() const {
     return is_explicit_gc_disabled_;
   }
@@ -937,6 +945,7 @@ class Runtime {
 
   CompilerCallbacks* compiler_callbacks_;
   bool is_zygote_;
+  bool is_system_server_;
   bool must_relocate_;
   bool is_concurrent_gc_enabled_;
   bool is_explicit_gc_disabled_;
