@@ -1309,7 +1309,7 @@ class ImageSpace::Loader {
             method.SetEntryPointFromQuickCompiledCodePtrSize(new_code, kPointerSize);
           }
         } else {
-          method.UpdateObjectsForImageRelocation(forward_object);
+          patch_object_visitor.PatchGcRoot(&method.DeclaringClassRoot());
           method.UpdateEntrypoints(forward_code, kPointerSize);
         }
       }, target_base, kPointerSize);
@@ -1319,7 +1319,8 @@ class ImageSpace::Loader {
         // Only touches objects in the app image, no need for mutator lock.
         TimingLogger::ScopedTiming timing("Fixup fields", &logger);
         image_header.VisitPackedArtFields([&](ArtField& field) NO_THREAD_SAFETY_ANALYSIS {
-          field.UpdateObjects(forward_object);
+          patch_object_visitor.template PatchGcRoot</*kMayBeNull=*/ false>(
+              &field.DeclaringClassRoot());
         }, target_base);
       }
       {

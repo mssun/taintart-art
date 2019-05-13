@@ -382,15 +382,6 @@ void ArtMethod::VisitRoots(RootVisitorType& visitor, PointerSize pointer_size) {
 }
 
 template <typename Visitor>
-inline void ArtMethod::UpdateObjectsForImageRelocation(const Visitor& visitor) {
-  ObjPtr<mirror::Class> old_class = GetDeclaringClassUnchecked<kWithoutReadBarrier>();
-  ObjPtr<mirror::Class> new_class = visitor(old_class.Ptr());
-  if (old_class != new_class) {
-    SetDeclaringClass(new_class);
-  }
-}
-
-template <typename Visitor>
 inline void ArtMethod::UpdateEntrypoints(const Visitor& visitor, PointerSize pointer_size) {
   if (IsNative()) {
     const void* old_native_code = GetEntryPointFromJniPtrSize(pointer_size);

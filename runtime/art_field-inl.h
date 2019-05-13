@@ -348,15 +348,6 @@ inline ObjPtr<mirror::String> ArtField::ResolveNameString() {
   return Runtime::Current()->GetClassLinker()->ResolveString(field_id.name_idx_, this);
 }
 
-template <typename Visitor>
-inline void ArtField::UpdateObjects(const Visitor& visitor) {
-  ObjPtr<mirror::Class> old_class = DeclaringClassRoot().Read<kWithoutReadBarrier>();
-  ObjPtr<mirror::Class> new_class = visitor(old_class.Ptr());
-  if (old_class != new_class) {
-    SetDeclaringClass(new_class);
-  }
-}
-
 // If kExactOffset is true then we only find the matching offset, not the field containing the
 // offset.
 template <bool kExactOffset>
