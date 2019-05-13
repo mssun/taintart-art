@@ -256,6 +256,7 @@ art_cc_test {
         "base/membarrier_test.cc",
         "base/memory_region_test.cc",
         "base/mem_map_test.cc",
+        "base/memory_type_table_test.cc",
         "base/safe_copy_test.cc",
         "base/scoped_flock_test.cc",
         "base/time_utils_test.cc",
