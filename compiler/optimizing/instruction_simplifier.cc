@@ -2581,7 +2581,16 @@ void InstructionSimplifierVisitor::VisitInvoke(HInvoke* instruction) {
       SimplifyNPEOnArgN(instruction, 1);  // 0th has own NullCheck
       break;
     case Intrinsics::kStringBufferAppend:
-    case Intrinsics::kStringBuilderAppend:
+    case Intrinsics::kStringBuilderAppendObject:
+    case Intrinsics::kStringBuilderAppendString:
+    case Intrinsics::kStringBuilderAppendCharSequence:
+    case Intrinsics::kStringBuilderAppendCharArray:
+    case Intrinsics::kStringBuilderAppendBoolean:
+    case Intrinsics::kStringBuilderAppendChar:
+    case Intrinsics::kStringBuilderAppendInt:
+    case Intrinsics::kStringBuilderAppendLong:
+    case Intrinsics::kStringBuilderAppendFloat:
+    case Intrinsics::kStringBuilderAppendDouble:
       SimplifyReturnThis(instruction);
       break;
     case Intrinsics::kStringBufferToString:

@@ -181,7 +181,16 @@
   V(StringBufferAppend, kVirtual, kNeedsEnvironmentOrCache, kAllSideEffects, kCanThrow, "Ljava/lang/StringBuffer;", "append", "(Ljava/lang/String;)Ljava/lang/StringBuffer;") \
   V(StringBufferLength, kVirtual, kNeedsEnvironmentOrCache, kAllSideEffects, kNoThrow, "Ljava/lang/StringBuffer;", "length", "()I") \
   V(StringBufferToString, kVirtual, kNeedsEnvironmentOrCache, kAllSideEffects, kCanThrow, "Ljava/lang/StringBuffer;", "toString", "()Ljava/lang/String;") \
-  V(StringBuilderAppend, kVirtual, kNeedsEnvironmentOrCache, kAllSideEffects, kCanThrow, "Ljava/lang/StringBuilder;", "append", "(Ljava/lang/String;)Ljava/lang/StringBuilder;") \
+  V(StringBuilderAppendObject, kVirtual, kNeedsEnvironmentOrCache, kAllSideEffects, kCanThrow, "Ljava/lang/StringBuilder;", "append", "(Ljava/lang/Object;)Ljava/lang/StringBuilder;") \
+  V(StringBuilderAppendString, kVirtual, kNeedsEnvironmentOrCache, kAllSideEffects, kCanThrow, "Ljava/lang/StringBuilder;", "append", "(Ljava/lang/String;)Ljava/lang/StringBuilder;") \
+  V(StringBuilderAppendCharSequence, kVirtual, kNeedsEnvironmentOrCache, kAllSideEffects, kCanThrow, "Ljava/lang/StringBuilder;", "append", "(Ljava/lang/CharSequence;)Ljava/lang/StringBuilder;") \
+  V(StringBuilderAppendCharArray, kVirtual, kNeedsEnvironmentOrCache, kAllSideEffects, kCanThrow, "Ljava/lang/StringBuilder;", "append", "([C)Ljava/lang/StringBuilder;") \
+  V(StringBuilderAppendBoolean, kVirtual, kNeedsEnvironmentOrCache, kAllSideEffects, kCanThrow, "Ljava/lang/StringBuilder;", "append", "(Z)Ljava/lang/StringBuilder;") \
+  V(StringBuilderAppendChar, kVirtual, kNeedsEnvironmentOrCache, kAllSideEffects, kCanThrow, "Ljava/lang/StringBuilder;", "append", "(C)Ljava/lang/StringBuilder;") \
+  V(StringBuilderAppendInt, kVirtual, kNeedsEnvironmentOrCache, kAllSideEffects, kCanThrow, "Ljava/lang/StringBuilder;", "append", "(I)Ljava/lang/StringBuilder;") \
+  V(StringBuilderAppendLong, kVirtual, kNeedsEnvironmentOrCache, kAllSideEffects, kCanThrow, "Ljava/lang/StringBuilder;", "append", "(J)Ljava/lang/StringBuilder;") \
+  V(StringBuilderAppendFloat, kVirtual, kNeedsEnvironmentOrCache, kAllSideEffects, kCanThrow, "Ljava/lang/StringBuilder;", "append", "(F)Ljava/lang/StringBuilder;") \
+  V(StringBuilderAppendDouble, kVirtual, kNeedsEnvironmentOrCache, kAllSideEffects, kCanThrow, "Ljava/lang/StringBuilder;", "append", "(D)Ljava/lang/StringBuilder;") \
   V(StringBuilderLength, kVirtual, kNeedsEnvironmentOrCache, kReadSideEffects, kNoThrow, "Ljava/lang/StringBuilder;", "length", "()I") \
   V(StringBuilderToString, kVirtual, kNeedsEnvironmentOrCache, kAllSideEffects, kCanThrow, "Ljava/lang/StringBuilder;", "toString", "()Ljava/lang/String;") \
   V(UnsafeCASInt, kVirtual, kNeedsEnvironmentOrCache, kAllSideEffects, kCanThrow, "Lsun/misc/Unsafe;", "compareAndSwapInt", "(Ljava/lang/Object;JII)Z") \

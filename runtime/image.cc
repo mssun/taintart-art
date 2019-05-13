@@ -29,7 +29,7 @@
 namespace art {
 
 const uint8_t ImageHeader::kImageMagic[] = { 'a', 'r', 't', '\n' };
-const uint8_t ImageHeader::kImageVersion[] = { '0', '7', '4', '\0' };  // CRC32UpdateBB intrinsic
+const uint8_t ImageHeader::kImageVersion[] = { '0', '7', '5', '\0' };  // SB.append() intrinsics
 
 ImageHeader::ImageHeader(uint32_t image_reservation_size,
                          uint32_t component_count,

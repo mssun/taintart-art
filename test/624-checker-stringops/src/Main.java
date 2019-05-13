@@ -136,17 +136,17 @@ public class Main {
   /// CHECK-START: int Main.builderLen2() instruction_simplifier (before)
   /// CHECK-DAG: <<New:l\d+>>     NewInstance
   /// CHECK-DAG: <<String1:l\d+>> LoadString
-  /// CHECK-DAG: <<Append1:l\d+>> InvokeVirtual [<<New>>,<<String1>>]  intrinsic:StringBuilderAppend
+  /// CHECK-DAG: <<Append1:l\d+>> InvokeVirtual [<<New>>,<<String1>>]  intrinsic:StringBuilderAppendString
   /// CHECK-DAG: <<String2:l\d+>> LoadString
-  /// CHECK-DAG: <<Append2:l\d+>> InvokeVirtual [{{l\d+}},<<String2>>] intrinsic:StringBuilderAppend
+  /// CHECK-DAG: <<Append2:l\d+>> InvokeVirtual [{{l\d+}},<<String2>>] intrinsic:StringBuilderAppendString
   /// CHECK-DAG:                  InvokeVirtual [{{l\d+}}]             intrinsic:StringBuilderLength
   //
   /// CHECK-START: int Main.builderLen2() instruction_simplifier (after)
   /// CHECK-DAG: <<New:l\d+>>     NewInstance
   /// CHECK-DAG: <<String1:l\d+>> LoadString
-  /// CHECK-DAG: <<Append1:l\d+>> InvokeVirtual [<<New>>,<<String1>>] intrinsic:StringBuilderAppend
+  /// CHECK-DAG: <<Append1:l\d+>> InvokeVirtual [<<New>>,<<String1>>] intrinsic:StringBuilderAppendString
   /// CHECK-DAG: <<String2:l\d+>> LoadString
-  /// CHECK-DAG: <<Append2:l\d+>> InvokeVirtual [<<New>>,<<String2>>] intrinsic:StringBuilderAppend
+  /// CHECK-DAG: <<Append2:l\d+>> InvokeVirtual [<<New>>,<<String2>>] intrinsic:StringBuilderAppendString
   /// CHECK-DAG:                  InvokeVirtual [<<New>>]             intrinsic:StringBuilderLength
   static int builderLen2() {
     StringBuilder s = new StringBuilder();
@@ -200,25 +200,25 @@ public class Main {
   // Similar situation in a loop.
   //
   /// CHECK-START: int Main.builderLoopAppender() instruction_simplifier (before)
-  /// CHECK-DAG: <<New:l\d+>>     NewInstance                                                         loop:none
-  /// CHECK-DAG: <<String1:l\d+>> LoadString                                                          loop:<<Loop:B\d+>>
-  /// CHECK-DAG: <<Null1:l\d+>>   NullCheck     [<<New>>]                                             loop:<<Loop>>
-  /// CHECK-DAG: <<Append1:l\d+>> InvokeVirtual [<<Null1>>,<<String1>>] intrinsic:StringBuilderAppend loop:<<Loop>>
-  /// CHECK-DAG: <<String2:l\d+>> LoadString                                                          loop:<<Loop>>
-  /// CHECK-DAG: <<Append2:l\d+>> InvokeVirtual [{{l\d+}},<<String2>>]  intrinsic:StringBuilderAppend loop:<<Loop>>
-  /// CHECK-DAG: <<String3:l\d+>> LoadString                                                          loop:<<Loop>>
-  /// CHECK-DAG: <<Append3:l\d+>> InvokeVirtual [{{l\d+}},<<String3>>]  intrinsic:StringBuilderAppend loop:<<Loop>>
-  /// CHECK-DAG:                  InvokeVirtual [{{l\d+}}]              intrinsic:StringBuilderLength loop:none
+  /// CHECK-DAG: <<New:l\d+>>     NewInstance                                                               loop:none
+  /// CHECK-DAG: <<String1:l\d+>> LoadString                                                                loop:<<Loop:B\d+>>
+  /// CHECK-DAG: <<Null1:l\d+>>   NullCheck     [<<New>>]                                                   loop:<<Loop>>
+  /// CHECK-DAG: <<Append1:l\d+>> InvokeVirtual [<<Null1>>,<<String1>>] intrinsic:StringBuilderAppendString loop:<<Loop>>
+  /// CHECK-DAG: <<String2:l\d+>> LoadString                                                                loop:<<Loop>>
+  /// CHECK-DAG: <<Append2:l\d+>> InvokeVirtual [{{l\d+}},<<String2>>]  intrinsic:StringBuilderAppendString loop:<<Loop>>
+  /// CHECK-DAG: <<String3:l\d+>> LoadString                                                                loop:<<Loop>>
+  /// CHECK-DAG: <<Append3:l\d+>> InvokeVirtual [{{l\d+}},<<String3>>]  intrinsic:StringBuilderAppendString loop:<<Loop>>
+  /// CHECK-DAG:                  InvokeVirtual [{{l\d+}}]              intrinsic:StringBuilderLength       loop:none
   //
   /// CHECK-START: int Main.builderLoopAppender() instruction_simplifier (after)
-  /// CHECK-DAG: <<New:l\d+>>     NewInstance                                                       loop:none
-  /// CHECK-DAG: <<String1:l\d+>> LoadString                                                        loop:<<Loop:B\d+>>
-  /// CHECK-DAG: <<Append1:l\d+>> InvokeVirtual [<<New>>,<<String1>>] intrinsic:StringBuilderAppend loop:<<Loop>>
-  /// CHECK-DAG: <<String2:l\d+>> LoadString                                                        loop:<<Loop>>
-  /// CHECK-DAG: <<Append2:l\d+>> InvokeVirtual [<<New>>,<<String2>>] intrinsic:StringBuilderAppend loop:<<Loop>>
-  /// CHECK-DAG: <<String3:l\d+>> LoadString                                                        loop:<<Loop>>
-  /// CHECK-DAG: <<Append3:l\d+>> InvokeVirtual [<<New>>,<<String3>>] intrinsic:StringBuilderAppend loop:<<Loop>>
-  /// CHECK-DAG:                  InvokeVirtual [<<New>>]             intrinsic:StringBuilderLength loop:none
+  /// CHECK-DAG: <<New:l\d+>>     NewInstance                                                             loop:none
+  /// CHECK-DAG: <<String1:l\d+>> LoadString                                                              loop:<<Loop:B\d+>>
+  /// CHECK-DAG: <<Append1:l\d+>> InvokeVirtual [<<New>>,<<String1>>] intrinsic:StringBuilderAppendString loop:<<Loop>>
+  /// CHECK-DAG: <<String2:l\d+>> LoadString                                                              loop:<<Loop>>
+  /// CHECK-DAG: <<Append2:l\d+>> InvokeVirtual [<<New>>,<<String2>>] intrinsic:StringBuilderAppendString loop:<<Loop>>
+  /// CHECK-DAG: <<String3:l\d+>> LoadString                                                              loop:<<Loop>>
+  /// CHECK-DAG: <<Append3:l\d+>> InvokeVirtual [<<New>>,<<String3>>] intrinsic:StringBuilderAppendString loop:<<Loop>>
+  /// CHECK-DAG:                  InvokeVirtual [<<New>>]             intrinsic:StringBuilderLength       loop:none
   static int builderLoopAppender() {
     StringBuilder b = new StringBuilder();
     for (int i = 0; i < 10; i++) {

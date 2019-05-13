@@ -526,7 +526,19 @@ bool MterpHandleIntrinsic(ShadowFrame* shadow_frame,
     UNIMPLEMENTED_CASE(StringBufferAppend /* (Ljava/lang/String;)Ljava/lang/StringBuffer; */)
     UNIMPLEMENTED_CASE(StringBufferLength /* ()I */)
     UNIMPLEMENTED_CASE(StringBufferToString /* ()Ljava/lang/String; */)
-    UNIMPLEMENTED_CASE(StringBuilderAppend /* (Ljava/lang/String;)Ljava/lang/StringBuilder; */)
+    UNIMPLEMENTED_CASE(
+        StringBuilderAppendObject /* (Ljava/lang/Object;)Ljava/lang/StringBuilder; */)
+    UNIMPLEMENTED_CASE(
+        StringBuilderAppendString /* (Ljava/lang/String;)Ljava/lang/StringBuilder; */)
+    UNIMPLEMENTED_CASE(
+        StringBuilderAppendCharSequence /* (Ljava/lang/CharSequence;)Ljava/lang/StringBuilder; */)
+    UNIMPLEMENTED_CASE(StringBuilderAppendCharArray /* ([C)Ljava/lang/StringBuilder; */)
+    UNIMPLEMENTED_CASE(StringBuilderAppendBoolean /* (Z)Ljava/lang/StringBuilder; */)
+    UNIMPLEMENTED_CASE(StringBuilderAppendChar /* (C)Ljava/lang/StringBuilder; */)
+    UNIMPLEMENTED_CASE(StringBuilderAppendInt /* (I)Ljava/lang/StringBuilder; */)
+    UNIMPLEMENTED_CASE(StringBuilderAppendLong /* (J)Ljava/lang/StringBuilder; */)
+    UNIMPLEMENTED_CASE(StringBuilderAppendFloat /* (F)Ljava/lang/StringBuilder; */)
+    UNIMPLEMENTED_CASE(StringBuilderAppendDouble /* (D)Ljava/lang/StringBuilder; */)
     UNIMPLEMENTED_CASE(StringBuilderLength /* ()I */)
     UNIMPLEMENTED_CASE(StringBuilderToString /* ()Ljava/lang/String; */)
     UNIMPLEMENTED_CASE(UnsafeCASInt /* (Ljava/lang/Object;JII)Z */)
