@@ -369,8 +369,8 @@ class ConcurrentCopying : public GarbageCollector {
   // A cache of Heap::GetMarkBitmap().
   accounting::HeapBitmap* heap_mark_bitmap_;
   size_t live_stack_freeze_size_;
-  size_t from_space_num_objects_at_first_pause_;
-  size_t from_space_num_bytes_at_first_pause_;
+  size_t from_space_num_objects_at_first_pause_;  // Computed if kEnableFromSpaceAccountingCheck
+  size_t from_space_num_bytes_at_first_pause_;  // Computed if kEnableFromSpaceAccountingCheck
   Atomic<int> is_mark_stack_push_disallowed_;
   enum MarkStackMode {
     kMarkStackModeOff = 0,      // Mark stack is off.
@@ -384,9 +384,9 @@ class ConcurrentCopying : public GarbageCollector {
   Atomic<MarkStackMode> mark_stack_mode_;
   bool weak_ref_access_enabled_ GUARDED_BY(Locks::thread_list_lock_);
 
-  // How many objects and bytes we moved. Used for accounting.
-  // GC thread moves many more objects than mutators.
-  // Therefore, we separate the two to avoid CAS.
+  // How many objects and bytes we moved. The GC thread moves many more objects
+  // than mutators.  Therefore, we separate the two to avoid CAS.  Bytes_moved_ and
+  // bytes_moved_gc_thread_ are critical for GC triggering; the others are just informative.
   Atomic<size_t> bytes_moved_;  // Used by mutators
   Atomic<size_t> objects_moved_;  // Used by mutators
   size_t bytes_moved_gc_thread_;  // Used by GC
@@ -417,7 +417,11 @@ class ConcurrentCopying : public GarbageCollector {
 
   // The skipped blocks are memory blocks/chucks that were copies of
   // objects that were unused due to lost races (cas failures) at
-  // object copy/forward pointer install. They are reused.
+  // object copy/forward pointer install. They may be reused.
+  // Skipped blocks are always in region space. Their size is included directly
+  // in num_bytes_allocated_, i.e. they are treated as allocated, but may be directly
+  // used without going through a GC cycle like other objects. They are reused only
+  // if we run out of region space. TODO: Revisit this design.
   Mutex skipped_blocks_lock_ DEFAULT_MUTEX_ACQUIRED_AFTER;
   std::multimap<size_t, uint8_t*> skipped_blocks_map_ GUARDED_BY(skipped_blocks_lock_);
   Atomic<size_t> to_space_bytes_skipped_;

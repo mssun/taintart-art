@@ -2393,11 +2393,9 @@ void ConcurrentCopying::Sweep(bool swap_bitmaps) {
     CheckEmptyMarkStack();
     TimingLogger::ScopedTiming split("Sweep", GetTimings());
     for (const auto& space : GetHeap()->GetContinuousSpaces()) {
-      if (space->IsContinuousMemMapAllocSpace()) {
+      if (space->IsContinuousMemMapAllocSpace() && space != region_space_
+          && !immune_spaces_.ContainsSpace(space)) {
         space::ContinuousMemMapAllocSpace* alloc_space = space->AsContinuousMemMapAllocSpace();
-        if (space == region_space_ || immune_spaces_.ContainsSpace(space)) {
-          continue;
-        }
         TimingLogger::ScopedTiming split2(
             alloc_space->IsZygoteSpace() ? "SweepZygoteSpace" : "SweepAllocSpace", GetTimings());
         RecordFree(alloc_space->Sweep(swap_bitmaps));
@@ -2643,7 +2641,8 @@ void ConcurrentCopying::ReclaimPhase() {
       CHECK_EQ(from_space_num_bytes_at_first_pause_, from_bytes + unevac_from_bytes);
     }
     CHECK_LE(to_objects, from_objects);
-    CHECK_LE(to_bytes, from_bytes);
+    // to_bytes <= from_bytes is only approximately true, because objects expand a little when
+    // copying to non-moving space in near-OOM situations.
     if (from_bytes > 0) {
       copied_live_bytes_ratio_sum_ += static_cast<float>(to_bytes) / from_bytes;
       gc_count_++;
@@ -2660,8 +2659,10 @@ void ConcurrentCopying::ReclaimPhase() {
       CHECK_GE(cleared_bytes, from_bytes);
       CHECK_GE(cleared_objects, from_objects);
     }
-    int64_t freed_bytes = cleared_bytes - to_bytes;
-    int64_t freed_objects = cleared_objects - to_objects;
+    // freed_bytes could conceivably be negative if we fall back to nonmoving space and have to
+    // pad to a larger size.
+    int64_t freed_bytes = (int64_t)cleared_bytes - (int64_t)to_bytes;
+    uint64_t freed_objects = cleared_objects - to_objects;
     if (kVerboseMode) {
       LOG(INFO) << "RecordFree:"
                 << " from_bytes=" << from_bytes << " from_objects=" << from_objects
@@ -3451,10 +3452,10 @@ mirror::Object* ConcurrentCopying::Copy(Thread* const self,
       DCHECK(thread_running_gc_ != nullptr);
       if (LIKELY(self == thread_running_gc_)) {
         objects_moved_gc_thread_ += 1;
-        bytes_moved_gc_thread_ += region_space_alloc_size;
+        bytes_moved_gc_thread_ += bytes_allocated;
       } else {
         objects_moved_.fetch_add(1, std::memory_order_relaxed);
-        bytes_moved_.fetch_add(region_space_alloc_size, std::memory_order_relaxed);
+        bytes_moved_.fetch_add(bytes_allocated, std::memory_order_relaxed);
       }
 
       if (LIKELY(!fall_back_to_non_moving)) {
