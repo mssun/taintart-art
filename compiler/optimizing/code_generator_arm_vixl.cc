@@ -6168,13 +6168,11 @@ void LocationsBuilderARMVIXL::VisitArraySet(HArraySet* instruction) {
 
   bool needs_write_barrier =
       CodeGenerator::StoreNeedsWriteBarrier(value_type, instruction->GetValue());
-  bool may_need_runtime_call_for_type_check = instruction->NeedsTypeCheck();
+  bool needs_type_check = instruction->NeedsTypeCheck();
 
   LocationSummary* locations = new (GetGraph()->GetAllocator()) LocationSummary(
       instruction,
-      may_need_runtime_call_for_type_check ?
-          LocationSummary::kCallOnSlowPath :
-          LocationSummary::kNoCall);
+      needs_type_check ? LocationSummary::kCallOnSlowPath : LocationSummary::kNoCall);
 
   locations->SetInAt(0, Location::RequiresRegister());
   locations->SetInAt(1, Location::RegisterOrConstant(instruction->InputAt(1)));
@@ -6195,7 +6193,7 @@ void InstructionCodeGeneratorARMVIXL::VisitArraySet(HArraySet* instruction) {
   vixl32::Register array = InputRegisterAt(instruction, 0);
   Location index = locations->InAt(1);
   DataType::Type value_type = instruction->GetComponentType();
-  bool may_need_runtime_call_for_type_check = instruction->NeedsTypeCheck();
+  bool needs_type_check = instruction->NeedsTypeCheck();
   bool needs_write_barrier =
       CodeGenerator::StoreNeedsWriteBarrier(value_type, instruction->GetValue());
   uint32_t data_offset =
@@ -6247,8 +6245,7 @@ void InstructionCodeGeneratorARMVIXL::VisitArraySet(HArraySet* instruction) {
       if (instruction->InputAt(2)->IsNullConstant()) {
         // Just setting null.
         if (index.IsConstant()) {
-          size_t offset =
-              (Int32ConstantFrom(index) << TIMES_4) + data_offset;
+          size_t offset = (Int32ConstantFrom(index) << TIMES_4) + data_offset;
           GetAssembler()->StoreToOffset(kStoreWord, value, array, offset);
         } else {
           DCHECK(index.IsRegister()) << index;
@@ -6261,7 +6258,7 @@ void InstructionCodeGeneratorARMVIXL::VisitArraySet(HArraySet* instruction) {
         // store instruction.
         codegen_->MaybeRecordImplicitNullCheck(instruction);
         DCHECK(!needs_write_barrier);
-        DCHECK(!may_need_runtime_call_for_type_check);
+        DCHECK(!needs_type_check);
         break;
       }
 
@@ -6270,36 +6267,21 @@ void InstructionCodeGeneratorARMVIXL::VisitArraySet(HArraySet* instruction) {
       vixl32::Register temp1 = RegisterFrom(temp1_loc);
       Location temp2_loc = locations->GetTemp(1);
       vixl32::Register temp2 = RegisterFrom(temp2_loc);
-      uint32_t class_offset = mirror::Object::ClassOffset().Int32Value();
-      uint32_t super_offset = mirror::Class::SuperClassOffset().Int32Value();
-      uint32_t component_offset = mirror::Class::ComponentTypeOffset().Int32Value();
-      vixl32::Label done;
-      vixl32::Label* final_label = codegen_->GetFinalLabel(instruction, &done);
-      SlowPathCodeARMVIXL* slow_path = nullptr;
 
-      if (may_need_runtime_call_for_type_check) {
-        slow_path = new (codegen_->GetScopedAllocator()) ArraySetSlowPathARMVIXL(instruction);
+      bool can_value_be_null = instruction->GetValueCanBeNull();
+      vixl32::Label do_store;
+      if (can_value_be_null) {
+        __ CompareAndBranchIfZero(value, &do_store, /* is_far_target= */ false);
+      }
+
+      if (needs_type_check) {
+        SlowPathCodeARMVIXL* slow_path =
+            new (codegen_->GetScopedAllocator()) ArraySetSlowPathARMVIXL(instruction);
         codegen_->AddSlowPath(slow_path);
-        if (instruction->GetValueCanBeNull()) {
-          vixl32::Label non_zero;
-          __ CompareAndBranchIfNonZero(value, &non_zero);
-          if (index.IsConstant()) {
-            size_t offset =
-               (Int32ConstantFrom(index) << TIMES_4) + data_offset;
-            GetAssembler()->StoreToOffset(kStoreWord, value, array, offset);
-          } else {
-            DCHECK(index.IsRegister()) << index;
-            UseScratchRegisterScope temps(GetVIXLAssembler());
-            vixl32::Register temp = temps.Acquire();
-            __ Add(temp, array, data_offset);
-            codegen_->StoreToShiftedRegOffset(value_type, value_loc, temp, RegisterFrom(index));
-          }
-          // TODO(VIXL): Use a scope to ensure we record the pc info immediately after the preceding
-          // store instruction.
-          codegen_->MaybeRecordImplicitNullCheck(instruction);
-          __ B(final_label);
-          __ Bind(&non_zero);
-        }
+
+        const uint32_t class_offset = mirror::Object::ClassOffset().Int32Value();
+        const uint32_t super_offset = mirror::Class::SuperClassOffset().Int32Value();
+        const uint32_t component_offset = mirror::Class::ComponentTypeOffset().Int32Value();
 
         // Note that when read barriers are enabled, the type checks
         // are performed without read barriers.  This is fine, even in
@@ -6329,8 +6311,7 @@ void InstructionCodeGeneratorARMVIXL::VisitArraySet(HArraySet* instruction) {
         __ Cmp(temp1, temp2);
 
         if (instruction->StaticTypeOfArrayIsObjectArray()) {
-          vixl32::Label do_put;
-          __ B(eq, &do_put, /* is_far_target= */ false);
+          __ B(eq, slow_path->GetExitLabel(), /* is_far_target= */ false);
           // If heap poisoning is enabled, the `temp1` reference has
           // not been unpoisoned yet; unpoison it now.
           GetAssembler()->MaybeUnpoisonHeapReference(temp1);
@@ -6340,11 +6321,13 @@ void InstructionCodeGeneratorARMVIXL::VisitArraySet(HArraySet* instruction) {
           // If heap poisoning is enabled, no need to unpoison
           // `temp1`, as we are comparing against null below.
           __ CompareAndBranchIfNonZero(temp1, slow_path->GetEntryLabel());
-          __ Bind(&do_put);
         } else {
           __ B(ne, slow_path->GetEntryLabel());
         }
+        __ Bind(slow_path->GetExitLabel());
       }
+
+      codegen_->MarkGCCard(temp1, temp2, array, value, /* can_be_null= */ false);
 
       vixl32::Register source = value;
       if (kPoisonHeapReferences) {
@@ -6357,9 +6340,13 @@ void InstructionCodeGeneratorARMVIXL::VisitArraySet(HArraySet* instruction) {
         source = temp1;
       }
 
+      if (can_value_be_null) {
+        DCHECK(do_store.IsReferenced());
+        __ Bind(&do_store);
+      }
+
       if (index.IsConstant()) {
-        size_t offset =
-            (Int32ConstantFrom(index) << TIMES_4) + data_offset;
+        size_t offset = (Int32ConstantFrom(index) << TIMES_4) + data_offset;
         GetAssembler()->StoreToOffset(kStoreWord, source, array, offset);
       } else {
         DCHECK(index.IsRegister()) << index;
@@ -6373,20 +6360,10 @@ void InstructionCodeGeneratorARMVIXL::VisitArraySet(HArraySet* instruction) {
                                           RegisterFrom(index));
       }
 
-      if (!may_need_runtime_call_for_type_check) {
+      if (can_value_be_null || !needs_type_check) {
         // TODO(VIXL): Ensure we record the pc position immediately after the preceding store
         // instruction.
         codegen_->MaybeRecordImplicitNullCheck(instruction);
-      }
-
-      codegen_->MarkGCCard(temp1, temp2, array, value, instruction->GetValueCanBeNull());
-
-      if (done.IsReferenced()) {
-        __ Bind(&done);
-      }
-
-      if (slow_path != nullptr) {
-        __ Bind(slow_path->GetExitLabel());
       }
 
       break;

@@ -5143,13 +5143,11 @@ void LocationsBuilderX86_64::VisitArraySet(HArraySet* instruction) {
 
   bool needs_write_barrier =
       CodeGenerator::StoreNeedsWriteBarrier(value_type, instruction->GetValue());
-  bool may_need_runtime_call_for_type_check = instruction->NeedsTypeCheck();
+  bool needs_type_check = instruction->NeedsTypeCheck();
 
   LocationSummary* locations = new (GetGraph()->GetAllocator()) LocationSummary(
       instruction,
-      may_need_runtime_call_for_type_check ?
-          LocationSummary::kCallOnSlowPath :
-          LocationSummary::kNoCall);
+      needs_type_check ? LocationSummary::kCallOnSlowPath : LocationSummary::kNoCall);
 
   locations->SetInAt(0, Location::RequiresRegister());
   locations->SetInAt(1, Location::RegisterOrConstant(instruction->InputAt(1)));
@@ -5173,12 +5171,9 @@ void InstructionCodeGeneratorX86_64::VisitArraySet(HArraySet* instruction) {
   Location index = locations->InAt(1);
   Location value = locations->InAt(2);
   DataType::Type value_type = instruction->GetComponentType();
-  bool may_need_runtime_call_for_type_check = instruction->NeedsTypeCheck();
+  bool needs_type_check = instruction->NeedsTypeCheck();
   bool needs_write_barrier =
       CodeGenerator::StoreNeedsWriteBarrier(value_type, instruction->GetValue());
-  uint32_t class_offset = mirror::Object::ClassOffset().Int32Value();
-  uint32_t super_offset = mirror::Class::SuperClassOffset().Int32Value();
-  uint32_t component_offset = mirror::Class::ComponentTypeOffset().Int32Value();
 
   switch (value_type) {
     case DataType::Type::kBool:
@@ -5220,30 +5215,30 @@ void InstructionCodeGeneratorX86_64::VisitArraySet(HArraySet* instruction) {
         __ movl(address, Immediate(0));
         codegen_->MaybeRecordImplicitNullCheck(instruction);
         DCHECK(!needs_write_barrier);
-        DCHECK(!may_need_runtime_call_for_type_check);
+        DCHECK(!needs_type_check);
         break;
       }
 
       DCHECK(needs_write_barrier);
       CpuRegister register_value = value.AsRegister<CpuRegister>();
-      // We cannot use a NearLabel for `done`, as its range may be too
-      // short when Baker read barriers are enabled.
-      Label done;
-      NearLabel not_null, do_put;
-      SlowPathCode* slow_path = nullptr;
       Location temp_loc = locations->GetTemp(0);
       CpuRegister temp = temp_loc.AsRegister<CpuRegister>();
-      if (may_need_runtime_call_for_type_check) {
-        slow_path = new (codegen_->GetScopedAllocator()) ArraySetSlowPathX86_64(instruction);
+
+      bool can_value_be_null = instruction->GetValueCanBeNull();
+      NearLabel do_store;
+      if (can_value_be_null) {
+        __ testl(register_value, register_value);
+        __ j(kEqual, &do_store);
+      }
+
+      if (needs_type_check) {
+        SlowPathCode* slow_path =
+            new (codegen_->GetScopedAllocator()) ArraySetSlowPathX86_64(instruction);
         codegen_->AddSlowPath(slow_path);
-        if (instruction->GetValueCanBeNull()) {
-          __ testl(register_value, register_value);
-          __ j(kNotEqual, &not_null);
-          __ movl(address, Immediate(0));
-          codegen_->MaybeRecordImplicitNullCheck(instruction);
-          __ jmp(&done);
-          __ Bind(&not_null);
-        }
+
+        const uint32_t class_offset = mirror::Object::ClassOffset().Int32Value();
+        const uint32_t super_offset = mirror::Class::SuperClassOffset().Int32Value();
+        const uint32_t component_offset = mirror::Class::ComponentTypeOffset().Int32Value();
 
         // Note that when Baker read barriers are enabled, the type
         // checks are performed without read barriers.  This is fine,
@@ -5266,6 +5261,7 @@ void InstructionCodeGeneratorX86_64::VisitArraySet(HArraySet* instruction) {
         __ cmpl(temp, Address(register_value, class_offset));
 
         if (instruction->StaticTypeOfArrayIsObjectArray()) {
+          NearLabel do_put;  // Use a dedicated NearLabel instead of the slow_path->GetExitLabel().
           __ j(kEqual, &do_put);
           // If heap poisoning is enabled, the `temp` reference has
           // not been unpoisoned yet; unpoison it now.
@@ -5280,26 +5276,29 @@ void InstructionCodeGeneratorX86_64::VisitArraySet(HArraySet* instruction) {
         } else {
           __ j(kNotEqual, slow_path->GetEntryLabel());
         }
-      }
-
-      if (kPoisonHeapReferences) {
-        __ movl(temp, register_value);
-        __ PoisonHeapReference(temp);
-        __ movl(address, temp);
-      } else {
-        __ movl(address, register_value);
-      }
-      if (!may_need_runtime_call_for_type_check) {
-        codegen_->MaybeRecordImplicitNullCheck(instruction);
+        __ Bind(slow_path->GetExitLabel());
       }
 
       CpuRegister card = locations->GetTemp(1).AsRegister<CpuRegister>();
       codegen_->MarkGCCard(
-          temp, card, array, value.AsRegister<CpuRegister>(), instruction->GetValueCanBeNull());
-      __ Bind(&done);
+          temp, card, array, value.AsRegister<CpuRegister>(), /* value_can_be_null= */ false);
 
-      if (slow_path != nullptr) {
-        __ Bind(slow_path->GetExitLabel());
+      Location source = value;
+      if (kPoisonHeapReferences) {
+        __ movl(temp, register_value);
+        __ PoisonHeapReference(temp);
+        source = temp_loc;
+      }
+
+      if (can_value_be_null) {
+        DCHECK(do_store.IsLinked());
+        __ Bind(&do_store);
+      }
+
+      __ movl(address, source.AsRegister<CpuRegister>());
+
+      if (can_value_be_null || !needs_type_check) {
+        codegen_->MaybeRecordImplicitNullCheck(instruction);
       }
 
       break;
