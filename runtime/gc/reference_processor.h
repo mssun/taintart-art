@@ -61,7 +61,9 @@ class ReferenceProcessor {
   // Decode the referent, may block if references are being processed.
   ObjPtr<mirror::Object> GetReferent(Thread* self, ObjPtr<mirror::Reference> reference)
       REQUIRES_SHARED(Locks::mutator_lock_) REQUIRES(!Locks::reference_processor_lock_);
-  void EnqueueClearedReferences(Thread* self) REQUIRES(!Locks::mutator_lock_);
+  // Collects the cleared references and returns a task, to be executed after FinishGC, that will
+  // enqueue all of them.
+  SelfDeletingTask* CollectClearedReferences(Thread* self) REQUIRES(!Locks::mutator_lock_);
   void DelayReferenceReferent(ObjPtr<mirror::Class> klass,
                               ObjPtr<mirror::Reference> ref,
                               collector::GarbageCollector* collector)

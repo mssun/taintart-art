@@ -31,6 +31,7 @@
 #include "reflection.h"
 #include "scoped_thread_state_change-inl.h"
 #include "task_processor.h"
+#include "thread_pool.h"
 #include "well_known_classes.h"
 
 namespace art {
@@ -289,8 +290,11 @@ class ClearedReferenceTask : public HeapTask {
   const jobject cleared_references_;
 };
 
-void ReferenceProcessor::EnqueueClearedReferences(Thread* self) {
+SelfDeletingTask* ReferenceProcessor::CollectClearedReferences(Thread* self) {
   Locks::mutator_lock_->AssertNotHeld(self);
+  // By default we don't actually need to do anything. Just return this no-op task to avoid having
+  // to put in ifs.
+  std::unique_ptr<SelfDeletingTask> result(new FunctionTask([](Thread*) {}));
   // When a runtime isn't started there are no reference queues to care about so ignore.
   if (!cleared_references_.IsEmpty()) {
     if (LIKELY(Runtime::Current()->IsStarted())) {
@@ -306,12 +310,12 @@ void ReferenceProcessor::EnqueueClearedReferences(Thread* self) {
         Runtime::Current()->GetHeap()->GetTaskProcessor()->AddTask(
             self, new ClearedReferenceTask(cleared_references));
       } else {
-        ClearedReferenceTask task(cleared_references);
-        task.Run(self);
+        result.reset(new ClearedReferenceTask(cleared_references));
       }
     }
     cleared_references_.Clear();
   }
+  return result.release();
 }
 
 void ReferenceProcessor::ClearReferent(ObjPtr<mirror::Reference> ref) {
