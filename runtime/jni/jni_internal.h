@@ -34,7 +34,10 @@ int ThrowNewException(JNIEnv* env, jclass exception_class, const char* msg, jobj
 
 // Enables native stack checking for field and method resolutions via JNI. This should be called
 // during runtime initialization after libjavacore and libopenjdk have been dlopen()'ed.
-void JNIInitializeNativeCallerCheck();
+void JniInitializeNativeCallerCheck();
+
+// Removes native stack checking state.
+void JniShutdownNativeCallerCheck();
 
 namespace jni {
 

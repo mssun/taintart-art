@@ -492,6 +492,8 @@ Runtime::~Runtime() {
   // instance. We rely on a small initialization order issue in Runtime::Start() that requires
   // elements of WellKnownClasses to be null, see b/65500943.
   WellKnownClasses::Clear();
+
+  JniShutdownNativeCallerCheck();
 }
 
 struct AbortState {
@@ -1826,7 +1828,7 @@ void Runtime::InitNativeMethods() {
 
   // Having loaded native libraries for Managed Core library, enable field and
   // method resolution checks via JNI from native code.
-  JNIInitializeNativeCallerCheck();
+  JniInitializeNativeCallerCheck();
 
   VLOG(startup) << "Runtime::InitNativeMethods exiting";
 }

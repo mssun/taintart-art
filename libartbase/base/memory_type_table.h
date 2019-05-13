@@ -37,27 +37,33 @@ class MemoryTypeRange final {
   MemoryTypeRange(const MemoryTypeRange& other) = default;
   MemoryTypeRange& operator=(const MemoryTypeRange& other) = default;
 
-  uintptr_t Start() const { return start_; }
+  uintptr_t Start() const {
+    DCHECK(IsValid());
+    return start_;
+  }
 
-  uintptr_t Limit() const { return limit_; }
+  uintptr_t Limit() const {
+    DCHECK(IsValid());
+    return limit_;
+  }
 
-  uintptr_t Size() const { return limit_ - start_; }
+  uintptr_t Size() const { return Limit() - Start(); }
 
   const T& Type() const { return type_; }
 
-  bool IsValid() const { return Start() < Limit(); }
+  bool IsValid() const { return start_ <= limit_; }
 
   bool Contains(uintptr_t address) const {
-    return address >= start_ && address < limit_;
+    return address >= Start() && address < Limit();
   }
 
   bool Overlaps(const MemoryTypeRange& other) const {
-    bool disjoint = limit_ <= other.start_ || start_ >= other.limit_;
+    bool disjoint = Limit() <= other.Start() || Start() >= other.Limit();
     return !disjoint;
   }
 
   bool Adjoins(const MemoryTypeRange& other) const {
-    return other.start_ == limit_ || other.limit_ == start_;
+    return other.Start() == Limit() || other.Limit() == Start();
   }
 
   bool CombinableWith(const MemoryTypeRange& other) const {
@@ -184,7 +190,7 @@ std::ostream& operator<<(std::ostream& os, const MemoryTypeTable<T>& table) {
 
 template <typename T>
 bool MemoryTypeTable<T>::Builder::Add(const MemoryTypeRange<T>& range) {
-  if (!range.IsValid()) {
+  if (UNLIKELY(!range.IsValid() || range.Size() == 0u)) {
     return false;
   }
 

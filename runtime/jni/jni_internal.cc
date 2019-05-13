@@ -81,15 +81,15 @@ struct ScopedVAArgs {
   va_list* args;
 };
 
-static constexpr int kMaxReturnAddressDepth = 4;
+static constexpr size_t kMaxReturnAddressDepth = 4;
 
-inline void* GetReturnAddress(int depth) {
+inline void* GetReturnAddress(size_t depth) {
   DCHECK_LT(depth, kMaxReturnAddressDepth);
   switch (depth) {
-    case 0: return __builtin_return_address(0);
-    case 1: return __builtin_return_address(1);
-    case 2: return __builtin_return_address(2);
-    case 3: return __builtin_return_address(3);
+    case 0u: return __builtin_return_address(0);
+    case 1u: return __builtin_return_address(1);
+    case 2u: return __builtin_return_address(2);
+    case 3u: return __builtin_return_address(3);
     default:
       return nullptr;
   }
@@ -120,9 +120,9 @@ std::ostream& operator<<(std::ostream& os, SharedObjectKind kind) {
 // resolutions within the Core Platform API for native callers.
 class CodeRangeCache final {
  public:
-  static CodeRangeCache& Instance() {
-    static CodeRangeCache instance;
-    return instance;
+  static CodeRangeCache& GetSingleton() {
+    static CodeRangeCache Singleton;
+    return Singleton;
   }
 
   SharedObjectKind GetSharedObjectKind(void* pc) {
@@ -134,9 +134,13 @@ class CodeRangeCache final {
     return SharedObjectKind::kOther;
   }
 
-  void BuildCache() {
-    art::MemoryTypeTable<SharedObjectKind>::Builder builder;
+  bool HasCache() const {
+    return memory_type_table_.Size() != 0;
+  }
 
+  void BuildCache() {
+    DCHECK(!HasCache());
+    art::MemoryTypeTable<SharedObjectKind>::Builder builder;
     builder_ = &builder;
     libjavacore_loaded_ = false;
     libnativehelper_loaded_ = false;
@@ -151,6 +155,10 @@ class CodeRangeCache final {
     CHECK(libnativehelper_loaded_);
     CHECK(libopenjdk_loaded_);
     builder_ = nullptr;
+  }
+
+  void DropCache() {
+    memory_type_table_ = {};
   }
 
  private:
@@ -170,7 +178,7 @@ class CodeRangeCache final {
     auto cache = reinterpret_cast<CodeRangeCache*>(data);
     art::MemoryTypeTable<SharedObjectKind>::Builder* builder = cache->builder_;
 
-    for (size_t i = 0; i < info->dlpi_phnum; ++i) {
+    for (size_t i = 0u; i < info->dlpi_phnum; ++i) {
       const ElfW(Phdr)& phdr = info->dlpi_phdr[i];
       if (phdr.p_type != PT_LOAD || ((phdr.p_flags & PF_X) != PF_X)) {
         continue;  // Skip anything other than code pages
@@ -178,14 +186,14 @@ class CodeRangeCache final {
       uintptr_t start = info->dlpi_addr + phdr.p_vaddr;
       const uintptr_t limit = art::RoundUp(start + phdr.p_memsz, art::kPageSize);
       SharedObjectKind kind = GetKind(info->dlpi_name, start, limit);
-      art::MemoryTypeRange<SharedObjectKind> range(start, limit, kind);
+      art::MemoryTypeRange<SharedObjectKind> range{start, limit, kind};
       if (!builder->Add(range)) {
-        LOG(WARNING) << "Overlapping range found in ELF headers: " << range;
+        LOG(WARNING) << "Overlapping/invalid range found in ELF headers: " << range;
       }
     }
 
     // Update sanity check state.
-    std::string_view dlpi_name(info->dlpi_name);
+    std::string_view dlpi_name{info->dlpi_name};
     if (!cache->libjavacore_loaded_) {
       cache->libjavacore_loaded_ = art::EndsWith(dlpi_name, kLibjavacore);
     }
@@ -234,12 +242,12 @@ static inline bool IsWhitelistedNativeCaller() {
   if (!art::kIsTargetBuild) {
     return false;
   }
-  for (int i = 0; i < kMaxReturnAddressDepth; ++i) {
+  for (size_t i = 0; i < kMaxReturnAddressDepth; ++i) {
     void* return_address = GetReturnAddress(i);
     if (return_address == nullptr) {
       return false;
     }
-    SharedObjectKind kind = CodeRangeCache::Instance().GetSharedObjectKind(return_address);
+    SharedObjectKind kind = CodeRangeCache::GetSingleton().GetSharedObjectKind(return_address);
     if (kind != SharedObjectKind::kRuntime) {
       return kind == SharedObjectKind::kApexModule;
     }
@@ -3352,8 +3360,14 @@ const JNINativeInterface* GetRuntimeShutdownNativeInterface() {
   return reinterpret_cast<JNINativeInterface*>(&gJniSleepForeverStub);
 }
 
-void JNIInitializeNativeCallerCheck() {
-  CodeRangeCache::Instance().BuildCache();
+void JniInitializeNativeCallerCheck() {
+  // This method should be called only once and before there are multiple runtime threads.
+  DCHECK(!CodeRangeCache::GetSingleton().HasCache());
+  CodeRangeCache::GetSingleton().BuildCache();
+}
+
+void JniShutdownNativeCallerCheck() {
+  CodeRangeCache::GetSingleton().DropCache();
 }
 
 }  // namespace art
