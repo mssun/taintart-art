@@ -716,8 +716,27 @@ class OatDumper {
         if (class_def != nullptr) {
           uint16_t class_def_index = dex_file->GetIndexForClassDef(*class_def);
           const OatFile::OatClass oat_class = oat_dex_file->GetOatClass(class_def_index);
-          size_t method_index = m->GetMethodIndex();
-          return oat_class.GetOatMethod(method_index).GetQuickCode();
+          uint32_t oat_method_index;
+          if (m->IsStatic() || m->IsDirect()) {
+            // Simple case where the oat method index was stashed at load time.
+            oat_method_index = m->GetMethodIndex();
+          } else {
+            // Compute the oat_method_index by search for its position in the class def.
+            ClassAccessor accessor(*dex_file, *class_def);
+            oat_method_index = accessor.NumDirectMethods();
+            bool found_virtual = false;
+            for (ClassAccessor::Method dex_method : accessor.GetVirtualMethods()) {
+              // Check method index instead of identity in case of duplicate method definitions.
+              if (dex_method.GetIndex() == m->GetDexMethodIndex()) {
+                found_virtual = true;
+                break;
+              }
+              ++oat_method_index;
+            }
+            CHECK(found_virtual) << "Didn't find oat method index for virtual method: "
+                                 << dex_file->PrettyMethod(m->GetDexMethodIndex());
+          }
+          return oat_class.GetOatMethod(oat_method_index).GetQuickCode();
         }
       }
     }
