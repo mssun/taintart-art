@@ -29,6 +29,7 @@
 #include "dex/dex_file_types.h"
 #include "dex/invoke_type.h"
 #include "dex/primitive.h"
+#include "dex/signature.h"
 #include "gc_root-inl.h"
 #include "imtable-inl.h"
 #include "intrinsics_enum.h"

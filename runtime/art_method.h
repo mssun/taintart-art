@@ -31,7 +31,6 @@
 #include "dex/dex_file_structs.h"
 #include "dex/modifiers.h"
 #include "dex/primitive.h"
-#include "dex/signature.h"
 #include "gc_root.h"
 #include "obj_ptr.h"
 #include "offsets.h"
@@ -51,6 +50,7 @@ class OatQuickMethodHeader;
 class ProfilingInfo;
 class ScopedObjectAccessAlreadyRunnable;
 class ShadowFrame;
+class Signature;
 
 namespace mirror {
 class Array;
