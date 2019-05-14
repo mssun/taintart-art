@@ -29,6 +29,7 @@
 #include "base/atomic.h"
 #include "base/bit_utils.h"
 #include "base/enums.h"
+#include "base/file_utils.h"
 #include "base/logging.h"  // For VLOG.
 #include "base/memory_type_table.h"
 #include "base/mutex.h"

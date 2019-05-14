@@ -37,6 +37,7 @@
 #include "art_method-inl.h"
 #include "base/arena_allocator.h"
 #include "base/casts.h"
+#include "base/file_utils.h"
 #include "base/leb128.h"
 #include "base/logging.h"
 #include "base/os.h"

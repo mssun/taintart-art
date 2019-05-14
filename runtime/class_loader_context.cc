@@ -22,6 +22,7 @@
 #include "art_field-inl.h"
 #include "base/casts.h"
 #include "base/dchecked_vector.h"
+#include "base/file_utils.h"
 #include "base/stl_util.h"
 #include "class_linker.h"
 #include "class_loader_utils.h"
