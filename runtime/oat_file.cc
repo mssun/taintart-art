@@ -1914,10 +1914,11 @@ OatDexFile::OatDexFile(const OatFile* oat_file,
 }
 
 OatDexFile::OatDexFile(TypeLookupTable&& lookup_table) : lookup_table_(std::move(lookup_table)) {
-  // Stripped-down OatDexFile only allowed in the compiler or in the zygote.
+  // Stripped-down OatDexFile only allowed in the compiler, the zygote, or the system server.
   CHECK(Runtime::Current() == nullptr ||
         Runtime::Current()->IsAotCompiler() ||
-        Runtime::Current()->IsZygote());
+        Runtime::Current()->IsZygote() ||
+        Runtime::Current()->IsSystemServer());
 }
 
 OatDexFile::~OatDexFile() {}
