@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <deque>
 
 #include "bump_pointer_space-inl.h"
 #include "bump_pointer_space.h"
@@ -420,73 +421,117 @@ void RegionSpace::ClearFromSpace(/* out */ uint64_t* cleared_bytes,
   DCHECK(cleared_objects != nullptr);
   *cleared_bytes = 0;
   *cleared_objects = 0;
+  size_t new_non_free_region_index_limit = 0;
+  // We should avoid calling madvise syscalls while holding region_lock_.
+  // Therefore, we split the working of this function into 2 loops. The first
+  // loop gathers memory ranges that must be madvised. Then we release the lock
+  // and perform madvise on the gathered memory ranges. Finally, we reacquire
+  // the lock and loop over the regions to clear the from-space regions and make
+  // them availabe for allocation.
+  std::deque<std::pair<uint8_t*, uint8_t*>> madvise_list;
+  // Gather memory ranges that need to be madvised.
+  {
+    MutexLock mu(Thread::Current(), region_lock_);
+    // Lambda expression `expand_madvise_range` adds a region to the "clear block".
+    //
+    // As we iterate over from-space regions, we maintain a "clear block", composed of
+    // adjacent to-be-cleared regions and whose bounds are `clear_block_begin` and
+    // `clear_block_end`. When processing a new region which is not adjacent to
+    // the clear block (discontinuity in cleared regions), the clear block
+    // is added to madvise_list and the clear block is reset (to the most recent
+    // to-be-cleared region).
+    //
+    // This is done in order to combine zeroing and releasing pages to reduce how
+    // often madvise is called. This helps reduce contention on the mmap semaphore
+    // (see b/62194020).
+    uint8_t* clear_block_begin = nullptr;
+    uint8_t* clear_block_end = nullptr;
+    auto expand_madvise_range = [&madvise_list, &clear_block_begin, &clear_block_end] (Region* r) {
+      if (clear_block_end != r->Begin()) {
+        if (clear_block_begin != nullptr) {
+          DCHECK(clear_block_end != nullptr);
+          madvise_list.push_back(std::pair(clear_block_begin, clear_block_end));
+        }
+        clear_block_begin = r->Begin();
+      }
+      clear_block_end = r->End();
+    };
+    for (size_t i = 0; i < std::min(num_regions_, non_free_region_index_limit_); ++i) {
+      Region* r = &regions_[i];
+      // The following check goes through objects in the region, therefore it
+      // must be performed before madvising the region. Therefore, it can't be
+      // executed in the following loop.
+      if (kCheckLiveBytesAgainstRegionBitmap) {
+        CheckLiveBytesAgainstRegionBitmap(r);
+      }
+      if (r->IsInFromSpace()) {
+        expand_madvise_range(r);
+      } else if (r->IsInUnevacFromSpace()) {
+        // We must skip tails of live large objects.
+        if (r->LiveBytes() == 0 && !r->IsLargeTail()) {
+          // Special case for 0 live bytes, this means all of the objects in the region are
+          // dead and we can to clear it. This is important for large objects since we must
+          // not visit dead ones in RegionSpace::Walk because they may contain dangling
+          // references to invalid objects. It is also better to clear these regions now
+          // instead of at the end of the next GC to save RAM. If we don't clear the regions
+          // here, they will be cleared in next GC by the normal live percent evacuation logic.
+          expand_madvise_range(r);
+          // Also release RAM for large tails.
+          while (i + 1 < num_regions_ && regions_[i + 1].IsLargeTail()) {
+            expand_madvise_range(&regions_[i + 1]);
+            i++;
+          }
+        }
+      }
+    }
+    // There is a small probability that we may reach here with
+    // clear_block_{begin, end} = nullptr. If all the regions allocated since
+    // last GC have been for large objects and all of them survive till this GC
+    // cycle, then there will be no regions in from-space.
+    if (LIKELY(clear_block_begin != nullptr)) {
+      DCHECK(clear_block_end != nullptr);
+      madvise_list.push_back(std::pair(clear_block_begin, clear_block_end));
+    }
+  }
+
+  // Madvise the memory ranges.
+  for (const auto &iter : madvise_list) {
+    ZeroAndProtectRegion(iter.first, iter.second);
+    if (clear_bitmap) {
+      GetLiveBitmap()->ClearRange(
+          reinterpret_cast<mirror::Object*>(iter.first),
+          reinterpret_cast<mirror::Object*>(iter.second));
+    }
+  }
+  madvise_list.clear();
+
+  // Iterate over regions again and actually make the from space regions
+  // available for allocation.
   MutexLock mu(Thread::Current(), region_lock_);
   VerifyNonFreeRegionLimit();
-  size_t new_non_free_region_index_limit = 0;
 
   // Update max of peak non free region count before reclaiming evacuated regions.
   max_peak_num_non_free_regions_ = std::max(max_peak_num_non_free_regions_,
                                             num_non_free_regions_);
 
-  // Lambda expression `clear_region` clears a region and adds a region to the
-  // "clear block".
-  //
-  // As we sweep regions to clear them, we maintain a "clear block", composed of
-  // adjacent cleared regions and whose bounds are `clear_block_begin` and
-  // `clear_block_end`. When processing a new region which is not adjacent to
-  // the clear block (discontinuity in cleared regions), the clear block
-  // is zeroed and released and the clear block is reset (to the most recent
-  // cleared region).
-  //
-  // This is done in order to combine zeroing and releasing pages to reduce how
-  // often madvise is called. This helps reduce contention on the mmap semaphore
-  // (see b/62194020).
-  uint8_t* clear_block_begin = nullptr;
-  uint8_t* clear_block_end = nullptr;
-  auto clear_region = [this, &clear_block_begin, &clear_block_end, clear_bitmap](Region* r) {
-    r->Clear(/*zero_and_release_pages=*/false);
-    if (clear_block_end != r->Begin()) {
-      // Region `r` is not adjacent to the current clear block; zero and release
-      // pages within the current block and restart a new clear block at the
-      // beginning of region `r`.
-      ZeroAndProtectRegion(clear_block_begin, clear_block_end);
-      if (clear_bitmap) {
-        GetLiveBitmap()->ClearRange(
-            reinterpret_cast<mirror::Object*>(clear_block_begin),
-            reinterpret_cast<mirror::Object*>(clear_block_end));
-      }
-      clear_block_begin = r->Begin();
-    }
-    // Add region `r` to the clear block.
-    clear_block_end = r->End();
-  };
   for (size_t i = 0; i < std::min(num_regions_, non_free_region_index_limit_); ++i) {
     Region* r = &regions_[i];
-    if (kCheckLiveBytesAgainstRegionBitmap) {
-      CheckLiveBytesAgainstRegionBitmap(r);
-    }
     if (r->IsInFromSpace()) {
       DCHECK(!r->IsTlab());
       *cleared_bytes += r->BytesAllocated();
       *cleared_objects += r->ObjectsAllocated();
       --num_non_free_regions_;
-      clear_region(r);
+      r->Clear(/*zero_and_release_pages=*/false);
     } else if (r->IsInUnevacFromSpace()) {
       if (r->LiveBytes() == 0) {
         DCHECK(!r->IsLargeTail());
-        // Special case for 0 live bytes, this means all of the objects in the region are dead and
-        // we can clear it. This is important for large objects since we must not visit dead ones in
-        // RegionSpace::Walk because they may contain dangling references to invalid objects.
-        // It is also better to clear these regions now instead of at the end of the next GC to
-        // save RAM. If we don't clear the regions here, they will be cleared next GC by the normal
-        // live percent evacuation logic.
         *cleared_bytes += r->BytesAllocated();
         *cleared_objects += r->ObjectsAllocated();
-        clear_region(r);
+        r->Clear(/*zero_and_release_pages=*/false);
         size_t free_regions = 1;
         // Also release RAM for large tails.
         while (i + free_regions < num_regions_ && regions_[i + free_regions].IsLargeTail()) {
-          clear_region(&regions_[i + free_regions]);
+          regions_[i + free_regions].Clear(/*zero_and_release_pages=*/false);
           ++free_regions;
         }
         num_non_free_regions_ -= free_regions;
@@ -545,7 +590,8 @@ void RegionSpace::ClearFromSpace(/* out */ uint64_t* cleared_bytes,
         if (!use_generational_cc_) {
           GetLiveBitmap()->ClearRange(
               reinterpret_cast<mirror::Object*>(r->Begin()),
-              reinterpret_cast<mirror::Object*>(r->Begin() + regions_to_clear_bitmap * kRegionSize));
+              reinterpret_cast<mirror::Object*>(r->Begin()
+                                                + regions_to_clear_bitmap * kRegionSize));
         }
         // Skip over extra regions for which we cleared the bitmaps: we shall not clear them,
         // as they are unevac regions that are live.
@@ -572,13 +618,6 @@ void RegionSpace::ClearFromSpace(/* out */ uint64_t* cleared_bytes,
       new_non_free_region_index_limit = std::max(new_non_free_region_index_limit,
                                                  last_checked_region->Idx() + 1);
     }
-  }
-  // Clear pages for the last block since clearing happens when a new block opens.
-  ZeroAndReleasePages(clear_block_begin, clear_block_end - clear_block_begin);
-  if (clear_bitmap) {
-    GetLiveBitmap()->ClearRange(
-        reinterpret_cast<mirror::Object*>(clear_block_begin),
-        reinterpret_cast<mirror::Object*>(clear_block_end));
   }
   // Update non_free_region_index_limit_.
   SetNonFreeRegionLimit(new_non_free_region_index_limit);
