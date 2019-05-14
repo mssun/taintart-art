@@ -39,6 +39,7 @@
 #include <sys/time.h>
 #include <sys/types.h>
 
+#include "android-base/file.h"
 #include "android-base/stringprintf.h"
 #include "android-base/strings.h"
 
@@ -418,7 +419,7 @@ void DumpKernelStack(std::ostream& os, pid_t tid, const char* prefix, bool inclu
 
   std::string kernel_stack_filename(StringPrintf("/proc/self/task/%d/stack", tid));
   std::string kernel_stack;
-  if (!ReadFileToString(kernel_stack_filename, &kernel_stack)) {
+  if (!android::base::ReadFileToString(kernel_stack_filename, &kernel_stack)) {
     os << prefix << "(couldn't read " << kernel_stack_filename << ")\n";
     return;
   }

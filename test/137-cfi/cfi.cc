@@ -25,6 +25,7 @@
 
 #include "jni.h"
 
+#include <android-base/file.h>
 #include <android-base/logging.h>
 #include <android-base/stringprintf.h>
 #include <backtrace/Backtrace.h>
@@ -62,7 +63,7 @@ extern "C" JNIEXPORT jint JNICALL Java_Main_startSecondaryProcess(JNIEnv*, jclas
 #if __linux__
   // Get our command line so that we can use it to start identical process.
   std::string cmdline;  // null-separated and null-terminated arguments.
-  ReadFileToString("/proc/self/cmdline", &cmdline);
+  android::base::ReadFileToString("/proc/self/cmdline", &cmdline);
   cmdline = cmdline + "--secondary" + '\0';  // Let the child know it is a helper.
 
   // Split the string into individual arguments suitable for execv.

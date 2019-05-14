@@ -27,8 +27,6 @@
 
 namespace art {
 
-bool ReadFileToString(const std::string& file_name, std::string* result);
-
 // These methods return the Android Root, which is the historical location of
 // the Android "system" directory, containing the built Android artifacts. On
 // target, this is normally "/system". On host this is usually a directory under

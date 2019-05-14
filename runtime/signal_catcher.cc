@@ -27,6 +27,7 @@
 
 #include <sstream>
 
+#include <android-base/file.h>
 #include <android-base/stringprintf.h>
 
 #include "arch/instruction_set.h"
@@ -52,7 +53,7 @@ static void DumpCmdLine(std::ostream& os) {
   // On Android, /proc/self/cmdline will have been rewritten to something like "system_server".
   // Note: The string "Cmd line:" is chosen to match the format used by debuggerd.
   std::string current_cmd_line;
-  if (ReadFileToString("/proc/self/cmdline", &current_cmd_line)) {
+  if (android::base::ReadFileToString("/proc/self/cmdline", &current_cmd_line)) {
     current_cmd_line.resize(current_cmd_line.find_last_not_of('\0') + 1);  // trim trailing '\0's
     std::replace(current_cmd_line.begin(), current_cmd_line.end(), '\0', ' ');
 
@@ -133,7 +134,7 @@ void SignalCatcher::HandleSigQuit() {
 
   if ((false)) {
     std::string maps;
-    if (ReadFileToString("/proc/self/maps", &maps)) {
+    if (android::base::ReadFileToString("/proc/self/maps", &maps)) {
       os << "/proc/self/maps:\n" << maps;
     }
   }

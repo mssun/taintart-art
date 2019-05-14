@@ -75,25 +75,6 @@ static constexpr const char* kAndroidRuntimeApexDefaultPath = "/apex/com.android
 static constexpr const char* kAndroidConscryptRootEnvVar = "ANDROID_CONSCRYPT_ROOT";
 static constexpr const char* kAndroidConscryptApexDefaultPath = "/apex/com.android.conscrypt";
 
-bool ReadFileToString(const std::string& file_name, std::string* result) {
-  File file(file_name, O_RDONLY, false);
-  if (!file.IsOpened()) {
-    return false;
-  }
-
-  std::vector<char> buf(8 * KB);
-  while (true) {
-    int64_t n = TEMP_FAILURE_RETRY(read(file.Fd(), &buf[0], buf.size()));
-    if (n == -1) {
-      return false;
-    }
-    if (n == 0) {
-      return true;
-    }
-    result->append(&buf[0], n);
-  }
-}
-
 // Get the "root" directory containing the "lib" directory where this instance
 // of the libartbase library (which contains `GetRootContainingLibartbase`) is
 // located:
