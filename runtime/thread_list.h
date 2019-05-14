@@ -20,7 +20,6 @@
 #include "barrier.h"
 #include "base/histogram.h"
 #include "base/mutex.h"
-#include "base/time_utils.h"
 #include "base/value_object.h"
 #include "jni.h"
 #include "suspend_reason.h"
@@ -47,7 +46,8 @@ class ThreadList {
   static constexpr uint32_t kMaxThreadId = 0xFFFF;
   static constexpr uint32_t kInvalidThreadId = 0;
   static constexpr uint32_t kMainThreadId = 1;
-  static constexpr uint64_t kDefaultThreadSuspendTimeout = MsToNs(kIsDebugBuild ? 50000 : 10000);
+  static constexpr uint64_t kDefaultThreadSuspendTimeout =
+      kIsDebugBuild ? 50'000'000'000ull : 10'000'000'000ull;
 
   explicit ThreadList(uint64_t thread_suspend_timeout_ns);
   ~ThreadList();
