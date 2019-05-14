@@ -81,6 +81,8 @@ x['CrossHost'] = 'linux_bionic'
 x['CrossHostArch'] = 'x86_64'
 if 'CrossHostSecondaryArch' in x:
   del x['CrossHostSecondaryArch']
+if 'DexpreoptGlobalConfig' in x:
+  del x['DexpreoptGlobalConfig']
 json.dump(x, open(sys.argv[2], mode='w'))
 END
 
