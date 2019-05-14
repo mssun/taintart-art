@@ -18,6 +18,7 @@
 
 #include "android-base/stringprintf.h"
 
+#include "base/stl_util.h"
 #include "dexopt_test.h"
 #include "noop_compiler_callbacks.h"
 
@@ -123,7 +124,28 @@ class ImageSpaceLoadingTest : public CommonRuntimeTest {
     // We want to test the relocation behavior of ImageSpace. As such, don't pretend we're a
     // compiler.
     callbacks_.reset();
+
+    // Clear DEX2OATBOOTCLASSPATH environment variable used for boot image compilation.
+    // We don't want that environment variable to affect the behavior of this test.
+    CHECK(old_dex2oat_bcp_ == nullptr);
+    const char* old_dex2oat_bcp = getenv("DEX2OATBOOTCLASSPATH");
+    if (old_dex2oat_bcp != nullptr) {
+      old_dex2oat_bcp_.reset(strdup(old_dex2oat_bcp));
+      CHECK(old_dex2oat_bcp_ != nullptr);
+      unsetenv("DEX2OATBOOTCLASSPATH");
+    }
   }
+
+  void TearDown() override {
+    if (old_dex2oat_bcp_ != nullptr) {
+      int result = setenv("DEX2OATBOOTCLASSPATH", old_dex2oat_bcp_.get(), /* replace */ 0);
+      CHECK_EQ(result, 0);
+      old_dex2oat_bcp_.reset();
+    }
+  }
+
+ private:
+  UniqueCPtr<const char[]> old_dex2oat_bcp_;
 };
 
 using ImageSpaceDex2oatTest = ImageSpaceLoadingTest<false, true, true>;
