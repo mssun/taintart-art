@@ -1,0 +1,19 @@
+ - Run while adding new referenced class.
+ -- Running sayHi before redefinition
+Hello from TestClass sayHi function
+Goodbye from TestClass!
+ -- Adding NewClass to classloader!
+ -- Redefine the TestClass
+ -- call TestClass again, now with NewClass refs
+Hello again from TestClass sayHi function
+Hello from NewClass sayHi function
+Goodbye again from TestClass!
+ - Run without adding new referenced class.
+ -- Running sayHi before redefinition
+Hello from TestClass sayHi function
+Goodbye from TestClass!
+ -- Redefine the TestClass
+ -- call TestClass again, now with NewClass refs
+Hello again from TestClass sayHi function
+ -- Exception caught when running test without new class added! java.lang.NoClassDefFoundError
+ --- java.lang.NoClassDefFoundError At foobar.TestClass.sayHi(TestClass.java:5)

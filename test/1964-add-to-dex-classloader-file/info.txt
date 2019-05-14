@@ -1,0 +1,1 @@
+Tests we can add dex-file buffers to an existing classloader and the old classes can see them.

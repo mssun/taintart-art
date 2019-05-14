@@ -42,6 +42,7 @@
 #include "ti_heap.h"
 #include "ti_logging.h"
 #include "ti_monitor.h"
+#include "ti_search.h"
 
 #include "thread-inl.h"
 
@@ -326,6 +327,54 @@ jvmtiError ExtensionUtil::GetExtensionFunctions(jvmtiEnv* env,
   if (error != ERR(NONE)) {
     return error;
   }
+
+  // AddToDexClassLoader
+  error = add_extension(
+      reinterpret_cast<jvmtiExtensionFunction>(SearchUtil::AddToDexClassLoader),
+      "com.android.art.classloader.add_to_dex_class_loader",
+      "Adds a dexfile to a given dalvik.system.BaseDexClassLoader in a manner similar to"
+      " AddToSystemClassLoader.",
+      {
+        { "classloader", JVMTI_KIND_IN, JVMTI_TYPE_JOBJECT, false },
+        { "segment", JVMTI_KIND_IN_PTR, JVMTI_TYPE_CCHAR, false },
+      },
+      {
+         ERR(NULL_POINTER),
+         ERR(CLASS_LOADER_UNSUPPORTED),
+         ERR(ILLEGAL_ARGUMENT),
+         ERR(WRONG_PHASE),
+      });
+  if (error != ERR(NONE)) {
+    return error;
+  }
+
+  // AddToDexClassLoaderInMemory requires memfd_create which non-linux doesn't have. The code will
+  // still all link but since it will only ever return ERR(INTERNAL) we might as well not even
+  // advertise the extension.
+  // TODO Support non-linux in some way.
+#ifdef __linux__
+  // AddToDexClassLoaderInMemory
+  error = add_extension(
+      reinterpret_cast<jvmtiExtensionFunction>(SearchUtil::AddToDexClassLoaderInMemory),
+      "com.android.art.classloader.add_to_dex_class_loader_in_memory",
+      "Adds a dexfile buffer to a given dalvik.system.BaseDexClassLoader in a manner similar to"
+      " AddToSystemClassLoader. This may only be done during the LIVE phase. The buffer is copied"
+      " and the caller is responsible for deallocating it after this call.",
+      {
+        { "classloader", JVMTI_KIND_IN, JVMTI_TYPE_JOBJECT, false },
+        { "dex_bytes", JVMTI_KIND_IN_BUF, JVMTI_TYPE_CCHAR, false },
+        { "dex_bytes_len", JVMTI_KIND_IN, JVMTI_TYPE_JINT, false },
+      },
+      {
+         ERR(NULL_POINTER),
+         ERR(CLASS_LOADER_UNSUPPORTED),
+         ERR(ILLEGAL_ARGUMENT),
+         ERR(WRONG_PHASE),
+      });
+  if (error != ERR(NONE)) {
+    return error;
+  }
+#endif
 
   // Copy into output buffer.
 

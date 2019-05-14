@@ -29,6 +29,9 @@
  * questions.
  */
 
+#include <sstream>
+#include <unistd.h>
+
 #include "ti_search.h"
 
 #include "jni.h"
@@ -37,6 +40,9 @@
 #include "art_jvmti.h"
 #include "base/enums.h"
 #include "base/macros.h"
+#include "base/memfd.h"
+#include "base/os.h"
+#include "base/unix_file/fd_file.h"
 #include "class_linker.h"
 #include "dex/art_dex_file_loader.h"
 #include "dex/dex_file.h"
@@ -249,8 +255,121 @@ jvmtiError SearchUtil::AddToBootstrapClassLoaderSearch(jvmtiEnv* env,
   return ERR(NONE);
 }
 
-jvmtiError SearchUtil::AddToSystemClassLoaderSearch(jvmtiEnv* jvmti_env ATTRIBUTE_UNUSED,
-                                                    const char* segment) {
+jvmtiError SearchUtil::AddToDexClassLoaderInMemory(jvmtiEnv* jvmti_env,
+                                                   jobject classloader,
+                                                   const char* dex_bytes,
+                                                   jint dex_bytes_length) {
+  if (jvmti_env == nullptr) {
+    return ERR(INVALID_ENVIRONMENT);
+  } else if (art::Thread::Current() == nullptr) {
+    return ERR(UNATTACHED_THREAD);
+  } else if (classloader == nullptr) {
+    return ERR(NULL_POINTER);
+  } else if (dex_bytes == nullptr) {
+    return ERR(NULL_POINTER);
+  } else if (dex_bytes_length <= 0) {
+    return ERR(ILLEGAL_ARGUMENT);
+  }
+
+  jvmtiPhase phase = PhaseUtil::GetPhaseUnchecked();
+
+  // TODO We really should try to support doing this during the ON_LOAD phase.
+  if (phase != jvmtiPhase::JVMTI_PHASE_LIVE) {
+    JVMTI_LOG(INFO, jvmti_env) << "Cannot add buffers to classpath during ON_LOAD phase to "
+                               << "prevent file-descriptor leaking.";
+    return ERR(WRONG_PHASE);
+  }
+
+  // We have java APIs for adding files to the classpath, we might as well use them. It simplifies a
+  // lot of code as well.
+
+  // Create a memfd
+  art::File file(art::memfd_create("JVMTI InMemory Added dex file", 0), /*check-usage*/true);
+  if (file.Fd() < 0) {
+    char* reason = strerror(errno);
+    JVMTI_LOG(ERROR, jvmti_env) << "Unable to create memfd due to " << reason;
+    return ERR(INTERNAL);
+  }
+  // Fill it with the buffer.
+  if (!file.WriteFully(dex_bytes, dex_bytes_length) || file.Flush() != 0) {
+    JVMTI_LOG(ERROR, jvmti_env) << "Failed to write to memfd!";
+    return ERR(INTERNAL);
+  }
+  // Get the filename in procfs.
+  std::ostringstream oss;
+  oss << "/proc/self/fd/" << file.Fd();
+  std::string seg(oss.str());
+  // Use common code.
+
+  jvmtiError result = AddToDexClassLoader(jvmti_env, classloader, seg.c_str());
+  // We have either loaded the dex file and have a new MemMap pointing to the same pages or loading
+  // has failed and the memory isn't needed anymore. Either way we can close the memfd we created
+  // and return.
+  if (file.Close() != 0) {
+    JVMTI_LOG(WARNING, jvmti_env) << "Failed to close memfd!";
+  }
+  return result;
+}
+
+jvmtiError SearchUtil::AddToDexClassLoader(jvmtiEnv* jvmti_env,
+                                           jobject classloader,
+                                           const char* segment) {
+  if (jvmti_env == nullptr) {
+    return ERR(INVALID_ENVIRONMENT);
+  } else if (art::Thread::Current() == nullptr) {
+    return ERR(UNATTACHED_THREAD);
+  } else if (classloader == nullptr) {
+    return ERR(NULL_POINTER);
+  } else if (segment == nullptr) {
+    return ERR(NULL_POINTER);
+  }
+
+  jvmtiPhase phase = PhaseUtil::GetPhaseUnchecked();
+
+  // TODO We really should try to support doing this during the ON_LOAD phase.
+  if (phase != jvmtiPhase::JVMTI_PHASE_LIVE) {
+    JVMTI_LOG(INFO, jvmti_env) << "Cannot add to classpath of arbitrary classloaders during "
+                               << "ON_LOAD phase.";
+    return ERR(WRONG_PHASE);
+  }
+
+  // We'll use BaseDexClassLoader.addDexPath, as it takes care of array resizing etc. As a downside,
+  // exceptions are swallowed.
+
+  art::Thread* self = art::Thread::Current();
+  JNIEnv* env = self->GetJniEnv();
+  if (!env->IsInstanceOf(classloader, art::WellKnownClasses::dalvik_system_BaseDexClassLoader)) {
+    JVMTI_LOG(ERROR, jvmti_env) << "Unable to add " << segment << " to non BaseDexClassLoader!";
+    return ERR(CLASS_LOADER_UNSUPPORTED);
+  }
+
+  jmethodID add_dex_path_id = env->GetMethodID(
+      art::WellKnownClasses::dalvik_system_BaseDexClassLoader,
+      "addDexPath",
+      "(Ljava/lang/String;)V");
+  if (add_dex_path_id == nullptr) {
+    return ERR(INTERNAL);
+  }
+
+  ScopedLocalRef<jstring> dex_path(env, env->NewStringUTF(segment));
+  if (dex_path.get() == nullptr) {
+    return ERR(INTERNAL);
+  }
+  env->CallVoidMethod(classloader, add_dex_path_id, dex_path.get());
+
+  if (env->ExceptionCheck()) {
+    {
+      art::ScopedObjectAccess soa(self);
+      JVMTI_LOG(ERROR, jvmti_env) << "Failed to add " << segment << " to classloader. Error was "
+                                  << self->GetException()->Dump();
+    }
+    env->ExceptionClear();
+    return ERR(ILLEGAL_ARGUMENT);
+  }
+  return OK;
+}
+
+jvmtiError SearchUtil::AddToSystemClassLoaderSearch(jvmtiEnv* jvmti_env, const char* segment) {
   if (segment == nullptr) {
     return ERR(NULL_POINTER);
   }
@@ -266,41 +385,18 @@ jvmtiError SearchUtil::AddToSystemClassLoaderSearch(jvmtiEnv* jvmti_env ATTRIBUT
     return ERR(WRONG_PHASE);
   }
 
-  jobject sys_class_loader = art::Runtime::Current()->GetSystemClassLoader();
-  if (sys_class_loader == nullptr) {
-    // This is unexpected.
+  jobject loader = art::Runtime::Current()->GetSystemClassLoader();
+  if (loader == nullptr) {
     return ERR(INTERNAL);
   }
-
-  // We'll use BaseDexClassLoader.addDexPath, as it takes care of array resizing etc. As a downside,
-  // exceptions are swallowed.
 
   art::Thread* self = art::Thread::Current();
   JNIEnv* env = self->GetJniEnv();
-  if (!env->IsInstanceOf(sys_class_loader,
-                         art::WellKnownClasses::dalvik_system_BaseDexClassLoader)) {
+  if (!env->IsInstanceOf(loader, art::WellKnownClasses::dalvik_system_BaseDexClassLoader)) {
     return ERR(INTERNAL);
   }
 
-  jmethodID add_dex_path_id = env->GetMethodID(
-      art::WellKnownClasses::dalvik_system_BaseDexClassLoader,
-      "addDexPath",
-      "(Ljava/lang/String;)V");
-  if (add_dex_path_id == nullptr) {
-    return ERR(INTERNAL);
-  }
-
-  ScopedLocalRef<jstring> dex_path(env, env->NewStringUTF(segment));
-  if (dex_path.get() == nullptr) {
-    return ERR(INTERNAL);
-  }
-  env->CallVoidMethod(sys_class_loader, add_dex_path_id, dex_path.get());
-
-  if (env->ExceptionCheck()) {
-    env->ExceptionClear();
-    return ERR(ILLEGAL_ARGUMENT);
-  }
-  return ERR(NONE);
+  return AddToDexClassLoader(jvmti_env, loader, segment);
 }
 
 }  // namespace openjdkjvmti
