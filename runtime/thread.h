@@ -41,7 +41,6 @@
 #include "read_barrier_config.h"
 #include "runtime_globals.h"
 #include "runtime_stats.h"
-#include "suspend_reason.h"
 #include "thread_state.h"
 
 class BacktraceMap;
@@ -96,6 +95,7 @@ class ScopedObjectAccessAlreadyRunnable;
 class ShadowFrame;
 class SingleStepControl;
 class StackedShadowFrameRecord;
+enum class SuspendReason : char;
 class Thread;
 class ThreadList;
 enum VisitRootFlags : uint8_t;

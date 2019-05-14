@@ -27,6 +27,7 @@
 #include "jni/jni_env_ext.h"
 #include "managed_stack-inl.h"
 #include "obj_ptr.h"
+#include "suspend_reason.h"
 #include "thread-current-inl.h"
 #include "thread_pool.h"
 
