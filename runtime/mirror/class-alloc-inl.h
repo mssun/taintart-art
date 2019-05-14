@@ -19,6 +19,7 @@
 
 #include "class-inl.h"
 
+#include "gc/allocator_type.h"
 #include "gc/heap-inl.h"
 #include "object-inl.h"
 #include "runtime.h"

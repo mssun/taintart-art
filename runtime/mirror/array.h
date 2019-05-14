@@ -19,11 +19,14 @@
 
 #include "base/bit_utils.h"
 #include "base/enums.h"
-#include "gc/allocator_type.h"
 #include "obj_ptr.h"
 #include "object.h"
 
 namespace art {
+
+namespace gc {
+enum AllocatorType : char;
+}  // namespace gc
 
 template<class T> class Handle;
 class Thread;

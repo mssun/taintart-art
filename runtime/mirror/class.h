@@ -26,7 +26,6 @@
 #include "dex/dex_file_types.h"
 #include "dex/modifiers.h"
 #include "dex/primitive.h"
-#include "gc/allocator_type.h"
 #include "object.h"
 #include "object_array.h"
 #include "read_barrier_option.h"
@@ -37,6 +36,10 @@ namespace dex {
 struct ClassDef;
 class TypeList;
 }  // namespace dex
+
+namespace gc {
+enum AllocatorType : char;
+}  // namespace gc
 
 namespace hiddenapi {
 class AccessContext;

@@ -24,6 +24,7 @@
 #include "base/bit_utils.h"
 #include "class.h"
 #include "class_root.h"
+#include "gc/allocator_type.h"
 #include "gc/heap-inl.h"
 #include "obj_ptr.h"
 #include "runtime.h"

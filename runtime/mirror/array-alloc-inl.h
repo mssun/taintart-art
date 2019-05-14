@@ -25,6 +25,7 @@
 #include "base/bit_utils.h"
 #include "base/casts.h"
 #include "class.h"
+#include "gc/allocator_type.h"
 #include "gc/heap-inl.h"
 #include "obj_ptr-inl.h"
 #include "runtime.h"

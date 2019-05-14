@@ -24,7 +24,7 @@ namespace gc {
 
 // Different types of allocators.
 // Those marked with * have fast path entrypoints callable from generated code.
-enum AllocatorType {
+enum AllocatorType : char {
   // BumpPointer spaces are currently only used for ZygoteSpace construction.
   kAllocatorTypeBumpPointer,  // Use global CAS-based BumpPointer allocator. (*)
   kAllocatorTypeTLAB,  // Use TLAB allocator within BumpPointer space. (*)
