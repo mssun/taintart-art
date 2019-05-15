@@ -204,7 +204,7 @@ class AllocSpace {
   // Alloc can be called from multiple threads at the same time and must be thread-safe.
   //
   // bytes_tl_bulk_allocated - bytes allocated in bulk ahead of time for a thread local allocation,
-  // if applicable. It can be
+  // if applicable. It is
   // 1) equal to bytes_allocated if it's not a thread local allocation,
   // 2) greater than bytes_allocated if it's a thread local
   //    allocation that required a new buffer, or
@@ -228,7 +228,7 @@ class AllocSpace {
   // Returns how many bytes were freed.
   virtual size_t Free(Thread* self, mirror::Object* ptr) = 0;
 
-  // Returns how many bytes were freed.
+  // Free (deallocate) all objects in a list, and return the number of bytes freed.
   virtual size_t FreeList(Thread* self, size_t num_ptrs, mirror::Object** ptrs) = 0;
 
   // Revoke any sort of thread-local buffers that are used to speed up allocations for the given

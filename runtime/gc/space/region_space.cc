@@ -466,6 +466,7 @@ void RegionSpace::ClearFromSpace(/* out */ uint64_t* cleared_bytes,
       CheckLiveBytesAgainstRegionBitmap(r);
     }
     if (r->IsInFromSpace()) {
+      DCHECK(!r->IsTlab());
       *cleared_bytes += r->BytesAllocated();
       *cleared_objects += r->ObjectsAllocated();
       --num_non_free_regions_;

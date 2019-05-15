@@ -1613,8 +1613,8 @@ void Heap::VerifyHeap() {
 
 void Heap::RecordFree(uint64_t freed_objects, int64_t freed_bytes) {
   // Use signed comparison since freed bytes can be negative when background compaction foreground
-  // transitions occurs. This is caused by the moving objects from a bump pointer space to a
-  // free list backed space typically increasing memory footprint due to padding and binning.
+  // transitions occurs. This is typically due to objects moving from a bump pointer space to a
+  // free list backed space, which may increase memory footprint due to padding and binning.
   RACING_DCHECK_LE(freed_bytes,
                    static_cast<int64_t>(num_bytes_allocated_.load(std::memory_order_relaxed)));
   // Note: This relies on 2s complement for handling negative freed_bytes.

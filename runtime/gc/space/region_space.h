@@ -360,7 +360,9 @@ class RegionSpace final : public ContinuousMemMapAllocSpace {
     }
   }
 
+  // Increment object allocation count for region containing ref.
   void RecordAlloc(mirror::Object* ref) REQUIRES(!region_lock_);
+
   bool AllocNewTlab(Thread* self, size_t min_bytes) REQUIRES(!region_lock_);
 
   uint32_t Time() {
@@ -482,6 +484,10 @@ class RegionSpace final : public ContinuousMemMapAllocSpace {
       return is_newly_allocated_;
     }
 
+    bool IsTlab() const {
+      return is_a_tlab_;
+    }
+
     bool IsInFromSpace() const {
       return type_ == RegionType::kRegionTypeFromSpace;
     }
@@ -552,6 +558,7 @@ class RegionSpace final : public ContinuousMemMapAllocSpace {
       return live_bytes_;
     }
 
+    // Returns the number of allocated bytes.  "Bulk allocated" bytes in active TLABs are excluded.
     size_t BytesAllocated() const;
 
     size_t ObjectsAllocated() const;

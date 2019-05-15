@@ -1000,7 +1000,7 @@ void RosAlloc::Run::InspectAllSlots(void (*handler)(void* start, void* end, size
 // If true, read the page map entries in BulkFree() without using the
 // lock for better performance, assuming that the existence of an
 // allocated chunk/pointer being freed in BulkFree() guarantees that
-// the page map entry won't change. Disabled for now.
+// the page map entry won't change.
 static constexpr bool kReadPageMapEntryWithoutLockInBulkFree = true;
 
 size_t RosAlloc::BulkFree(Thread* self, void** ptrs, size_t num_ptrs) {
