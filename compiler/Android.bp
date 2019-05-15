@@ -177,7 +177,7 @@ art_cc_defaults {
     ],
     include_dirs: ["art/disassembler"],
     header_libs: [
-        "art_cmdlineparser_headers",  // For compiler_options.
+        "art_cmdlineparser_headers", // For compiler_options.
         "libnativehelper_header_only",
     ],
 
@@ -254,7 +254,7 @@ art_cc_library {
     target: {
         android: {
             lto: {
-                 thin: true,
+                thin: true,
             },
         },
     },

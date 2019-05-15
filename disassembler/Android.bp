@@ -25,10 +25,10 @@ art_cc_defaults {
     ],
     codegen: {
         arm: {
-            srcs: ["disassembler_arm.cc"]
+            srcs: ["disassembler_arm.cc"],
         },
         arm64: {
-            srcs: ["disassembler_arm64.cc"]
+            srcs: ["disassembler_arm64.cc"],
         },
         // TODO: We should also conditionally include the MIPS32/MIPS64 and the
         // x86/x86-64 disassembler definitions (b/119090273). However, using the

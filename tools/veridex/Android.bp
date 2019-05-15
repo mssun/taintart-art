@@ -24,7 +24,10 @@ cc_binary {
         "resolver.cc",
         "veridex.cc",
     ],
-    cflags: ["-Wall", "-Werror"],
+    cflags: [
+        "-Wall",
+        "-Werror",
+    ],
     static_libs: [
         "libdexfile",
         "libartbase",

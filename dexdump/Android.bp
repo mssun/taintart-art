@@ -51,7 +51,7 @@ art_cc_binary {
         darwin: {
             enabled: true,
         },
-    }
+    },
 }
 
 art_cc_test {

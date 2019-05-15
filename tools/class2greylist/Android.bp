@@ -15,20 +15,19 @@
 //
 
 java_library_host {
-  name: "class2greylistlib",
-  srcs: ["src/**/*.java"],
-  static_libs: [
-    "commons-cli-1.2",
-    "apache-bcel",
-    "guava",
-  ],
+    name: "class2greylistlib",
+    srcs: ["src/**/*.java"],
+    static_libs: [
+        "commons-cli-1.2",
+        "apache-bcel",
+        "guava",
+    ],
 }
 
 java_binary_host {
-  name: "class2greylist",
-  manifest: "src/class2greylist.mf",
-  static_libs: [
-    "class2greylistlib",
-  ],
+    name: "class2greylist",
+    manifest: "src/class2greylist.mf",
+    static_libs: [
+        "class2greylistlib",
+    ],
 }
-

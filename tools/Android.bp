@@ -15,16 +15,16 @@
 //
 
 python_binary_host {
-  name: "generate_operator_out",
-  srcs: [
-    "generate_operator_out.py",
-  ],
-  version: {
-    py2: {
-      enabled: true,
+    name: "generate_operator_out",
+    srcs: [
+        "generate_operator_out.py",
+    ],
+    version: {
+        py2: {
+            enabled: true,
+        },
+        py3: {
+            enabled: false,
+        },
     },
-    py3: {
-      enabled: false,
-    },
-  },
 }

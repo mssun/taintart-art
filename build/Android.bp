@@ -23,7 +23,7 @@ art_clang_tidy_errors = [
     "android-cloexec-open",
     "bugprone-argument-comment",
     "bugprone-lambda-function-name",
-    "bugprone-unused-raii",  // Protect scoped things like MutexLock.
+    "bugprone-unused-raii", // Protect scoped things like MutexLock.
     "bugprone-unused-return-value",
     "bugprone-virtual-near-miss",
     "modernize-use-bool-literals",

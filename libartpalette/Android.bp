@@ -15,10 +15,10 @@
 //
 
 cc_defaults {
-  name: "libartpalette_defaults",
-  defaults: ["art_defaults"],
-  host_supported: true,
-  export_include_dirs: ["include"],
+    name: "libartpalette_defaults",
+    defaults: ["art_defaults"],
+    host_supported: true,
+    export_include_dirs: ["include"],
 }
 
 // libartpalette-system is the implementation of the abstraction layer. It is
@@ -29,20 +29,20 @@ art_cc_library {
     compile_multilib: "both",
     target: {
         android: {
-          srcs: ["system/palette_android.cc",],
-          header_libs: ["libbase_headers"],
-          shared_libs: [
-            "libbase",
-            "libcutils",
-            "liblog",
-            "libprocessgroup",
-            "libtombstoned_client",
-          ],
+            srcs: ["system/palette_android.cc"],
+            header_libs: ["libbase_headers"],
+            shared_libs: [
+                "libbase",
+                "libcutils",
+                "liblog",
+                "libprocessgroup",
+                "libtombstoned_client",
+            ],
         },
         host: {
-          header_libs: ["libbase_headers"],
-          srcs: ["system/palette_fake.cc",],
-          shared_libs: ["libbase"],
+            header_libs: ["libbase_headers"],
+            srcs: ["system/palette_fake.cc"],
+            shared_libs: ["libbase"],
         },
         darwin: {
             enabled: false,
@@ -63,7 +63,7 @@ art_cc_library {
 art_cc_library {
     name: "libartpalette",
     defaults: ["libartpalette_defaults"],
-    required: ["libartpalette-system"],  // libartpalette.so dlopen()'s libartpalette-system.
+    required: ["libartpalette-system"], // libartpalette.so dlopen()'s libartpalette-system.
     header_libs: ["libbase_headers"],
     target: {
         // Targets supporting dlopen build the client library which loads
@@ -79,24 +79,24 @@ art_cc_library {
             version_script: "libartpalette.map.txt",
         },
         linux_bionic: {
-          header_libs: ["libbase_headers"],
+            header_libs: ["libbase_headers"],
             srcs: ["system/palette_fake.cc"],
             shared: {
-              shared_libs: [
-                "libbase",
-                "liblog"
-              ],
+                shared_libs: [
+                    "libbase",
+                    "liblog",
+                ],
             },
             version_script: "libartpalette.map.txt",
         },
         linux_glibc: {
-          header_libs: ["libbase_headers"],
+            header_libs: ["libbase_headers"],
             srcs: ["system/palette_fake.cc"],
             shared: {
-              shared_libs: [
-                "libbase",
-                "liblog"
-              ],
+                shared_libs: [
+                    "libbase",
+                    "liblog",
+                ],
             },
             version_script: "libartpalette.map.txt",
         },
@@ -107,8 +107,8 @@ art_cc_library {
             header_libs: ["libbase_headers"],
             srcs: ["system/palette_fake.cc"],
             static_libs: [
-              "libbase",
-              "liblog"
+                "libbase",
+                "liblog",
             ],
         },
         windows: {
@@ -116,11 +116,11 @@ art_cc_library {
             header_libs: ["libbase_headers"],
             srcs: ["system/palette_fake.cc"],
             static_libs: [
-              "libbase",
-              "liblog"
+                "libbase",
+                "liblog",
             ],
         },
-    }
+    },
 }
 
 art_cc_test {

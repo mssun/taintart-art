@@ -123,7 +123,7 @@ art_tools_host_only_binaries = [
 
 // Libraries needed to use com.android.runtime.host for zipapex run-tests
 art_runtime_host_run_test_libs = [
-    "libartd-disassembler"
+    "libartd-disassembler",
 ]
 
 // Core Java libraries.
@@ -204,22 +204,22 @@ apex_defaults {
     compile_multilib: "both",
     manifest: "manifest.json",
     java_libs: libcore_java_libs,
-    native_shared_libs: art_runtime_base_native_shared_libs
-        + bionic_native_shared_libs
-        + libcore_native_device_only_shared_libs
-        + libcore_native_shared_libs,
+    native_shared_libs: art_runtime_base_native_shared_libs +
+        bionic_native_shared_libs +
+        libcore_native_device_only_shared_libs +
+        libcore_native_shared_libs,
     multilib: {
         both: {
-            binaries: art_runtime_base_binaries_both
-                + bionic_binaries_both,
+            binaries: art_runtime_base_binaries_both +
+                bionic_binaries_both,
         },
         prefer32: {
             binaries: art_runtime_base_binaries_prefer32,
         },
         first: {
-            binaries: art_tools_common_binaries
-                + art_tools_device_only_binaries,
-        }
+            binaries: art_tools_common_binaries +
+                art_tools_device_only_binaries,
+        },
     },
     binaries: [
         "art_postinstall_hook",
@@ -228,8 +228,8 @@ apex_defaults {
         "art_preinstall_hook_system_server",
         "art_prepostinstall_utils",
     ],
-    prebuilts: art_runtime_data_file_prebuilts
-        + ["com.android.runtime.ld.config.txt"],
+    prebuilts: art_runtime_data_file_prebuilts +
+        ["com.android.runtime.ld.config.txt"],
     key: "com.android.runtime.key",
     required: ["art_apex_boot_integrity"],
 }
@@ -250,18 +250,18 @@ apex {
 apex {
     name: "com.android.runtime.debug",
     defaults: ["com.android.runtime-defaults"],
-    native_shared_libs: art_runtime_debug_native_shared_libs
-        + libcore_debug_native_shared_libs
-        + bionic_native_shared_libs_device,
+    native_shared_libs: art_runtime_debug_native_shared_libs +
+        libcore_debug_native_shared_libs +
+        bionic_native_shared_libs_device,
     multilib: {
         prefer32: {
-            binaries: art_runtime_debug_binaries_prefer32
-                + art_runtime_debug_binaries_prefer32_device,
+            binaries: art_runtime_debug_binaries_prefer32 +
+                art_runtime_debug_binaries_prefer32_device,
         },
         first: {
-            binaries: art_tools_debug_binaries
-                + art_tools_debug_device_only_binaries,
-        }
+            binaries: art_tools_debug_binaries +
+                art_tools_debug_device_only_binaries,
+        },
     },
     certificate: ":com.android.runtime.debug.certificate",
 }
@@ -280,24 +280,24 @@ art_apex_test {
     manifest: "manifest.json",
     java_libs: libcore_java_libs,
     ignore_system_library_special_case: true,
-    native_shared_libs: art_runtime_base_native_shared_libs
-        + art_runtime_debug_native_shared_libs
-        + libcore_native_shared_libs
-        + libcore_debug_native_shared_libs
-        + art_runtime_libraries_zipapex
-        + art_runtime_host_run_test_libs,
+    native_shared_libs: art_runtime_base_native_shared_libs +
+        art_runtime_debug_native_shared_libs +
+        libcore_native_shared_libs +
+        libcore_debug_native_shared_libs +
+        art_runtime_libraries_zipapex +
+        art_runtime_host_run_test_libs,
     multilib: {
         both: {
-            binaries: art_runtime_base_binaries_both
-                + art_runtime_debug_binaries_both_host,
+            binaries: art_runtime_base_binaries_both +
+                art_runtime_debug_binaries_both_host,
         },
         first: {
-            binaries: art_tools_common_binaries
-                + art_tools_debug_binaries  // Host APEX is always debug.
-                + art_tools_host_only_binaries
-                + art_runtime_base_binaries_prefer32
-                + art_runtime_debug_binaries_prefer32,
-        }
+            binaries: art_tools_common_binaries + // Host APEX is always debug.
+                art_tools_debug_binaries +
+                art_tools_host_only_binaries +
+                art_runtime_base_binaries_prefer32 +
+                art_runtime_debug_binaries_prefer32,
+        },
     },
     key: "com.android.runtime.key",
     target: {
@@ -310,8 +310,8 @@ art_apex_test {
                 both: {
                     native_shared_libs: bionic_native_shared_libs,
                     binaries: bionic_binaries_both,
-                }
-            }
+                },
+            },
         },
     },
 }
@@ -339,13 +339,14 @@ genrule {
         "art-apex-tester",
         "debugfs",
     ],
-    cmd: "$(location art-apex-tester)"
-              + " --debugfs $(location debugfs)"
-              + " --tmpdir $(genDir)"
-              + " $(in)"
-         + " && touch $(out)",
+    cmd: "$(location art-apex-tester)" +
+        " --debugfs $(location debugfs)" +
+        " --tmpdir $(genDir)" +
+        " $(in)" +
+        " && touch $(out)",
     out: ["art-check-release-apex-gen.dummy"],
 }
+
 cc_prebuilt_binary {
     name: "art-check-release-apex-gen-fakebin",
     srcs: [":art-check-release-apex-gen"],
@@ -353,7 +354,7 @@ cc_prebuilt_binary {
     device_supported: false,
     target: {
         darwin: {
-            enabled: false,  // No python3.
+            enabled: false, // No python3.
         },
     },
 }
@@ -365,14 +366,15 @@ genrule {
         "art-apex-tester",
         "debugfs",
     ],
-    cmd: "$(location art-apex-tester)"
-              + " --debugfs $(location debugfs)"
-              + " --tmpdir $(genDir)"
-              + " --debug"
-              + " $(in)"
-         + " && touch $(out)",
+    cmd: "$(location art-apex-tester)" +
+        " --debugfs $(location debugfs)" +
+        " --tmpdir $(genDir)" +
+        " --debug" +
+        " $(in)" +
+        " && touch $(out)",
     out: ["art-check-debug-apex-gen.dummy"],
 }
+
 cc_prebuilt_binary {
     name: "art-check-debug-apex-gen-fakebin",
     srcs: [":art-check-debug-apex-gen"],
@@ -380,7 +382,7 @@ cc_prebuilt_binary {
     device_supported: false,
     target: {
         darwin: {
-            enabled: false,  // No python3.
+            enabled: false, // No python3.
         },
     },
 }
@@ -391,18 +393,22 @@ sh_binary {
     name: "art_preinstall_hook",
     src: "art_preinstall_hook.sh",
 }
+
 sh_binary {
     name: "art_preinstall_hook_boot",
     src: "art_preinstall_hook_boot.sh",
 }
+
 sh_binary {
     name: "art_preinstall_hook_system_server",
     src: "art_preinstall_hook_system_server.sh",
 }
+
 sh_binary {
     name: "art_prepostinstall_utils",
     src: "art_prepostinstall_utils.sh",
 }
+
 sh_binary {
     name: "art_postinstall_hook",
     src: "art_postinstall_hook.sh",

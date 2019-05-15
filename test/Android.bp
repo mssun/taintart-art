@@ -374,7 +374,7 @@ cc_library_static {
         "libbase_ndk",
     ],
     shared_libs: [
-        "libz",  // for slicer (using adler32).
+        "libz", // for slicer (using adler32).
     ],
     sdk_version: "current",
     stl: "c++_static",

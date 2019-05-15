@@ -45,11 +45,11 @@ cc_defaults {
                 "libz",
             ],
             shared_libs: [
-                 // For MemMap.
-                 "libartpalette",
-                 "liblog",
-                 // For common macros.
-                 "libbase",
+                // For MemMap.
+                "libartpalette",
+                "liblog",
+                // For common macros.
+                "libbase",
             ],
             export_shared_lib_headers: [
                 "libbase",
@@ -59,11 +59,11 @@ cc_defaults {
             shared_libs: [
                 "libziparchive",
                 "libz",
-                 // For MemMap.
-                 "libartpalette",
-                 "liblog",
-                 // For common macros.
-                 "libbase",
+                // For MemMap.
+                "libartpalette",
+                "liblog",
+                // For common macros.
+                "libbase",
             ],
             export_shared_lib_headers: [
                 "libbase",
@@ -73,11 +73,11 @@ cc_defaults {
             static_libs: [
                 "libziparchive",
                 "libz",
-                 // For MemMap.
-                 "libartpalette",
-                 "liblog",
-                 // For common macros.
-                 "libbase",
+                // For MemMap.
+                "libartpalette",
+                "liblog",
+                // For common macros.
+                "libbase",
             ],
             export_static_lib_headers: [
                 "libbase",
@@ -146,7 +146,7 @@ art_cc_library {
     target: {
         android: {
             shared_libs: [
-                 "libartbase",
+                "libartbase",
             ],
             export_shared_lib_headers: [
                 "libartbase",
@@ -154,7 +154,7 @@ art_cc_library {
         },
         not_windows: {
             shared_libs: [
-                 "libartbase",
+                "libartbase",
             ],
             export_shared_lib_headers: [
                 "libartbase",
@@ -166,7 +166,7 @@ art_cc_library {
                 enabled: false,
             },
             static_libs: [
-                 "libartbase",
+                "libartbase",
             ],
             export_static_lib_headers: [
                 "libartbase",
@@ -184,7 +184,7 @@ art_cc_library {
     target: {
         android: {
             shared_libs: [
-                 "libartbased",
+                "libartbased",
             ],
             export_shared_lib_headers: [
                 "libartbased",
@@ -192,7 +192,7 @@ art_cc_library {
         },
         not_windows: {
             shared_libs: [
-                 "libartbased",
+                "libartbased",
             ],
             export_shared_lib_headers: [
                 "libartbased",
@@ -204,7 +204,7 @@ art_cc_library {
                 enabled: false,
             },
             static_libs: [
-                 "libartbased",
+                "libartbased",
             ],
             export_static_lib_headers: [
                 "libartbased",
@@ -307,7 +307,7 @@ cc_library {
 art_cc_test {
     name: "art_libdexfile_external_tests",
     host_supported: true,
-    test_per_src: true,  // For consistency with other ART gtests.
+    test_per_src: true, // For consistency with other ART gtests.
     srcs: [
         "external/dex_file_ext_c_test.c",
     ],

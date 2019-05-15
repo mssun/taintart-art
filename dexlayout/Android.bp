@@ -67,7 +67,7 @@ art_cc_library {
     target: {
         android: {
             lto: {
-                 thin: true,
+                thin: true,
             },
             shared_libs: [
                 "libartbase",
@@ -110,8 +110,8 @@ cc_defaults {
 art_cc_library {
     name: "libartd-dexlayout",
     defaults: [
-      "libart-dexlayout-defaults",
-      "art_debug_defaults",
+        "libart-dexlayout-defaults",
+        "art_debug_defaults",
     ],
     target: {
         android: {

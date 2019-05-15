@@ -78,7 +78,7 @@ art_cc_binary {
         },
         windows: {
             enabled: true,
-	    cflags: ["-Wno-thread-safety"],
+            cflags: ["-Wno-thread-safety"],
         },
     },
 }

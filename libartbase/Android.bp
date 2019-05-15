@@ -108,7 +108,7 @@ cc_defaults {
             cflags: ["-Wno-thread-safety"],
         },
         darwin: {
-            enabled: true,  // for libdexfile.
+            enabled: true, // for libdexfile.
         },
     },
     generated_sources: ["art_libartbase_operator_srcs"],

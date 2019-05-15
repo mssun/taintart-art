@@ -20,7 +20,7 @@
 // (empty) body is called.
 JIT_DEBUG_REGISTER_CODE_LDFLAGS = [
     "-Wl,--keep-unique,__jit_debug_register_code",
-    "-Wl,--keep-unique,__dex_debug_register_code"
+    "-Wl,--keep-unique,__dex_debug_register_code",
 ]
 
 libart_cc_defaults {
@@ -346,7 +346,7 @@ libart_cc_defaults {
                 "libdl_android",
             ],
             static_libs: [
-                "libz",  // For adler32.
+                "libz", // For adler32.
             ],
             cflags: [
                 // ART is allowed to link to libicuuc directly
@@ -373,7 +373,7 @@ libart_cc_defaults {
                 "thread_linux.cc",
             ],
             shared_libs: [
-                "libz",  // For adler32.
+                "libz", // For adler32.
             ],
         },
     },
@@ -422,8 +422,8 @@ libart_static_cc_defaults {
         "libartpalette",
         "libbacktrace",
         "libbase",
-        "libdexfile_external",  // libunwindstack dependency
-        "libdexfile_support",  // libunwindstack dependency
+        "libdexfile_external", // libunwindstack dependency
+        "libdexfile_support", // libunwindstack dependency
         "liblog",
         "libnativebridge",
         "libnativeloader",
@@ -530,7 +530,7 @@ art_cc_library {
     target: {
         android: {
             lto: {
-                 thin: true,
+                thin: true,
             },
         },
     },
@@ -688,49 +688,67 @@ cc_library_headers {
 }
 
 genrule {
-  name: "libart_mterp.arm",
-  out: ["mterp_arm.S"],
-  srcs: ["interpreter/mterp/arm/*.S"],
-  tool_files: ["interpreter/mterp/gen_mterp.py", "interpreter/mterp/common/gen_setup.py"],
-  cmd: "$(location interpreter/mterp/gen_mterp.py) $(out) $(in)",
+    name: "libart_mterp.arm",
+    out: ["mterp_arm.S"],
+    srcs: ["interpreter/mterp/arm/*.S"],
+    tool_files: [
+        "interpreter/mterp/gen_mterp.py",
+        "interpreter/mterp/common/gen_setup.py",
+    ],
+    cmd: "$(location interpreter/mterp/gen_mterp.py) $(out) $(in)",
 }
 
 genrule {
-  name: "libart_mterp.arm64",
-  out: ["mterp_arm64.S"],
-  srcs: ["interpreter/mterp/arm64/*.S"],
-  tool_files: ["interpreter/mterp/gen_mterp.py", "interpreter/mterp/common/gen_setup.py"],
-  cmd: "$(location interpreter/mterp/gen_mterp.py) $(out) $(in)",
+    name: "libart_mterp.arm64",
+    out: ["mterp_arm64.S"],
+    srcs: ["interpreter/mterp/arm64/*.S"],
+    tool_files: [
+        "interpreter/mterp/gen_mterp.py",
+        "interpreter/mterp/common/gen_setup.py",
+    ],
+    cmd: "$(location interpreter/mterp/gen_mterp.py) $(out) $(in)",
 }
 
 genrule {
-  name: "libart_mterp.mips",
-  out: ["mterp_mips.S"],
-  srcs: ["interpreter/mterp/mips/*.S"],
-  tool_files: ["interpreter/mterp/gen_mterp.py", "interpreter/mterp/common/gen_setup.py"],
-  cmd: "$(location interpreter/mterp/gen_mterp.py) $(out) $(in)",
+    name: "libart_mterp.mips",
+    out: ["mterp_mips.S"],
+    srcs: ["interpreter/mterp/mips/*.S"],
+    tool_files: [
+        "interpreter/mterp/gen_mterp.py",
+        "interpreter/mterp/common/gen_setup.py",
+    ],
+    cmd: "$(location interpreter/mterp/gen_mterp.py) $(out) $(in)",
 }
 
 genrule {
-  name: "libart_mterp.mips64",
-  out: ["mterp_mips64.S"],
-  srcs: ["interpreter/mterp/mips64/*.S"],
-  tool_files: ["interpreter/mterp/gen_mterp.py", "interpreter/mterp/common/gen_setup.py"],
-  cmd: "$(location interpreter/mterp/gen_mterp.py) $(out) $(in)",
+    name: "libart_mterp.mips64",
+    out: ["mterp_mips64.S"],
+    srcs: ["interpreter/mterp/mips64/*.S"],
+    tool_files: [
+        "interpreter/mterp/gen_mterp.py",
+        "interpreter/mterp/common/gen_setup.py",
+    ],
+    cmd: "$(location interpreter/mterp/gen_mterp.py) $(out) $(in)",
 }
 
 genrule {
-  name: "libart_mterp.x86",
-  out: ["mterp_x86.S"],
-  srcs: ["interpreter/mterp/x86/*.S"],
-  tool_files: ["interpreter/mterp/gen_mterp.py", "interpreter/mterp/common/gen_setup.py"],
-  cmd: "$(location interpreter/mterp/gen_mterp.py) $(out) $(in)",
+    name: "libart_mterp.x86",
+    out: ["mterp_x86.S"],
+    srcs: ["interpreter/mterp/x86/*.S"],
+    tool_files: [
+        "interpreter/mterp/gen_mterp.py",
+        "interpreter/mterp/common/gen_setup.py",
+    ],
+    cmd: "$(location interpreter/mterp/gen_mterp.py) $(out) $(in)",
 }
 
 genrule {
-  name: "libart_mterp.x86_64",
-  out: ["mterp_x86_64.S"],
-  srcs: ["interpreter/mterp/x86_64/*.S"],
-  tool_files: ["interpreter/mterp/gen_mterp.py", "interpreter/mterp/common/gen_setup.py"],
-  cmd: "$(location interpreter/mterp/gen_mterp.py) $(out) $(in)",
+    name: "libart_mterp.x86_64",
+    out: ["mterp_x86_64.S"],
+    srcs: ["interpreter/mterp/x86_64/*.S"],
+    tool_files: [
+        "interpreter/mterp/gen_mterp.py",
+        "interpreter/mterp/common/gen_setup.py",
+    ],
+    cmd: "$(location interpreter/mterp/gen_mterp.py) $(out) $(in)",
 }

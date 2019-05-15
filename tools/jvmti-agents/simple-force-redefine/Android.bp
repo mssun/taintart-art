@@ -26,8 +26,8 @@ cc_defaults {
     compile_multilib: "both",
 
     shared_libs: [
-      "libz",
-      "liblog",
+        "libz",
+        "liblog",
     ],
     header_libs: [
         "libopenjdkjvmti_headers",
@@ -43,20 +43,20 @@ cc_defaults {
     sdk_version: "current",
     stl: "libc++_static",
     target: {
-      android: {
-        static_libs: [
-          "slicer_ndk_no_rtti",
-          "libbase_ndk",
-        ],
-      },
-      host: {
-        static_libs: [
-          "slicer_no_rtti",
-        ],
-        shared_libs: [
-          "libbase",
-        ],
-      },
+        android: {
+            static_libs: [
+                "slicer_ndk_no_rtti",
+                "libbase_ndk",
+            ],
+        },
+        host: {
+            static_libs: [
+                "slicer_no_rtti",
+            ],
+            shared_libs: [
+                "libbase",
+            ],
+        },
     },
     multilib: {
         lib32: {
