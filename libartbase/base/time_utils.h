@@ -17,13 +17,14 @@
 #ifndef ART_LIBARTBASE_BASE_TIME_UTILS_H_
 #define ART_LIBARTBASE_BASE_TIME_UTILS_H_
 
-#include <stdint.h>
-#include <stdio.h>  // Needed for correct _WIN32 build.
+#ifdef _WIN32
+#include <stdio.h>  // Needed for correct macro definitions.
+#endif
+
 #include <time.h>
 
+#include <cstdint>
 #include <string>
-
-#include "macros.h"
 
 namespace art {
 
