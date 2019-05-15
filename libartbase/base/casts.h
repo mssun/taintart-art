@@ -17,7 +17,6 @@
 #ifndef ART_LIBARTBASE_BASE_CASTS_H_
 #define ART_LIBARTBASE_BASE_CASTS_H_
 
-#include <assert.h>
 #include <stdint.h>
 #include <string.h>
 
