@@ -22,6 +22,7 @@
 #include "base/iteration_range.h"
 #include "compact_dex_file.h"
 #include "dex_file-inl.h"
+#include "dex_instruction_iterator.h"
 #include "standard_dex_file.h"
 
 // The no ART version is used by binaries that don't include the whole runtime.
