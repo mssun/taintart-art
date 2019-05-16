@@ -1089,7 +1089,7 @@ static inline void CreatePreAllocatedException(Thread* self,
   CHECK(klass != nullptr);
   gc::AllocatorType allocator_type = runtime->GetHeap()->GetCurrentAllocator();
   ObjPtr<mirror::Throwable> exception_object = ObjPtr<mirror::Throwable>::DownCast(
-      klass->Alloc</* kIsInstrumented= */ true>(self, allocator_type));
+      klass->Alloc(self, allocator_type));
   CHECK(exception_object != nullptr);
   *exception = GcRoot<mirror::Throwable>(exception_object);
   // Initialize the "detailMessage" field.

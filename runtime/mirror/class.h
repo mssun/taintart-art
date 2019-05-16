@@ -467,7 +467,7 @@ class MANAGED Class final : public Object {
   bool IsPrimitiveArray() REQUIRES_SHARED(Locks::mutator_lock_);
 
   // Creates a raw object instance but does not invoke the default constructor.
-  template<bool kIsInstrumented, bool kCheckAddFinalizer = true>
+  template<bool kIsInstrumented = true, bool kCheckAddFinalizer = true>
   ALWAYS_INLINE ObjPtr<Object> Alloc(Thread* self, gc::AllocatorType allocator_type)
       REQUIRES_SHARED(Locks::mutator_lock_) REQUIRES(!Roles::uninterruptible_);
 

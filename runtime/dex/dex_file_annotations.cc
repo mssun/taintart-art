@@ -605,7 +605,7 @@ bool ProcessAnnotationValue(const ClassData& klass,
         StackHandleScope<2> hs(self);
         uint32_t size = DecodeUnsignedLeb128(&annotation);
         Handle<mirror::Class> component_type(hs.NewHandle(array_class->GetComponentType()));
-        Handle<mirror::Array> new_array(hs.NewHandle(mirror::Array::Alloc<true>(
+        Handle<mirror::Array> new_array(hs.NewHandle(mirror::Array::Alloc(
             self, array_class.Get(), size, array_class->GetComponentSizeShift(),
             Runtime::Current()->GetHeap()->GetCurrentAllocator())));
         if (new_array == nullptr) {

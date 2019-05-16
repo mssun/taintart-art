@@ -1799,7 +1799,7 @@ bool DoFilledNewArray(const Instruction* inst,
     }
     return false;
   }
-  ObjPtr<mirror::Object> new_array = mirror::Array::Alloc<true>(
+  ObjPtr<mirror::Object> new_array = mirror::Array::Alloc(
       self,
       array_class,
       length,

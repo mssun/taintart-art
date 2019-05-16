@@ -37,11 +37,11 @@ inline ObjPtr<ObjectArray<T>> ObjectArray<T>::Alloc(Thread* self,
                                                     ObjPtr<Class> object_array_class,
                                                     int32_t length,
                                                     gc::AllocatorType allocator_type) {
-  ObjPtr<Array> array = Array::Alloc<true>(self,
-                                           object_array_class,
-                                           length,
-                                           ComponentSizeShiftWidth(kHeapReferenceSize),
-                                           allocator_type);
+  ObjPtr<Array> array = Array::Alloc(self,
+                                     object_array_class,
+                                     length,
+                                     ComponentSizeShiftWidth(kHeapReferenceSize),
+                                     allocator_type);
   if (UNLIKELY(array == nullptr)) {
     return nullptr;
   }

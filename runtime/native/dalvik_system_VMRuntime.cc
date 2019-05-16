@@ -118,11 +118,11 @@ static jobject VMRuntime_newNonMovableArray(JNIEnv* env, jobject, jclass javaEle
     return nullptr;
   }
   gc::AllocatorType allocator = runtime->GetHeap()->GetCurrentNonMovingAllocator();
-  ObjPtr<mirror::Array> result = mirror::Array::Alloc<true>(soa.Self(),
-                                                            array_class,
-                                                            length,
-                                                            array_class->GetComponentSizeShift(),
-                                                            allocator);
+  ObjPtr<mirror::Array> result = mirror::Array::Alloc(soa.Self(),
+                                                      array_class,
+                                                      length,
+                                                      array_class->GetComponentSizeShift(),
+                                                      allocator);
   return soa.AddLocalReference<jobject>(result);
 }
 
@@ -145,12 +145,13 @@ static jobject VMRuntime_newUnpaddedArray(JNIEnv* env, jobject, jclass javaEleme
     return nullptr;
   }
   gc::AllocatorType allocator = runtime->GetHeap()->GetCurrentAllocator();
-  ObjPtr<mirror::Array> result = mirror::Array::Alloc<true, true>(
-      soa.Self(),
-      array_class,
-      length,
-      array_class->GetComponentSizeShift(),
-      allocator);
+  ObjPtr<mirror::Array> result =
+      mirror::Array::Alloc</*kIsInstrumented=*/ true, /*kFillUsable=*/ true>(
+          soa.Self(),
+          array_class,
+          length,
+          array_class->GetComponentSizeShift(),
+          allocator);
   return soa.AddLocalReference<jobject>(result);
 }
 

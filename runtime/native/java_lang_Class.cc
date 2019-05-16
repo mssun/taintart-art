@@ -823,7 +823,7 @@ static jobject Class_newInstance(JNIEnv* env, jobject javaThis) {
   // Invoke the string allocator to return an empty string for the string class.
   if (klass->IsStringClass()) {
     gc::AllocatorType allocator_type = Runtime::Current()->GetHeap()->GetCurrentAllocator();
-    ObjPtr<mirror::Object> obj = mirror::String::AllocEmptyString<true>(soa.Self(), allocator_type);
+    ObjPtr<mirror::Object> obj = mirror::String::AllocEmptyString(soa.Self(), allocator_type);
     if (UNLIKELY(soa.Self()->IsExceptionPending())) {
       return nullptr;
     } else {

@@ -145,11 +145,12 @@ TEST_F(TransactionTest, Array_length) {
   Runtime::Current()->EnterTransactionMode();
 
   // Allocate an array during transaction.
-  Handle<mirror::Array> h_obj(
-      hs.NewHandle(
-          mirror::Array::Alloc<true>(soa.Self(), h_klass.Get(), kArraySize,
-                                     h_klass->GetComponentSizeShift(),
-                                     Runtime::Current()->GetHeap()->GetCurrentAllocator())));
+  Handle<mirror::Array> h_obj = hs.NewHandle(
+      mirror::Array::Alloc(soa.Self(),
+                           h_klass.Get(),
+                           kArraySize,
+                           h_klass->GetComponentSizeShift(),
+                           Runtime::Current()->GetHeap()->GetCurrentAllocator()));
   ASSERT_TRUE(h_obj != nullptr);
   ASSERT_OBJ_PTR_EQ(h_obj->GetClass(), h_klass.Get());
   Runtime::Current()->RollbackAndExitTransactionMode();

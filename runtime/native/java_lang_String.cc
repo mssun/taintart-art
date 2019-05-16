@@ -73,11 +73,11 @@ static jstring String_fastSubstring(JNIEnv* env, jobject java_this, jint start, 
   StackHandleScope<1> hs(soa.Self());
   Handle<mirror::String> string_this(hs.NewHandle(soa.Decode<mirror::String>(java_this)));
   gc::AllocatorType allocator_type = Runtime::Current()->GetHeap()->GetCurrentAllocator();
-  ObjPtr<mirror::String> result = mirror::String::AllocFromString<true>(soa.Self(),
-                                                                        length,
-                                                                        string_this,
-                                                                        start,
-                                                                        allocator_type);
+  ObjPtr<mirror::String> result = mirror::String::AllocFromString(soa.Self(),
+                                                                  length,
+                                                                  string_this,
+                                                                  start,
+                                                                  allocator_type);
   return soa.AddLocalReference<jstring>(result);
 }
 

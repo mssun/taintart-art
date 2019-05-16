@@ -355,7 +355,7 @@ ObjPtr<mirror::String> StringBuilderAppend::AppendF(uint32_t format,
     return nullptr;
   }
   gc::AllocatorType allocator_type = Runtime::Current()->GetHeap()->GetCurrentAllocator();
-  ObjPtr<mirror::String> result = mirror::String::Alloc</*kIsInstrumented=*/ true>(
+  ObjPtr<mirror::String> result = mirror::String::Alloc(
       self, length_with_flag, allocator_type, builder);
 
   return result;

@@ -1358,7 +1358,8 @@ void UnstartedRuntime::UnstartedStringFactoryNewStringFromChars(
       hs.NewHandle(shadow_frame->GetVRegReference(arg_offset + 2)->AsCharArray()));
   Runtime* runtime = Runtime::Current();
   gc::AllocatorType allocator = runtime->GetHeap()->GetCurrentAllocator();
-  result->SetL(mirror::String::AllocFromCharArray<true>(self, char_count, h_char_array, offset, allocator));
+  result->SetL(
+      mirror::String::AllocFromCharArray(self, char_count, h_char_array, offset, allocator));
 }
 
 // This allows creating the new style of String objects during compilation.
@@ -1373,8 +1374,8 @@ void UnstartedRuntime::UnstartedStringFactoryNewStringFromString(
   Handle<mirror::String> h_string(hs.NewHandle(to_copy));
   Runtime* runtime = Runtime::Current();
   gc::AllocatorType allocator = runtime->GetHeap()->GetCurrentAllocator();
-  result->SetL(mirror::String::AllocFromString<true>(self, h_string->GetLength(), h_string, 0,
-                                                     allocator));
+  result->SetL(
+      mirror::String::AllocFromString(self, h_string->GetLength(), h_string, 0, allocator));
 }
 
 void UnstartedRuntime::UnstartedStringFastSubstring(
@@ -1390,7 +1391,7 @@ void UnstartedRuntime::UnstartedStringFastSubstring(
   DCHECK_LE(start + length, h_string->GetLength());
   Runtime* runtime = Runtime::Current();
   gc::AllocatorType allocator = runtime->GetHeap()->GetCurrentAllocator();
-  result->SetL(mirror::String::AllocFromString<true>(self, length, h_string, start, allocator));
+  result->SetL(mirror::String::AllocFromString(self, length, h_string, start, allocator));
 }
 
 // This allows getting the char array for new style of String objects during compilation.
@@ -1720,11 +1721,8 @@ void UnstartedRuntime::UnstartedJNIVMRuntimeNewUnpaddedArray(
       runtime->GetClassLinker()->FindArrayClass(self, element_class->AsClass());
   DCHECK(array_class != nullptr);
   gc::AllocatorType allocator = runtime->GetHeap()->GetCurrentAllocator();
-  result->SetL(mirror::Array::Alloc<true, true>(self,
-                                                array_class,
-                                                length,
-                                                array_class->GetComponentSizeShift(),
-                                                allocator));
+  result->SetL(mirror::Array::Alloc</*kIsInstrumented=*/ true, /*kFillUsable=*/ true>(
+      self, array_class, length, array_class->GetComponentSizeShift(), allocator));
 }
 
 void UnstartedRuntime::UnstartedJNIVMStackGetCallingClassLoader(

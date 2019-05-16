@@ -72,11 +72,11 @@ inline ObjPtr<Object> Class::Alloc(Thread* self, gc::AllocatorType allocator_typ
 }
 
 inline ObjPtr<Object> Class::AllocObject(Thread* self) {
-  return Alloc<true>(self, Runtime::Current()->GetHeap()->GetCurrentAllocator());
+  return Alloc(self, Runtime::Current()->GetHeap()->GetCurrentAllocator());
 }
 
 inline ObjPtr<Object> Class::AllocNonMovableObject(Thread* self) {
-  return Alloc<true>(self, Runtime::Current()->GetHeap()->GetCurrentNonMovingAllocator());
+  return Alloc(self, Runtime::Current()->GetHeap()->GetCurrentNonMovingAllocator());
 }
 
 }  // namespace mirror

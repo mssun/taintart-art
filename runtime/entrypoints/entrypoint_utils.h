@@ -49,7 +49,7 @@ class Thread;
 
 // Given the context of a calling Method, use its DexCache to resolve a type to a Class. If it
 // cannot be resolved, throw an error. If it can, use it to create an instance.
-template <bool kInstrumented>
+template <bool kInstrumented = true>
 ALWAYS_INLINE inline ObjPtr<mirror::Object> AllocObjectFromCode(ObjPtr<mirror::Class> klass,
                                                                 Thread* self,
                                                                 gc::AllocatorType allocator_type)
@@ -87,7 +87,7 @@ ALWAYS_INLINE inline ObjPtr<mirror::Class> CheckArrayAlloc(dex::TypeIndex type_i
 // it cannot be resolved, throw an error. If it can, use it to create an array.
 // When verification/compiler hasn't been able to verify access, optionally perform an access
 // check.
-template <bool kAccessCheck, bool kInstrumented>
+template <bool kAccessCheck, bool kInstrumented = true>
 ALWAYS_INLINE inline ObjPtr<mirror::Array> AllocArrayFromCode(dex::TypeIndex type_idx,
                                                               int32_t component_count,
                                                               ArtMethod* method,

@@ -457,11 +457,9 @@ extern "C" size_t MterpNewInstance(ShadowFrame* shadow_frame, Thread* self, uint
   if (LIKELY(c != nullptr)) {
     if (UNLIKELY(c->IsStringClass())) {
       gc::AllocatorType allocator_type = Runtime::Current()->GetHeap()->GetCurrentAllocator();
-      obj = mirror::String::AllocEmptyString<true>(self, allocator_type);
+      obj = mirror::String::AllocEmptyString(self, allocator_type);
     } else {
-      obj = AllocObjectFromCode<true>(c,
-                                      self,
-                                      Runtime::Current()->GetHeap()->GetCurrentAllocator());
+      obj = AllocObjectFromCode(c, self, Runtime::Current()->GetHeap()->GetCurrentAllocator());
     }
   }
   if (UNLIKELY(obj == nullptr)) {
@@ -523,7 +521,7 @@ extern "C" size_t MterpNewArray(ShadowFrame* shadow_frame,
     REQUIRES_SHARED(Locks::mutator_lock_) {
   const Instruction* inst = Instruction::At(dex_pc_ptr);
   int32_t length = shadow_frame->GetVReg(inst->VRegB_22c(inst_data));
-  ObjPtr<mirror::Object> obj = AllocArrayFromCode<false, true>(
+  ObjPtr<mirror::Object> obj = AllocArrayFromCode</*kAccessCheck=*/ false>(
       dex::TypeIndex(inst->VRegC_22c()), length, shadow_frame->GetMethod(), self,
       Runtime::Current()->GetHeap()->GetCurrentAllocator());
   if (UNLIKELY(obj == nullptr)) {

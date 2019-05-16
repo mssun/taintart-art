@@ -908,8 +908,8 @@ class JNI {
     }
     if (c->IsStringClass()) {
       gc::AllocatorType allocator_type = Runtime::Current()->GetHeap()->GetCurrentAllocator();
-      return soa.AddLocalReference<jobject>(mirror::String::AllocEmptyString<true>(soa.Self(),
-                                                                              allocator_type));
+      return soa.AddLocalReference<jobject>(
+          mirror::String::AllocEmptyString(soa.Self(), allocator_type));
     }
     return soa.AddLocalReference<jobject>(c->AllocObject(soa.Self()));
   }

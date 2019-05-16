@@ -89,7 +89,7 @@ ObjPtr<String> String::DoReplace(Thread* self, Handle<String> src, uint16_t old_
   gc::AllocatorType allocator_type = Runtime::Current()->GetHeap()->GetCurrentAllocator();
   const int32_t length_with_flag = String::GetFlaggedCount(length, compressible);
   SetStringCountVisitor visitor(length_with_flag);
-  ObjPtr<String> string = Alloc<true>(self, length_with_flag, allocator_type, visitor);
+  ObjPtr<String> string = Alloc(self, length_with_flag, allocator_type, visitor);
   if (UNLIKELY(string == nullptr)) {
     return nullptr;
   }
@@ -130,7 +130,7 @@ ObjPtr<String> String::AllocFromStrings(Thread* self,
   const int32_t length_with_flag = String::GetFlaggedCount(length + length2, compressible);
 
   SetStringCountVisitor visitor(length_with_flag);
-  ObjPtr<String> new_string = Alloc<true>(self, length_with_flag, allocator_type, visitor);
+  ObjPtr<String> new_string = Alloc(self, length_with_flag, allocator_type, visitor);
   if (UNLIKELY(new_string == nullptr)) {
     return nullptr;
   }
@@ -167,7 +167,7 @@ ObjPtr<String> String::AllocFromUtf16(Thread* self,
                             String::AllASCII<uint16_t>(utf16_data_in, utf16_length);
   int32_t length_with_flag = String::GetFlaggedCount(utf16_length, compressible);
   SetStringCountVisitor visitor(length_with_flag);
-  ObjPtr<String> string = Alloc<true>(self, length_with_flag, allocator_type, visitor);
+  ObjPtr<String> string = Alloc(self, length_with_flag, allocator_type, visitor);
   if (UNLIKELY(string == nullptr)) {
     return nullptr;
   }
@@ -203,7 +203,7 @@ ObjPtr<String> String::AllocFromModifiedUtf8(Thread* self,
   const bool compressible = kUseStringCompression && (utf16_length == utf8_length);
   const int32_t utf16_length_with_flag = String::GetFlaggedCount(utf16_length, compressible);
   SetStringCountVisitor visitor(utf16_length_with_flag);
-  ObjPtr<String> string = Alloc<true>(self, utf16_length_with_flag, allocator_type, visitor);
+  ObjPtr<String> string = Alloc(self, utf16_length_with_flag, allocator_type, visitor);
   if (UNLIKELY(string == nullptr)) {
     return nullptr;
   }
