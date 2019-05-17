@@ -46,12 +46,6 @@ class SearchUtil {
   static jvmtiError AddToBootstrapClassLoaderSearch(jvmtiEnv* env, const char* segment);
 
   static jvmtiError AddToSystemClassLoaderSearch(jvmtiEnv* env, const char* segment);
-
-  static jvmtiError AddToDexClassLoader(jvmtiEnv* env, jobject classloader, const char* segment);
-  static jvmtiError AddToDexClassLoaderInMemory(jvmtiEnv* env,
-                                                jobject classloader,
-                                                const char* dex_bytes,
-                                                jint dex_bytes_length);
 };
 
 }  // namespace openjdkjvmti
