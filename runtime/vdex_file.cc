@@ -27,6 +27,7 @@
 #include "base/bit_utils.h"
 #include "base/leb128.h"
 #include "base/stl_util.h"
+#include "base/systrace.h"
 #include "base/unix_file/fd_file.h"
 #include "class_linker.h"
 #include "class_loader_context.h"
@@ -102,6 +103,7 @@ std::unique_ptr<VdexFile> VdexFile::OpenAtAddress(uint8_t* mmap_addr,
                                                   bool low_4gb,
                                                   bool unquicken,
                                                   std::string* error_msg) {
+  ScopedTrace trace(("VdexFile::OpenAtAddress " + vdex_filename).c_str());
   if (!OS::FileExists(vdex_filename.c_str())) {
     *error_msg = "File " + vdex_filename + " does not exist.";
     return nullptr;

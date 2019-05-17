@@ -30,6 +30,7 @@
 #include "base/os.h"
 #include "base/stl_util.h"
 #include "base/string_view_cpp20.h"
+#include "base/systrace.h"
 #include "base/utils.h"
 #include "class_linker.h"
 #include "class_loader_context.h"
@@ -305,6 +306,7 @@ bool OatFileAssistant::LoadDexFiles(
 }
 
 bool OatFileAssistant::HasOriginalDexFiles() {
+  ScopedTrace trace("HasOriginalDexFiles");
   // Ensure GetRequiredDexChecksums has been run so that
   // has_original_dex_files_ is initialized. We don't care about the result of
   // GetRequiredDexChecksums.
@@ -321,6 +323,7 @@ OatFileAssistant::OatStatus OatFileAssistant::OatFileStatus() {
 }
 
 bool OatFileAssistant::DexChecksumUpToDate(const VdexFile& file, std::string* error_msg) {
+  ScopedTrace trace("DexChecksumUpToDate(vdex)");
   const std::vector<uint32_t>* required_dex_checksums = GetRequiredDexChecksums();
   if (required_dex_checksums == nullptr) {
     LOG(WARNING) << "Required dex checksums not found. Assuming dex checksums are up to date.";
@@ -353,6 +356,7 @@ bool OatFileAssistant::DexChecksumUpToDate(const VdexFile& file, std::string* er
 }
 
 bool OatFileAssistant::DexChecksumUpToDate(const OatFile& file, std::string* error_msg) {
+  ScopedTrace trace("DexChecksumUpToDate(oat)");
   const std::vector<uint32_t>* required_dex_checksums = GetRequiredDexChecksums();
   if (required_dex_checksums == nullptr) {
     LOG(WARNING) << "Required dex checksums not found. Assuming dex checksums are up to date.";
@@ -675,6 +679,7 @@ bool OatFileAssistant::ValidateBootClassPathChecksums(const OatFile& oat_file) {
 }
 
 OatFileAssistant::OatFileInfo& OatFileAssistant::GetBestInfo() {
+  ScopedTrace trace("GetBestInfo");
   // TODO(calin): Document the side effects of class loading when
   // running dalvikvm command line.
   if (dex_parent_writable_ || UseFdToReadFiles()) {
@@ -746,6 +751,7 @@ const std::string* OatFileAssistant::OatFileInfo::Filename() {
 }
 
 bool OatFileAssistant::OatFileInfo::IsUseable() {
+  ScopedTrace trace("IsUseable");
   switch (Status()) {
     case kOatCannotOpen:
     case kOatDexOutOfDate:
@@ -757,6 +763,7 @@ bool OatFileAssistant::OatFileInfo::IsUseable() {
 }
 
 OatFileAssistant::OatStatus OatFileAssistant::OatFileInfo::Status() {
+  ScopedTrace trace("Status");
   if (!status_attempted_) {
     status_attempted_ = true;
     const OatFile* file = GetFile();
@@ -970,6 +977,7 @@ std::unique_ptr<OatFile> OatFileAssistant::OatFileInfo::ReleaseFile() {
 }
 
 std::unique_ptr<OatFile> OatFileAssistant::OatFileInfo::ReleaseFileForUse() {
+  ScopedTrace trace("ReleaseFileForUse");
   if (Status() == kOatUpToDate) {
     return ReleaseFile();
   }
